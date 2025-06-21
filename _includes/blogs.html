@@ -1,0 +1,33 @@
+<!--News Section-->
+<section class="news-section">
+    <div class="faded-text style-two"><div class="f-text"><span>News</span></div></div>
+    <div class="auto-container">
+        <div class="sec-title style-two centered">
+            <h2>News Feeds</h2>
+            <div class="lower-text">
+               Lorem ipsum dolor sit amet, consectetur adipisicing elit, 
+               sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+           </div>
+        </div>
+        <div class="row clearfix">
+            {% for post in site.posts limit: "3" %}
+            <div class="news-block col-lg-4 col-md-6 col-sm-12 wow fadeInUp" data-wow-delay="0ms">
+                <div class="inner">
+                    {% if post.post_image %}
+                    <figure class="image-box"><a href="{{post.url}}">
+                        <img class="img-fluid" src="{{post.post_image}}" alt="{{post.post_image}}"></a>
+                    </figure>
+                    {% endif %}
+                    <div class="lower-box">
+                        {% if post.categories %}
+                         <div class="category"><a href="/category/{{ post.categories[0] | slugify }}">{{post.categories[0]}}</a></div>
+                        {% endif %}
+                        <h4><a href="{{post.url}}">{{post.title}}</a></h4>
+                        <div class="text">{{post.excerpt | strip_html | truncatewords: 20}}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>

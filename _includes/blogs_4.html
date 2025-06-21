@@ -1,0 +1,46 @@
+<!--News Section-->
+<section class="news-section-two">
+<div class="auto-container">
+    <div class="sec-title-three left-aligned">
+        <div class="sub-title">blog</div>
+        <h2>News Feeds</h2>
+    </div>
+        <div class="news-carousel owl-theme owl-carousel">
+            {% for post in site.posts %}
+            <div class="news-block alternate">
+                <div class="inner">
+                    {% if post.post_image %}
+                    <figure class="image-box">
+                        <a href="{{post.url}}">
+                            <img class="img-fluid" src="{{post.post_image}}" alt="{{post.title}}"/>
+                        </a>
+                    </figure>
+                    {% endif %}
+                    <div class="lower-box">
+                        {% if post.categories %}
+                        <div class="category">
+                            <a href="/category/{{ post.categories[0] | slugify }}">{{post.categories[0]}}</a>
+                        </div>
+                        {% endif %}
+                        <h4>
+                            <a href="{{post.url}}">{{post.title | truncatewords: 7}}</a>
+                        </h4>
+                        <div class="text">{{post.excerpt | strip_html | truncatewords: 18}}</div>
+                        <div class="post-meta">
+                            <ul class="clearfix">
+                                <li class="date">
+                                    <span class="icon flaticon-business"></span> 
+                                    <a href="{{post.url}}">{{post.date | date_to_long_string}}</a>
+                                </li>
+                                {% if post.author %}
+                                 <li class="author"><span class="icon flaticon-user-3"></span> By {{post.author}}</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+</div>
+</section>

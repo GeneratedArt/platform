@@ -1,0 +1,74 @@
+<footer class="main-footer alternate">
+    <div class="auto-container">
+        <!--Widgets Section-->
+        <div class="widgets-section">
+            <div class="row clearfix">
+                <!--Column-->
+                <div class="column col-lg-4 col-md-6 col-sm-12">
+                    <div class="footer-widget about-widget">
+                        <div class="widget-content">
+                            <div class="footer-logo">
+                                <a href="{{site.url}}"><img src="{{site.logo_url}}" alt="{{site.title}}"/></a>
+                            </div>
+                            <div class="text">
+                                
+We are a creative coding agency specializing in generative art, using autonomous agents and other methods to create dynamic artworks. Active on various platforms, we showcase our projects and connect with a community interested in this niche of digital art.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--Column-->
+                <div class="column col-lg-4 col-md-6 col-sm-12">
+                    <div class="footer-widget links-widget">
+                        <h3>Company<span>.</span></h3>
+                        <div class="widget-content">
+                            <div class="row clearfix">
+                                <div class="col-lg-5 col-md-6 col-sm-12">
+                                    <ul>
+                                        <li><a href="/about">About</a></li>
+                                        <li><a href="https://expo.generatedart.com/">Exhibitions</a></li>
+                                        <li><a href="https://deco.generatedart.com/">Decoration</a></li>
+                                        <li><a href="/contact">Contact</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <br/>
+                        <h3>Art<span>.</span></h3>
+                        <div class="widget-content">
+                            <div class="row clearfix">
+                                <div class="col-lg-5 col-md-6 col-sm-12">
+                                    <ul>
+                                        <li><a href="/artists">Artists</a></li>
+                                        <li><a href="#">Collections</a></li>
+                                        <li><a href="#">Apply</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--Column-->
+                <div class="column col-lg-4 col-md-6 col-sm-12">
+                    <div class="footer-widget news-widget">
+                        <h3>News feeds<span>.</span></h3>
+                        <div class="widget-content">
+                            {% for post in site.posts limit: 3 %}
+                            <div class="news-post">
+                                {% if post.post_image %}
+                                <div class="post-thumb">
+                                    <a href="{{post.url}}">
+                                        <img src="{{post.post_image}}" alt="{{post.title}}"/>
+                                    </a>
+                                </div>
+                                {% endif %}
+                                <h5><a href="{{post.url}}">{{post.title | truncatewords: 5}}</a></h5>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>

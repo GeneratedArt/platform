@@ -1,0 +1,276 @@
+---
+layout: default
+---
+
+{% include header.html %}
+<!-- Banner Section -->
+<section class="page-banner">
+    <div class="image-layer" style="background-image:url(/assets/images/background/banner-image-1.jpg);"></div>
+    <div class="banner-inner">
+        <div class="auto-container">
+            <div class="inner-container clearfix">
+                <h1>{{page.title}}</h1>
+                <div class="page-nav">
+                    <ul class="bread-crumb clearfix">
+                        <li><a href="{{site.url}}">Home</a></li>
+                        <li class="active">news</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!--End Banner Section -->
+
+<div class="sidebar-page-container">
+    <div class="bubble-dotted">
+        <span class="dotted dotted-1"></span>
+        <span class="dotted dotted-2"></span>
+        <span class="dotted dotted-3"></span>
+        <span class="dotted dotted-4"></span>
+        <span class="dotted dotted-5"></span>
+        <span class="dotted dotted-6"></span>
+        <span class="dotted dotted-7"></span>
+        <span class="dotted dotted-8"></span>
+        <span class="dotted dotted-9"></span>
+        <span class="dotted dotted-10"></span>
+    </div>
+    <div class="auto-container">
+        <div class="row clearfix">
+            <!--Content Side-->
+            <div class="content-side col-lg-8 col-md-12 col-sm-12">
+                <div class="content-inner">
+                    <div class="blog-posts">
+                        <!--News Block-->
+                        <div class="news-post-detail">
+                            <div class="inner-box">
+                                <div class="content-box">
+                                    <div class="category"><a href="/category/{{page.categories[0] | slugify }}">{{page.categories[0]}}</a></div>
+                                    <div class="post-wrapper">
+                                        {{page.content}}
+                                    </div>
+                                </div>
+                                <div class="lower-info clearfix">
+                                    <div class="related-tags">
+                                        <h5>Related Tags</h5>
+                                       {{page | tags | capitalize | replace: ",","  "}}
+                                    </div>
+                                    <div class="share-post">
+                                        <h5>Social Share</h5>
+                                        <div class="social-links">
+                                            <ul class="clearfix">
+                                                <li><a href="#"><span class="fab fa-facebook-f"></span></a></li>
+                                                <li><a href="#"><span class="fab fa-twitter"></span></a></li>
+                                                <li><a href="#"><span class="fab fa-linkedin-in"></span></a></li>
+                                                <li><a href="#"><span class="fab fa-instagram"></span></a></li>
+                                                <li><a href="#"><span class="fab fa-youtube"></span></a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="post-controls alternate">
+                                <div class="inner clearfix">
+                                        {% if page.previous.url %}
+                                        <div class="control prev-post">
+                                            <div class="subtitle">
+                                                <a class="prev" href="{{page.previous.url}}">&laquo; Prev Post</a>
+                                            </div>
+                                            <h4>{{page.previous.title |  truncatewords: 3}}</h4>
+                                            <a href="{{page.previous.url}}" class="overlink"></a>
+                                        </div>
+                                        {% endif %}
+                                         {% if page.next.url %}
+                                        <div class="control next-post">
+                                            <div class="subtitle">
+                                                <a class="next" href="{{page.next.url}}">Next Post &raquo;</a>
+                                            </div>
+                                            <h4>{{page.next.title | truncatewords: 3}}</h4>
+                                            <a href="{{page.next.url}}" class="overlink"></a>
+                                        </div>
+                                        {% endif %}
+                                        <div class="see-all"><a href="blog.html"><span class="flaticon-shape"></span></a></div>
+                                    </div>
+                                </div>
+                                <div class="related-news">
+                                    <div class="related-inner clearfix">
+                                        <div class="group-title"><h4>Related Post</h4></div>
+                                        <div class="row clearfix">
+                                          {% for post in site.posts limit: 2 %}
+                                            <div class="related-post col-md-6 col-sm-12">
+                                                <div class="inner">
+                                                    {% if page.post_image %}
+                                                     <figure class="image">
+                                                        <a href="{{post.url}}"><img src="{{post.post_image}}" alt="{{post.title}}"></a>
+                                                    </figure>
+                                                    {% endif %}
+                                                    <div class="lower">
+                                                        <div class="related-meta">
+                                                            <ul class="clearfix">
+                                                                <li class="author">
+                                                                    <span class="icon flaticon-calendar-4"></span> 
+                                                                    <a href="{{post.url}}">{{post.date | date_to_long_string}}</a>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                        <h5><a href="{{post.url}}">{{post.title | truncatewords: 5}}</a></h5>
+                                                        <div class="text">{{post.excerpt | strip_html | truncatewords: 15}}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                           {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="leave-comments">
+                                    <div class="group-title">
+                                        <h4>Post Comment</h4>
+                                    </div>
+                                    {% include disqus_comments.html %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--Sidebar Side-->
+            <div class="sidebar-side col-lg-4 col-md-12 col-sm-12">
+                <aside class="sidebar">
+                    <div class="sidebar-widget author-widget wow fadeInUp" data-wow-delay="0ms">
+                        <div class="widget-inner">
+                            <div class="sidebar-title">
+                                <h4>About Me</h4>
+                            </div>
+                            <div class="lower-box">
+                                <figure class="image"><img src="/assets/images/resource/author-image-9.png" alt=""></figure>
+                                <h5>Rosalina D. Willaimson</h5>
+                                <div class="text">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore.</div>
+                                <div class="social-links">
+                                    <ul class="clearfix">
+                                        <li><a href="#"><span class="fab fa-facebook-f"></span></a></li>
+                                        <li><a href="#"><span class="fab fa-twitter"></span></a></li>
+                                        <li><a href="#"><span class="fab fa-linkedin-in"></span></a></li>
+                                        <li><a href="#"><span class="fab fa-instagram"></span></a></li>
+                                        <li><a href="#"><span class="fab fa-youtube"></span></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--Posts-->
+                    <div class="sidebar-widget recent-posts wow fadeInUp" data-wow-delay="0ms">
+                        <div class="widget-inner">
+                            <div class="sidebar-title">
+                                <h4>Popular Feeds</h4>
+                            </div>
+                            <div class="recent-posts-box">
+                                {% for post in site.posts limit: 5 %}
+                                <div class="post">
+                                    <div class="inner">
+                                        {% if post.post_image %}
+                                        <figure class="post-thumb">
+                                            <img src="{{post.post_image}}" alt="{{post.title}}">
+                                            <a href="{{post.url}}" class="overlink">
+                                                <span class="icon flaticon-zoom-in"></span>
+                                            </a>
+                                        </figure>
+                                        {% endif %}
+                                        <h5 class="title"><a href="{{post.url}}">{{post.title | truncatewords: 5}}</a></h5>
+                                        <div class="post-date"><span class="icon flaticon-calendar-4"></span>{{post.date | date_to_string}}</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sidebar-widget cat-widget wow fadeInUp" data-wow-delay="0ms">
+                        <div class="widget-inner">
+                            <div class="sidebar-title">
+                                <h4>Categories</h4>
+                            </div>
+                            <ul class="cat-links clearfix">
+                                {% assign categories_list = site.categories %}
+                                  {% if categories_list.first[0] == null %}
+                                    {% for category in categories_list %}
+                                      <li><a href="/category/{{ category | downcase | downcase | url_escape | strip | replace: ' ', '-' }}">{{ category | camelcase }} <span>({{ site.tags[category].size }})</span></a></li>
+                                    {% endfor %}
+                                  {% else %}
+                                    {% for category in categories_list %}
+                                      <li><a href="/category/{{ category[0] | downcase | url_escape | strip | replace: ' ', '-' }}">{{ category[0] | camelcase }} <span>({{ category[1].size }})</span></a></li>
+                                    {% endfor %}
+                                  {% endif %}
+                                {% assign categories_list = nil %}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="sidebar-widget social-widget wow fadeInUp" data-wow-delay="0ms">
+                        <div class="widget-inner">
+                            <div class="sidebar-title">
+                                <h4>Never Miss News</h4>
+                            </div>
+                            <div class="social-links">
+                                <ul class="clearfix">
+                                    <li><a href="#"><span class="fab fa-facebook-f"></span></a></li>
+                                    <li><a href="#"><span class="fab fa-twitter"></span></a></li>
+                                    <li><a href="#"><span class="fab fa-linkedin-in"></span></a></li>
+                                    <li><a href="#"><span class="fab fa-instagram"></span></a></li>
+                                    <li><a href="#"><span class="fab fa-youtube"></span></a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-widget insta-widget wow fadeInUp" data-wow-delay="0ms">
+                        <div class="widget-inner">
+                            <div class="sidebar-title">
+                                <h4>Instagram Feeds</h4>
+                            </div>
+                            <div class="insta-images clearfix">
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-1.jpg" alt=""><a href="/assets/images/gallery/1.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-2.jpg" alt=""><a href="/assets/images/gallery/2.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-3.jpg" alt=""><a href="/assets/images/gallery/3.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-4.jpg" alt=""><a href="/assets/images/gallery/4.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-5.jpg" alt=""><a href="/assets/images/gallery/5.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-6.jpg" alt=""><a href="/assets/images/gallery/6.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-7.jpg" alt=""><a href="/assets/images/gallery/7.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-8.jpg" alt=""><a href="/assets/images/gallery/8.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                                <div class="image">
+                                    <figure><img src="/assets/images/gallery/gallery-thumb-9.jpg" alt=""><a href="/assets/images/gallery/9.jpg" class="overlink lightbox-image"><span class="icon flaticon-zoom-in"></span></a></figure>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sidebar-widget tags-widget wow fadeInUp" data-wow-delay="0ms">
+                        <div class="widget-inner">
+                            <div class="sidebar-title">
+                                <h4>Popular Tags</h4>
+                            </div>
+                            <div class="tags">
+                                {{site | tag_cloud}}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sidebar-widget advert-widget wow fadeInUp" data-wow-delay="0ms">
+                        {% include advertisement.html %}
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</div>
+

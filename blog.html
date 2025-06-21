@@ -1,0 +1,53 @@
+---
+layout: page
+title: "Blog Posts"
+pagination:
+  enabled: true
+permalink: "/blog.html"
+---
+<section class="news-section-two">
+    <div class="bubble-dotted">
+        <span class="dotted dotted-1"></span>
+        <span class="dotted dotted-2"></span>
+        <span class="dotted dotted-3"></span>
+        <span class="dotted dotted-4"></span>
+        <span class="dotted dotted-5"></span>
+        <span class="dotted dotted-6"></span>
+        <span class="dotted dotted-7"></span>
+        <span class="dotted dotted-8"></span>
+        <span class="dotted dotted-9"></span>
+        <span class="dotted dotted-10"></span>
+    </div>
+    <div class="auto-container">
+        <div class="masonry-container row clearfix">
+            {% for post in paginator.posts %}
+            <div class="news-block-two masonry-item col-lg-4 col-md-6 col-sm-12">
+                <div class="inner-box wow fadeInUp" data-wow-delay="300ms">
+                    {% if post.post_image %}
+                    <figure class="image-box">
+                        <a href="{{post.url}}"><img src="{{post.post_image}}" alt="{{post.title}}"/></a>
+                    </figure>
+                    {% endif %}
+                    <div class="lower-box">
+                        <div class="category">
+                            <a href="/category/{{post.categories[0] | slugify }}">{{post.categories[0]}}</a>
+                        </div>
+                        <h4><a href="{{post.url}}">{{post.title}}</a></h4>
+                        <div class="post-meta">
+                            <ul class="clearfix">
+                                <li class="date"><span class="icon flaticon-business"></span>
+                                 <a href="{{post.url}}">{{post.date | date_to_long_string}}</a>
+                                </li>
+                                <li class="author"><span class="icon flaticon-user-3"></span> By {{post.author}}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% include pagination.html %}
+    </div>
+</section>
+
+
