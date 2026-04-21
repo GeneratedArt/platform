@@ -7,7 +7,7 @@
 // separately by .github/workflows/deploy-workers.yml.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "generatedart-site",
+  "name": "website",
   "compatibility_date": "2026-04-21",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
