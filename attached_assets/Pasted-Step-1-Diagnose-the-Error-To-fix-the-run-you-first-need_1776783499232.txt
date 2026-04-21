@@ -1,0 +1,61 @@
+Step 1: Diagnose the Error
+
+To fix the run, you first need to find the "smoking gun" in the GitHub logs:
+
+Open the GitHub Actions run link.
+
+Click on the failed job (usually named build or deploy) on the left sidebar.
+
+Scroll through the log output (the black console screen) and look for red text.
+
+Common errors to look for:
+
+Module not found: Error: Can't resolve '...': You are missing a package in package.json.
+
+Process completed with exit code 1: A general failure, usually preceded by a specific linting or type error.
+
+sh: 1: vite: not found or npm run build failed: Your build command is misconfigured.
+
+ELIFECYCLE: Usually a Node.js version mismatch.
+
+Step 2: General Instructions to Fix
+
+Follow these steps based on what you find in the logs:
+
+A. If it's a "Module Not Found" or Dependency Error:
+
+Open your project in Replit.
+
+Check if the missing module is in your package.json.
+
+Run npm install [package-name] in the Replit shell.
+
+Push the updated package-lock.json and package.json to GitHub.
+
+B. If it's a Node Version Error:
+
+Check your .github/workflows/main.yml (or similar .yml file).
+
+Look for the node-version step.
+
+Ensure it matches the version you are using locally or on Replit (e.g., change node-version: [14.x] to node-version: [20.x]).
+
+C. If it's a "Secret" or "Environment Variable" Error:
+
+If the log says "API Key missing" or "Unauthorized":
+
+Go to your GitHub Repository Settings > Secrets and variables > Actions.
+
+Add the missing keys (e.g., OPENAI_API_KEY, DATABASE_URL) there.
+
+Step 3: Prompt for Replit
+
+Once you have copied the error message from the GitHub Action log, go to Replit and use the Replit Agent or the Chat tool with this prompt:
+
+Copy and paste this into Replit:
+
+"I am working on a website project for GeneratedArt, and my GitHub Actions build is failing.
+
+The error from the logs is: > [PASTE THE RED ERROR TEXT FROM GITHUB HERE]
+
+My Goal: > Please analyze my current files (especially package.json, the build scripts, and any configuration files) and fix the code so that it passes the build process. If I am missing dependencies, please install them. If there is a syntax error or a pathing issue causing the build to fail, please correct it."
