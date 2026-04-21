@@ -34,6 +34,16 @@ const ROLE_RANK: Record<string, number> = {
   steward: 4,
 };
 
+/** Allow either an authenticated user with the required role OR a request
+ *  carrying the shared internal bot token. */
+export function requireInternal(c: Ctx, next: Next) {
+  const tok = c.req.header("X-Internal-Token");
+  if (!tok || !c.env.INTERNAL_BOT_TOKEN || tok !== c.env.INTERNAL_BOT_TOKEN) {
+    return c.json({ error: "internal_only" }, 403);
+  }
+  return next();
+}
+
 export function requireRole(min: keyof typeof ROLE_RANK) {
   return (c: Ctx, next: Next) => {
     if (!c.get("userId")) return c.json({ error: "unauthorized" }, 401);

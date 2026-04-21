@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { ulid } from "ulid";
 import type { Env, Variables } from "../lib/env";
-import { requireAuth, requireRole } from "../lib/middleware";
+import { requireAuth, requireRole, requireInternal } from "../lib/middleware";
 import { audit } from "../lib/audit";
-import { createArtRepo } from "../lib/github-app";
+import { createArtRepo, writeCodeowners, protectMainBranch } from "../lib/github-app";
 
 export const projectRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -45,6 +45,28 @@ projectRoutes.post("/", requireRole("artist"), async (c) => {
       { error: "repo_create_failed", detail: (err as Error).message },
       503
     );
+  }
+
+  // Look up the artist's GitHub login so CODEOWNERS can name them. If we
+  // can't, the curator team alone owns the repo.
+  const artistRow = await c.env.DB.prepare(
+    `SELECT github_login FROM users WHERE id = ?`
+  )
+    .bind(userId)
+    .first<{ github_login: string | null }>();
+  const artistLogin = artistRow?.github_login ?? "";
+
+  // CODEOWNERS + branch protection are nice-to-have at create time. They can
+  // be re-applied by a curator later if the GitHub App rate-limits us here.
+  try {
+    if (artistLogin) await writeCodeowners(c.env, repo.full_name, artistLogin);
+  } catch (err) {
+    console.error("codeowners_failed", (err as Error).message);
+  }
+  try {
+    await protectMainBranch(c.env, repo.full_name);
+  } catch (err) {
+    console.error("branch_protection_failed", (err as Error).message);
   }
 
   const id = ulid();
@@ -138,6 +160,61 @@ projectRoutes.post("/:slug/approve", requireRole("curator"), async (c) => {
     ok: true,
     status: "approved",
     note: "Release tag, IPFS pin, and on-chain factory.createProject() will be processed by the deploy pipeline.",
+  });
+});
+
+const PublishInput = z.object({
+  bundle_cid: z.string().min(10).max(120),
+  release_tag: z.string().regex(/^v\d+\.\d+\.\d+$/),
+  metadata_cid: z.string().min(10).max(120).optional(),
+});
+
+/**
+ * Called by the release.yml workflow on each art-* repo after the bundle is
+ * pinned to IPFS. Records the CID + release tag and enqueues the on-chain
+ * deploy (factory.createProject) for the steward relayer.
+ */
+projectRoutes.post("/:slug/publish", requireInternal, async (c) => {
+  const slug = c.req.param("slug");
+  let parsed;
+  try {
+    parsed = PublishInput.parse(await c.req.json());
+  } catch (err) {
+    return c.json({ error: "invalid_input", detail: (err as Error).message }, 400);
+  }
+  const project = await c.env.DB.prepare(
+    `SELECT id, status, artist_id FROM projects WHERE slug = ?`
+  )
+    .bind(slug)
+    .first<{ id: string; status: string; artist_id: string }>();
+  if (!project) return c.json({ error: "not_found" }, 404);
+  if (project.status !== "approved" && project.status !== "live") {
+    return c.json({ error: "invalid_status", current: project.status }, 409);
+  }
+  await c.env.DB.prepare(
+    `UPDATE projects
+     SET bundle_cid = ?, release_tag = ?
+     WHERE id = ?`
+  )
+    .bind(parsed.bundle_cid, parsed.release_tag, project.id)
+    .run();
+  await c.env.PIN_QUEUE.send({
+    type: "project.publish",
+    project_id: project.id,
+    slug,
+    bundle_cid: parsed.bundle_cid,
+    release_tag: parsed.release_tag,
+    metadata_cid: parsed.metadata_cid ?? null,
+  });
+  await audit(c.env, null, "project.publish", project.id, {
+    slug,
+    bundle_cid: parsed.bundle_cid,
+    release_tag: parsed.release_tag,
+  });
+  return c.json({
+    ok: true,
+    enqueued: "factory.createProject",
+    bundle_cid: parsed.bundle_cid,
   });
 });
 

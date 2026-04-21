@@ -1,0 +1,52 @@
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      PINATA_JWT: ${{ secrets.PINATA_JWT }}
+      WEB3_STORAGE_TOKEN: ${{ secrets.WEB3_STORAGE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Zip release bundle
+        run: |
+          mkdir -p dist
+          zip -r "dist/bundle-${{ steps.tag.outputs.tag }}.zip" \
+            index.html src vendor LICENSE README.md \
+            -x "*.git*" "node_modules/*" ".github/*" "test/*" "dist/*"
+
+      - name: Pin to Pinata + web3.storage
+        id: pin
+        run: node .github/scripts/pin.mjs "dist/bundle-${{ steps.tag.outputs.tag }}.zip"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            "dist/bundle-${{ steps.tag.outputs.tag }}.zip" \
+            --title "${{ steps.tag.outputs.tag }}" \
+            --notes "bundle_cid: ${{ steps.pin.outputs.bundle_cid }}
+metadata_cid: ${{ steps.pin.outputs.metadata_cid }}
+release: ${{ steps.tag.outputs.tag }}"

@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.validate-out/
+.DS_Store

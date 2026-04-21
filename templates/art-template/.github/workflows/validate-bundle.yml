@@ -1,0 +1,38 @@
+name: validate-bundle
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright (Chromium only)
+        run: |
+          npm i -g playwright@1.48.0
+          npx playwright install --with-deps chromium
+
+      - name: Static checks (size, required files, forbidden APIs, allowlist)
+        run: node .github/scripts/validate-static.mjs
+
+      - name: Deterministic render check (two runs, pixel diff)
+        run: node .github/scripts/validate-render.mjs
+
+      - name: Upload pixel diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-diffs
+          path: .validate-out/

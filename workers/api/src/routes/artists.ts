@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Env, Variables } from "../lib/env";
 import { requireAuth, requireRole } from "../lib/middleware";
 import { audit } from "../lib/audit";
+import { createApplicationIssue } from "../lib/github-app";
 
 export const artistRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -45,8 +46,49 @@ artistRoutes.post("/apply", requireAuth, async (c) => {
   await c.env.DB.prepare(`UPDATE users SET bio = ? WHERE id = ?`)
     .bind(parsed.bio, userId)
     .run();
-  await audit(c.env, userId, "artist.apply", parsed.slug, { slug: parsed.slug });
-  return c.json({ ok: true, slug: parsed.slug, status: "pending" });
+
+  // Open a tracking issue in GeneratedArt/applications. Soft-fail so a GitHub
+  // App outage doesn't block onboarding — the curator console can resync later.
+  let issueNumber: number | null = null;
+  let issueUrl: string | null = null;
+  const user = await c.env.DB.prepare(
+    `SELECT github_login, wallet_address FROM users WHERE id = ?`
+  )
+    .bind(userId)
+    .first<{ github_login: string | null; wallet_address: string | null }>();
+  if (user?.github_login) {
+    try {
+      const issue = await createApplicationIssue(c.env, {
+        artistSlug: parsed.slug,
+        githubLogin: user.github_login,
+        bio: parsed.bio,
+        portfolioLinks: parsed.portfolio_links,
+        walletAddress: user.wallet_address,
+      });
+      issueNumber = issue.number;
+      issueUrl = issue.html_url;
+      await c.env.DB.prepare(
+        `UPDATE artists SET socials_json = json_patch(COALESCE(socials_json, '{}'),
+                                                     json_object('application_issue', ?))
+         WHERE slug = ?`
+      )
+        .bind(issueUrl, parsed.slug)
+        .run();
+    } catch (err) {
+      console.error("application_issue_failed", (err as Error).message);
+    }
+  }
+
+  await audit(c.env, userId, "artist.apply", parsed.slug, {
+    slug: parsed.slug,
+    issue: issueNumber,
+  });
+  return c.json({
+    ok: true,
+    slug: parsed.slug,
+    status: "pending",
+    application_issue: issueUrl,
+  });
 });
 
 artistRoutes.get("/:slug", async (c) => {

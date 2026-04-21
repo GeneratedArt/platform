@@ -8,6 +8,8 @@ Community-run generative art platform and NFT marketplace for code-based generat
 platform/
 ├── site/         Jekyll public site → Cloudflare Pages (generatedart.com)
 ├── app/          Astro islands app  → Cloudflare Pages (app.generatedart.com)
+├── templates/
+│   └── art-template/  Repo seed for every art-<slug> project (force-pushed to GeneratedArt/art-template)
 ├── workers/
 │   ├── api/         REST API (Hono) — D1 + KV + R2 + Queues
 │   ├── github-bot/  GitHub App webhook handler
@@ -64,9 +66,9 @@ Jekyll 3.8.x predates Ruby 3.x stdlib changes. `site/Gemfile` adds:
 ## MVP ship order (from spec section 17)
 1. Monorepo + Jekyll site skeleton on Pages preview ← **scaffolding done**
 2. GitHub OAuth Worker + `/me` ← **implemented** (full route surface for spec §6: `/auth/github/callback`, `/auth/siwe/verify`, `/me`, `/artists/*`, `/projects/*`, `/editions/*`, `/owners/*`, `/galleries/*`, `/editions/:id/request-physical`, with audit-log writes on mutations and KV-token-bucket rate limiting at 60/min session, 10/min anon)
-3. Artist application flow end-to-end
-4. Project creation Worker (creates GitHub repo from template)
-5. Bundle validator Action (deterministic render check) ← workflow file scaffolded
+3. Artist application flow end-to-end ← **implemented** (POST /artists/apply opens issue in `GeneratedArt/applications`; github-bot listens for `approved` label and flips `artists.status` + promotes user role)
+4. Project creation Worker (creates GitHub repo from template) ← **implemented** (POST /projects clones `GeneratedArt/art-template`, writes CODEOWNERS, applies branch protection requiring `validate-bundle` + 1 code-owner review on main)
+5. Bundle validator Action (deterministic render check) ← **implemented** in `templates/art-template/.github/workflows/validate-bundle.yml`: 3 MB zip cap, required-files, forbidden-pattern + remote-script + library-allowlist checks, plus a Playwright Chromium two-run pixel-diff with `file://`-only network policy
 6. Contracts on Base Sepolia + Foundry tests ← contracts + tests scaffolded
 7. Renderer subdomain serving demo bundle ← worker scaffolded
 8. Mint page on Astro ← scaffolded at `/mint/:slug`

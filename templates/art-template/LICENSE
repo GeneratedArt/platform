@@ -1,0 +1,3 @@
+Replace this file with the license your project ships under (e.g. CC-BY-NC-4.0,
+MIT, or your own). The platform reads `license` from POST /projects but the
+canonical text lives here so it ships in the IPFS bundle.

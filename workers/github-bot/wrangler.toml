@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "development"
 GITHUB_ORG = "GeneratedArt"
+API_BASE_URL = "https://api.generatedart.com"
 
 [[d1_databases]]
 binding = "DB"

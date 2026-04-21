@@ -1,0 +1,25 @@
+{
+  "max_zip_bytes": 3145728,
+  "required_files": ["index.html"],
+  "forbidden_patterns": [
+    "fetch\\s*\\(",
+    "XMLHttpRequest",
+    "import\\s*\\(",
+    "Math\\.random",
+    "navigator\\.sendBeacon",
+    "WebSocket\\s*\\(",
+    "EventSource\\s*\\("
+  ],
+  "library_allowlist": [
+    "p5",
+    "three",
+    "regl",
+    "tone",
+    "d3"
+  ],
+  "deterministic_render": {
+    "viewport": [1024, 1024],
+    "frames_to_skip": 60,
+    "tolerance_pixels": 0
+  }
+}

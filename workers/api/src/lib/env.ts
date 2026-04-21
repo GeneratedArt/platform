@@ -19,6 +19,9 @@ export interface Env {
   STEWARD_RELAYER_PRIVATE_KEY?: string;
   ETH_RPC_URL?: string;
   FACTORY_ADDRESS?: string;
+  /** Shared secret used by internal workers (github-bot, indexer) when calling
+   *  privileged API endpoints. Sent as the `X-Internal-Token` header. */
+  INTERNAL_BOT_TOKEN?: string;
 }
 
 export type Variables = {
