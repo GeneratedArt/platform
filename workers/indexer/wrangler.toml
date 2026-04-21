@@ -1,0 +1,23 @@
+name = "generatedart-indexer"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+CHAIN_ID = "8453"
+ETH_RPC_URL = "https://mainnet.base.org"
+FACTORY_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "generatedart"
+database_id = "REPLACE_WITH_D1_ID"
+
+[[kv_namespaces]]
+binding = "INDEXER_STATE"
+id = "REPLACE_WITH_KV_ID"
+
+# Run every minute.
+[triggers]
+crons = ["* * * * *"]

@@ -1,0 +1,136 @@
+<footer class="main-footer alternate">
+    <div class="auto-container">
+        <!--Widgets Section-->
+        <div class="widgets-section">
+            <div class="row clearfix">
+                <!--Column-->
+                <div class="column col-lg-4 col-md-6 col-sm-12">
+                    <div class="footer-widget about-widget">
+                        <div class="widget-content">
+                            <div class="footer-logo">
+                                <a href="{{site.url}}"><img src="{{site.logo_url}}" alt="{{site.title}}"/></a>
+                            </div>
+                            <div class="text">
+                                
+                                GeneratedArt is a vibrant community focused on generative art. With a gallery in Geneva, we showcase dynamic artworks and connect artists and collectors from around the world.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--Column-->
+                <div class="column col-lg-4 col-md-6 col-sm-12">
+                    <div class="footer-widget links-widget">
+                        <!--Column-->
+                <div class="column col-lg-4 col-md-6 col-sm-12">
+                    <div class="footer-widget links-widget">
+                        <h3>Connect<span>.</span></h3>
+                        <div class="widget-content">
+                            <div class="row clearfix">
+                                <div class="col-lg-5 col-md-6 col-sm-12">
+                                    <ul>
+                                        <li><a href="/artists.html">Artists</a></li>
+                                        <li><a href="/team.html">Team</a></li>
+                                        <li><a href="https://t.me/+txAZ5fhougY4YjA0">Community</a></li>
+                                        <li><a href="/contact">Contact</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div> 
+                    </div>
+                </div>
+                    </div>
+                </div>
+                <!--Column-->
+                <div class="column col-lg-4 col-md-6 col-sm-12">
+                    <div class="footer-widget newsletter-widget">
+                        <h3>Newsletter<span>.</span></h3>
+                        <div class="widget-content">
+                            <div class="newsletter-form">
+                                <form action="http://eepurl.com/inde32">
+                                    <div class="form-group clearfix">
+                                        <span class="input-icon fa flaticon-envelope"></span>
+                                        <input type="email" name="user_email" placeholder="Enter email address" required>
+                                        <button type="submit" class="theme-btn newsletter-btn">Subscribe Now</button>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="get-link"><a href="#">Get every single offers</a></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Footer Bottom -->
+    <div class="footer-bottom">
+        <div class="auto-container">
+            <div class="outer-table clearfix">
+                {% if site.phone_number %}
+                <div class="info-block">
+                    <div class="inner">
+                        <div class="icon"><span class="flaticon-telephone-1"></span></div>
+                        <span class="info-title">Phone Number</span>
+                        <div class="phone"><a href="tel:{{site.phone_number}}">{{site.phone_number}}</a></div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if site.email %}
+                <div class="info-block">
+                    <div class="inner">
+                        <div class="icon"><span class="flaticon-envelope"></span></div>
+                        <span class="info-title">email address</span>
+                        <div class="email"><a href="mailto:{{site.email}}">{{site.email}}</a></div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if site.office_address %}
+                <div class="info-block">
+                    <div class="inner">
+                        <div class="icon"><span class="flaticon-placeholder"></span></div>
+                        <span class="info-title">Gallery Address</span>
+                        <div class="address"><a href="https://www.google.com/maps/dir//Rue+François-Versonnex+17BIS,+1207+Genève/@46.2028592,6.0740132,19367m/data=!3m1!1e3!4m8!4m7!1m0!1m5!1m1!1s0x478c6536ee0d07ab:0x1410520a7175b6c3!2m2!1d6.1564137!2d46.2028888?entry=ttu&g_ep=EgoyMDI1MDYxNi4wIKXMDSoASAFQAw%3D%3D">{{site.office_address}}</a></div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="info-block">
+                    <div class="inner">
+                        <div class="icon"><span class="flaticon-share"></span></div>
+                        <span class="info-title">social connect</span>
+                        <div class="social-links">
+                        	{% if site.facebook_url %}
+                             <a href="{{site.facebook_url}}">fb</a>, 
+                            {% endif %}
+                            {% if site.twitter_url %}
+                            <a href="{{site.twitter_url}}">tw</a>, 
+                            {% endif %}
+                            {% if site.behance_url %}
+                            <a href="{{site.behance_url}}">be</a>, 
+                            {% endif %}
+                            {% if site.dribbble_url %}
+                            <a href="{{site.dribble_url}}">dr</a>,
+                            {% endif %}
+                            {% if site.youtube_url %}
+                            <a href="{{site.youtube_url}}">yu</a>,
+                            {% endif %}
+                            {% if site.instagram_url %}
+                            <a href="{{site.instagram_url}}">ig</a>,
+                            {% endif %}
+                            {% if site.instagram_url %}
+                            <a href="{{site.linkedin_url}}">in</a>,
+                            {% endif %}
+                            {% if site.instagram_url %}
+                            <a href="{{site.tiktok_url}}">tk</a>,
+                            {% endif %}
+                            {% if site.instagram_url %}
+                            <a href="{{site.tumblr_url}}">tb</a>
+                            {% endif %}
+                            {% if site.telegram_url %}
+                            <a href="{{site.telegram_url}}">tg</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>{% include api-status.html %}

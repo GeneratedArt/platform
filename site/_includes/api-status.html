@@ -1,0 +1,9 @@
+<!--
+  Live status of the API Worker. Renders nothing until JS upgrades it.
+  Pulls {{ site.api_base_url }} from _config.yml.
+-->
+<div class="api-status" data-api-base="{{ site.api_base_url }}" hidden>
+  <span class="api-status__dot" aria-hidden="true"></span>
+  <span class="api-status__label">API status</span>
+</div>
+<script src="{{ '/assets/js/api-status.js' | relative_url }}" defer></script>

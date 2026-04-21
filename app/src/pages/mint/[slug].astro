@@ -1,0 +1,46 @@
+---
+const { slug } = Astro.params;
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:8787";
+const rendererBase = import.meta.env.PUBLIC_RENDERER_BASE ?? "http://localhost:8788";
+
+let project: any = null;
+let mintParams: any = null;
+try {
+  const res = await fetch(`${apiBase}/projects/${slug}`);
+  if (res.ok) project = (await res.json()).project;
+  const mp = await fetch(`${apiBase}/projects/${slug}/mint-params`);
+  if (mp.ok) mintParams = await mp.json();
+} catch {}
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mint — {slug} — GeneratedArt</title>
+    <style>
+      body { background:#0b0b0c; color:#f4f4f4; font-family: "Inter", system-ui, sans-serif; margin:0; padding:2rem; }
+      iframe { width:100%; aspect-ratio:1; border:0; background:#000; }
+      button { padding:.75rem 1.5rem; font-size:1rem; background:#fff; color:#000; border:0; cursor:pointer; }
+    </style>
+  </head>
+  <body>
+    <h1>{project?.title ?? slug}</h1>
+    {project ? (
+      <>
+        <iframe
+          sandbox="allow-scripts allow-pointer-lock"
+          src={`${rendererBase}/render?cid=${project.bundle_cid}&hash=0xpreview`}
+        ></iframe>
+        <p>Edition {project.minted_count}/{project.edition_size}</p>
+        <p>Price: {mintParams?.price_wei ?? "—"} wei (chain id {mintParams?.chain_id ?? "—"})</p>
+        <button id="connect">Connect Wallet</button>
+        <button id="mint" disabled>Mint</button>
+      </>
+    ) : (
+      <p>Project not found.</p>
+    )}
+    <script type="module">
+      // TODO: wagmi + WalletConnect, call mint() on `mintParams.contract`.
+    </script>
+  </body>
+</html>

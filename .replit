@@ -26,7 +26,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bundle exec jekyll serve --host 0.0.0.0 --port 5000 --no-watch"
+args = "cd site && bundle exec jekyll serve --host 0.0.0.0 --port 5000 --no-watch"
 waitForPort = 5000
 
 [[ports]]

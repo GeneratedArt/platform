@@ -1,0 +1,17 @@
+{
+  "name": "@generatedart/renderer",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Renderer: proxies IPFS bundle, injects token hash, serves sandboxed iframe HTML",
+  "scripts": {
+    "dev": "wrangler dev --port 8788",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250401.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.80.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@generatedart/github-bot",
+  "version": "0.0.1",
+  "private": true,
+  "description": "GitHub App webhook handler: routes issue/PR events into D1 + queues releases",
+  "scripts": {
+    "dev": "wrangler dev --port 8790",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250401.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.80.0"
+  }
+}

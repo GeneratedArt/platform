@@ -40,15 +40,8 @@ queue = "render-jobs"
 binding = "PIN_QUEUE"
 queue = "ipfs-pin-jobs"
 
-[[queues.consumers]]
-queue = "render-jobs"
-max_batch_size = 5
-max_batch_timeout = 30
-
-[[queues.consumers]]
-queue = "ipfs-pin-jobs"
-max_batch_size = 10
-max_batch_timeout = 30
+# Queue *consumers* live in dedicated workers (workers/render-consumer,
+# workers/pin-consumer) so the API stays fetch-only. Add them in MVP step 7.
 
 [env.production]
 vars = { ENVIRONMENT = "production" }

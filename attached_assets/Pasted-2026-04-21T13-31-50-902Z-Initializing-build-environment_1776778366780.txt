@@ -1,0 +1,175 @@
+2026-04-21T13:31:50.902Z	Initializing build environment...
+2026-04-21T13:31:55.251Z	Success: Finished initializing build environment
+2026-04-21T13:31:55.838Z	Cloning repository...
+2026-04-21T13:31:59.853Z	No build output detected to cache. Skipping.
+2026-04-21T13:31:59.853Z	No dependencies detected to cache. Skipping.
+2026-04-21T13:31:59.855Z	Detected the following tools from environment: ruby@3.4.7
+2026-04-21T13:31:59.856Z	Installing ruby 3.4.7
+2026-04-21T13:31:59.930Z	Installing project dependencies: BUNDLE_WITHOUT="development test" bundle install
+2026-04-21T13:32:00.317Z	Bundler 2.6.9 is running, but your lockfile was generated with 2.4.10. Installing Bundler 2.4.10 and restarting using that version.
+2026-04-21T13:32:01.628Z	Fetching gem metadata from https://rubygems.org/.
+2026-04-21T13:32:01.637Z	Fetching bundler 2.4.10
+2026-04-21T13:32:01.759Z	Installing bundler 2.4.10
+2026-04-21T13:32:04.642Z	Fetching gem metadata from https://rubygems.org/..........
+2026-04-21T13:32:04.651Z	Using bundler 2.4.10
+2026-04-21T13:32:04.652Z	Using colorator 1.1.0
+2026-04-21T13:32:04.652Z	Using concurrent-ruby 1.3.6
+2026-04-21T13:32:04.652Z	Using eventmachine 1.2.7
+2026-04-21T13:32:04.653Z	Using public_suffix 7.0.5
+2026-04-21T13:32:04.653Z	Using http_parser.rb 0.8.1
+2026-04-21T13:32:04.654Z	Using ffi 1.17.4 (x86_64-linux-gnu)
+2026-04-21T13:32:04.654Z	Using forwardable-extended 2.6.0
+2026-04-21T13:32:04.654Z	Fetching logger 1.7.0
+2026-04-21T13:32:04.654Z	Using rb-fsevent 0.11.2
+2026-04-21T13:32:04.658Z	Fetching kramdown 1.17.0
+2026-04-21T13:32:04.760Z	Installing logger 1.7.0
+2026-04-21T13:32:04.773Z	Using liquid 4.0.4
+2026-04-21T13:32:04.774Z	Fetching mercenary 0.3.6
+2026-04-21T13:32:04.798Z	Installing kramdown 1.17.0
+2026-04-21T13:32:04.814Z	Installing mercenary 0.3.6
+2026-04-21T13:32:04.833Z	Fetching rouge 3.30.0
+2026-04-21T13:32:04.926Z	Installing rouge 3.30.0
+2026-04-21T13:32:05.231Z	Using safe_yaml 1.0.5
+2026-04-21T13:32:05.231Z	Fetching nuggets 1.6.1
+2026-04-21T13:32:05.284Z	Installing nuggets 1.6.1
+2026-04-21T13:32:05.329Z	Using rexml 3.4.4
+2026-04-21T13:32:05.331Z	Using webrick 1.9.2
+2026-04-21T13:32:05.331Z	Fetching i18n 0.9.5
+2026-04-21T13:32:05.386Z	Installing i18n 0.9.5
+2026-04-21T13:32:05.448Z	Using addressable 2.9.0
+2026-04-21T13:32:05.450Z	Using em-websocket 0.5.3
+2026-04-21T13:32:05.450Z	Using rb-inotify 0.11.1
+2026-04-21T13:32:05.451Z	Using pathutil 0.16.2
+2026-04-21T13:32:05.451Z	Fetching sass-listen 4.0.0
+2026-04-21T13:32:05.485Z	Using listen 3.10.0
+2026-04-21T13:32:05.486Z	Fetching jekyll-tagging 1.1.0
+2026-04-21T13:32:05.531Z	Installing sass-listen 4.0.0
+2026-04-21T13:32:05.542Z	Installing jekyll-tagging 1.1.0
+2026-04-21T13:32:05.551Z	Using jekyll-watch 2.2.1
+2026-04-21T13:32:05.558Z	Fetching sass 3.7.4
+2026-04-21T13:32:05.604Z	Installing sass 3.7.4
+2026-04-21T13:32:05.641Z	Fetching jekyll-sass-converter 1.5.2
+2026-04-21T13:32:05.686Z	Installing jekyll-sass-converter 1.5.2
+2026-04-21T13:32:05.689Z	Fetching jekyll 3.8.7
+2026-04-21T13:32:05.744Z	Installing jekyll 3.8.7
+2026-04-21T13:32:05.778Z	Fetching jekyll-archives 2.3.0
+2026-04-21T13:32:05.779Z	Fetching jekyll-feed 0.17.0
+2026-04-21T13:32:05.849Z	Installing jekyll-archives 2.3.0
+2026-04-21T13:32:05.854Z	Installing jekyll-feed 0.17.0
+2026-04-21T13:32:05.860Z	Fetching jekyll-paginate-v2 3.0.0
+2026-04-21T13:32:05.892Z	Fetching jekyll-seo-tag 2.8.0
+2026-04-21T13:32:05.935Z	Installing jekyll-paginate-v2 3.0.0
+2026-04-21T13:32:05.945Z	Installing jekyll-seo-tag 2.8.0
+2026-04-21T13:32:05.964Z	Fetching minima 2.5.2
+2026-04-21T13:32:06.001Z	Installing minima 2.5.2
+2026-04-21T13:32:06.476Z	Bundle complete! 11 Gemfile dependencies, 35 gems now installed.
+2026-04-21T13:32:06.476Z	Gems in the groups 'development' and 'test' were not installed.
+2026-04-21T13:32:06.476Z	Use `bundle info [gemname]` to see where a bundled gem is installed.
+2026-04-21T13:32:06.476Z	Post-install message from sass:
+2026-04-21T13:32:06.477Z	
+2026-04-21T13:32:06.477Z	Ruby Sass has reached end-of-life and should no longer be used.
+2026-04-21T13:32:06.477Z	
+2026-04-21T13:32:06.477Z	* If you use Sass as a command-line tool, we recommend using Dart Sass, the new
+2026-04-21T13:32:06.477Z	  primary implementation: https://sass-lang.com/install
+2026-04-21T13:32:06.477Z	
+2026-04-21T13:32:06.477Z	* If you use Sass as a plug-in for a Ruby web framework, we recommend using the
+2026-04-21T13:32:06.479Z	  sassc gem: https://github.com/sass/sassc-ruby#readme
+2026-04-21T13:32:06.479Z	
+2026-04-21T13:32:06.479Z	* For more details, please refer to the Sass blog:
+2026-04-21T13:32:06.479Z	  https://sass-lang.com/blog/posts/7828841
+2026-04-21T13:32:06.479Z	
+2026-04-21T13:32:06.479Z	Post-install message from nuggets:
+2026-04-21T13:32:06.479Z	
+2026-04-21T13:32:06.479Z	nuggets-1.6.1 [2022-05-18]:
+2026-04-21T13:32:06.479Z	
+2026-04-21T13:32:06.479Z	* Ruby 3.1 compatibility.
+2026-04-21T13:32:06.479Z	
+2026-04-21T13:32:06.480Z	Post-install message from jekyll-tagging:
+2026-04-21T13:32:06.480Z	
+2026-04-21T13:32:06.480Z	jekyll-tagging-1.1.0 [2017-03-07]:
+2026-04-21T13:32:06.480Z	
+2026-04-21T13:32:06.480Z	* Added ability to append extra data to all tag pages. (tfe)
+2026-04-21T13:32:06.480Z	* Provides compatibility to the current jekyll (3.4.1).
+2026-04-21T13:32:06.480Z	* A few fixes. (felipe)
+2026-04-21T13:32:06.480Z	* Some documentation improvements. (wsmoak, jonathanpberger)
+2026-04-21T13:32:06.480Z	* Prooves who is the worst open source maintainer. (pattex ^__^)
+2026-04-21T13:32:06.480Z	
+2026-04-21T13:32:06.969Z	Executing user deploy command: npx wrangler deploy
+2026-04-21T13:32:08.554Z	npm warn exec The following package was not found and will be installed: wrangler@4.84.0
+2026-04-21T13:32:17.369Z	
+2026-04-21T13:32:17.369Z	 ⛅️ wrangler 4.84.0
+2026-04-21T13:32:17.369Z	───────────────────
+2026-04-21T13:32:17.489Z	▲ [WARNING] No lock file has been detected in the current working directory. This might indicate that the project is part of a workspace. Auto-configuration of projects inside workspaces is limited. See https://developers.cloudflare.com/workers/framework-guides/automatic-configuration/#workspaces
+2026-04-21T13:32:17.489Z	
+2026-04-21T13:32:17.489Z	
+2026-04-21T13:32:17.494Z	
+2026-04-21T13:32:17.494Z	Detected Project Settings:
+2026-04-21T13:32:17.494Z	 - Worker Name: website
+2026-04-21T13:32:17.494Z	 - Framework: Static
+2026-04-21T13:32:17.494Z	 - Build Command: npx bundle exec jekyll build
+2026-04-21T13:32:17.495Z	 - Output Directory: _site
+2026-04-21T13:32:17.495Z	
+2026-04-21T13:32:17.495Z	? Do you want to modify these settings?
+2026-04-21T13:32:17.495Z	🤖 Using fallback value in non-interactive context: no
+2026-04-21T13:32:17.497Z	
+2026-04-21T13:32:17.497Z	📄 Create wrangler.jsonc:
+2026-04-21T13:32:17.497Z	  {
+2026-04-21T13:32:17.497Z	    "$schema": "node_modules/wrangler/config-schema.json",
+2026-04-21T13:32:17.497Z	    "name": "website",
+2026-04-21T13:32:17.497Z	    "compatibility_date": "2026-04-21",
+2026-04-21T13:32:17.497Z	    "observability": {
+2026-04-21T13:32:17.497Z	      "enabled": true
+2026-04-21T13:32:17.497Z	    },
+2026-04-21T13:32:17.497Z	    "assets": {
+2026-04-21T13:32:17.497Z	      "directory": "_site"
+2026-04-21T13:32:17.497Z	    },
+2026-04-21T13:32:17.497Z	    "compatibility_flags": [
+2026-04-21T13:32:17.499Z	      "nodejs_compat"
+2026-04-21T13:32:17.499Z	    ]
+2026-04-21T13:32:17.499Z	  }
+2026-04-21T13:32:17.499Z	
+2026-04-21T13:32:17.500Z	? Proceed with setup?
+2026-04-21T13:32:17.500Z	🤖 Using fallback value in non-interactive context: yes
+2026-04-21T13:32:17.540Z	├ Adding Wrangler files to the .gitignore file
+2026-04-21T13:32:17.540Z	│ created .gitignore file
+2026-04-21T13:32:17.540Z	│
+2026-04-21T13:32:17.540Z	[build] Running: npx bundle exec jekyll build
+2026-04-21T13:32:18.203Z	[build] npm error could not determine executable to run
+2026-04-21T13:32:18.203Z	[build] npm error A complete log of this run can be found in: /opt/buildhome/.npm/_logs/2026-04-21T13_32_17_698Z-debug-0.log
+2026-04-21T13:32:18.203Z	[build] 
+2026-04-21T13:32:18.291Z	✘ [ERROR] Error: Command failed with exit code 1: npx bundle exec jekyll build
+2026-04-21T13:32:18.291Z	
+2026-04-21T13:32:18.291Z	  npm error could not determine executable to run
+2026-04-21T13:32:18.291Z	  npm error A complete log of this run can be found in: /opt/buildhome/.npm/_logs/2026-04-21T13_32_17_698Z-debug-0.log
+2026-04-21T13:32:18.291Z	      at makeError (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:53998:18)
+2026-04-21T13:32:18.291Z	      at handlePromise (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:54465:29)
+2026-04-21T13:32:18.291Z	      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-04-21T13:32:18.291Z	      at async runCommand (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:135638:5)
+2026-04-21T13:32:18.291Z	      at async runAutoConfig (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:232240:7)
+2026-04-21T13:32:18.291Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:233538:41)
+2026-04-21T13:32:18.291Z	      at async /opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182258:26
+2026-04-21T13:32:18.291Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182207:7) {
+2026-04-21T13:32:18.291Z	    shortMessage: 'Command failed with exit code 1: npx bundle exec jekyll build',
+2026-04-21T13:32:18.291Z	    command: 'npx bundle exec jekyll build',
+2026-04-21T13:32:18.291Z	    escapedCommand: 'npx bundle exec jekyll build',
+2026-04-21T13:32:18.291Z	    exitCode: 1,
+2026-04-21T13:32:18.291Z	    signal: undefined,
+2026-04-21T13:32:18.291Z	    signalDescription: undefined,
+2026-04-21T13:32:18.291Z	    stdout: '',
+2026-04-21T13:32:18.291Z	    stderr: 'npm error could not determine executable to run\n' +
+2026-04-21T13:32:18.291Z	      'npm error A complete log of this run can be found in: /opt/buildhome/.npm/_logs/2026-04-21T13_32_17_698Z-debug-0.log',
+2026-04-21T13:32:18.291Z	    failed: true,
+2026-04-21T13:32:18.291Z	    timedOut: false,
+2026-04-21T13:32:18.292Z	    isCanceled: false,
+2026-04-21T13:32:18.292Z	    killed: false
+2026-04-21T13:32:18.292Z	  }
+2026-04-21T13:32:18.292Z	
+2026-04-21T13:32:18.292Z	
+2026-04-21T13:32:18.294Z	
+2026-04-21T13:32:18.294Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2026-04-21T13:32:18.296Z	
+2026-04-21T13:32:18.296Z	✘ [ERROR] Running custom build `npx bundle exec jekyll build` failed. There are likely more logs from your build command above.
+2026-04-21T13:32:18.297Z	
+2026-04-21T13:32:18.297Z	
+2026-04-21T13:32:18.302Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2026-04-21_13-32-17_054.log"
+2026-04-21T13:32:18.419Z	Failed: error occurred while running deploy command

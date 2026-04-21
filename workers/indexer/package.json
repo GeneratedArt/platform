@@ -1,0 +1,19 @@
+{
+  "name": "@generatedart/indexer",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Cron Worker: indexes Base chain Transfer + ProjectCreated events into D1",
+  "scripts": {
+    "dev": "wrangler dev --port 8789",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250401.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.80.0"
+  }
+}

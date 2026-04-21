@@ -1,0 +1,9 @@
+# Copy to workers/api/.dev.vars and fill in. NEVER commit .dev.vars.
+GITHUB_APP_ID=""
+GITHUB_APP_PRIVATE_KEY=""
+GITHUB_OAUTH_CLIENT_ID=""
+GITHUB_OAUTH_CLIENT_SECRET=""
+PINATA_JWT=""
+WEB3_STORAGE_TOKEN=""
+STEWARD_RELAYER_PRIVATE_KEY=""
+ETH_RPC_URL="https://mainnet.base.org"

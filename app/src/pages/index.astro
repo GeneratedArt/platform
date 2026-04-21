@@ -1,0 +1,34 @@
+---
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:8787";
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GeneratedArt — App</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="canonical" href="https://app.generatedart.com/" />
+    <style>
+      :root { color-scheme: dark; --bg:#0b0b0c; --fg:#f4f4f4; --mute:#888; }
+      html,body { margin:0; padding:0; background:var(--bg); color:var(--fg);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Inter", sans-serif; }
+      main { max-width:48rem; margin: 4rem auto; padding: 0 1.5rem; }
+      h1 { font-family: "Fraunces", Georgia, serif; font-weight:500; font-size:2.5rem; letter-spacing:-0.01em; }
+      a { color: var(--fg); }
+      .nav a { margin-right: 1rem; }
+      .muted { color: var(--mute); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>GeneratedArt — Studio</h1>
+      <p class="muted">Artist studio, mint pages, and collector dashboard.</p>
+      <nav class="nav">
+        <a href="/studio">Studio</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/admin">Admin</a>
+      </nav>
+      <p class="muted" style="margin-top:3rem;font-size:.85rem">API base: {apiBase}</p>
+    </main>
+  </body>
+</html>

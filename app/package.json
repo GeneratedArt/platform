@@ -1,0 +1,25 @@
+{
+  "name": "@generatedart/app",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Astro islands app for app.generatedart.com — studio, mint, dashboard, admin",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 0.0.0.0 --port 4321",
+    "build": "astro build",
+    "preview": "astro preview --host 0.0.0.0 --port 4321",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "astro": "^4.16.0",
+    "@astrojs/preact": "^3.5.0",
+    "@astrojs/cloudflare": "^11.0.0",
+    "preact": "^10.24.0",
+    "viem": "^2.21.0",
+    "wagmi": "^2.12.0",
+    "@walletconnect/web3wallet": "^1.16.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

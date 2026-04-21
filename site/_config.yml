@@ -1,0 +1,82 @@
+title: "GeneratedArt"
+description: >-
+  Community-run generative art platform and NFT marketplace. Code-based
+  generative art on Base, with a physical-digital bridge through the Geneva
+  gallery.
+baseurl: ""
+url: "https://generatedart.com"
+
+# Build settings
+theme: minima
+permalink: /:title
+
+# General Settings
+perloader: true
+logo_url: "/assets/images/logo.png"
+logo_url_2: "/assets/images/logo-two.png"
+twitter_url: "https://twitter.com/generatedart"
+facebook_url: "https://facebook.com/generatedart"
+pinterest_url: "https://www.pinterest.ch/generatedart"
+instagram_url: "https://instagram.com/generatedart"
+youtube_url: "https://www.youtube.com/@generatedart"
+linkedin_url: "https://www.linkedin.com/company/generatedart"
+tiktok_url: "http://tiktok.com/@generatedart"
+tumblr_url: "https://www.tumblr.com/generatedart"
+telegram_url: "https://t.me/+txAZ5fhougY4YjA0"
+
+copyright_text: "Copyright © 2025 GeneratedArt. All rights reserved."
+
+email: "info@generatedart.com"
+office_address: "Rue François-Versonnex 17BIS, 1207 Geneva, Switzerland"
+
+# API base URL for fetch() from the static site to the Worker.
+# Override in CI for production with `--config _config.yml,_config.production.yml`.
+api_base_url: "http://localhost:8787"
+app_base_url: "http://localhost:4321"
+renderer_base_url: "http://localhost:8788"
+
+plugins:
+  - jekyll-feed
+  - jekyll-paginate-v2
+  - jekyll-archives
+
+collections:
+  home_one_services:
+    output: true
+
+############################################################
+# jekyll-paginate-v2
+pagination:
+  enabled: true
+  debug: false
+  collection: 'posts'
+  per_page: 6
+  permalink: '/page/:num/'
+  title: ':title - page :num'
+  limit: 0
+  sort_field: 'date'
+  sort_reverse: true
+  category: 'posts'
+  tag: ''
+  locale: ''
+  trail:
+    before: 2
+    after: 2
+  extension: html
+  indexpage: 'index'
+############################################################
+
+tag_page_layout: tag_page
+tag_page_dir: tag
+tag_permalink_style: pretty
+
+jekyll-archives:
+  enabled: all
+  layout: category
+  permalinks:
+    category: '/category/:name/'
+
+feed:
+  collections:
+    posts:
+      path: "/index.xml"
