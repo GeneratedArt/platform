@@ -1,0 +1,19 @@
+{
+  "name": "@generatedart/capture",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Capture worker — drains render-jobs queue, screenshots via Browser Rendering, writes PNGs to R2",
+  "scripts": {
+    "dev": "wrangler dev --port 8789",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "^0.0.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250401.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.80.0"
+  }
+}

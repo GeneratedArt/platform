@@ -14,7 +14,8 @@ platform/
 │   ├── api/         REST API (Hono) — D1 + KV + R2 + Queues
 │   ├── github-bot/  GitHub App webhook handler
 │   ├── indexer/     Cron-triggered chain indexer (Base)
-│   ├── renderer/    IPFS proxy + token-hash injection
+│   ├── renderer/    IPFS proxy + token-hash injection (renderer.generatedart.com/render?cid=&hash=&res=)
+│   ├── capture/     Browser Rendering queue consumer — drains render-jobs, screenshots 2048² PNG → R2
 │   └── shared/      Drizzle schemas + zod types
 ├── contracts/    Foundry — GenArtFactory, GenArtProject, RoyaltySplitter
 ├── .github/workflows/  build-site, deploy-workers, test-contracts, validate-bundle
@@ -70,7 +71,7 @@ Jekyll 3.8.x predates Ruby 3.x stdlib changes. `site/Gemfile` adds:
 4. Project creation Worker (creates GitHub repo from template) ← **implemented** (POST /projects clones `GeneratedArt/art-template`, writes CODEOWNERS, applies branch protection requiring `validate-bundle` + 1 code-owner review on main)
 5. Bundle validator Action (deterministic render check) ← **implemented** in `templates/art-template/.github/workflows/validate-bundle.yml`: 3 MB zip cap, required-files, forbidden-pattern + remote-script + library-allowlist checks, plus a Playwright Chromium two-run pixel-diff with `file://`-only network policy
 6. Contracts on Base Sepolia + Foundry tests ← contracts + tests scaffolded
-7. Renderer subdomain serving demo bundle ← worker scaffolded
+7. Renderer subdomain serving demo bundle ← **implemented** (`workers/renderer`: fetches `ipfs://<cid>/index.html`, injects `<script>` exposing `$ga.{hash,width,height,rand,features,preview}` with Mulberry32 seeded from the hash, serves with strict CSP + `X-Frame-Options: SAMEORIGIN` so consumers must use `<iframe sandbox="allow-scripts allow-pointer-lock">`; `res=WxH` clamped to 64–4096). Capture pipeline in `workers/capture` consumes the `render-jobs` queue via Cloudflare Browser Rendering / Puppeteer, waits for the `ga:preview` postMessage, screenshots PNG, writes to R2 at `captures/<contract>/<tokenId>.png` (or `previews/<slug>/<hash>.png` for ad-hoc), and patches `editions.preview_r2_key`
 8. Mint page on Astro ← scaffolded at `/mint/:slug`
 9. Indexer Worker backfilling editions ← worker scaffolded
 10. Gallery + exhibition pages on Jekyll
