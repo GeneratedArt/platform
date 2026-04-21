@@ -17,7 +17,8 @@
     "drizzle-orm": "^0.36.0",
     "viem": "^2.21.0",
     "siwe": "^3.0.0",
-    "ulid": "^2.3.0"
+    "ulid": "^2.3.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250401.0",

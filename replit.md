@@ -63,7 +63,7 @@ Jekyll 3.8.x predates Ruby 3.x stdlib changes. `site/Gemfile` adds:
 
 ## MVP ship order (from spec section 17)
 1. Monorepo + Jekyll site skeleton on Pages preview ← **scaffolding done**
-2. GitHub OAuth Worker + `/me` ← API stubs in place
+2. GitHub OAuth Worker + `/me` ← **implemented** (full route surface for spec §6: `/auth/github/callback`, `/auth/siwe/verify`, `/me`, `/artists/*`, `/projects/*`, `/editions/*`, `/owners/*`, `/galleries/*`, `/editions/:id/request-physical`, with audit-log writes on mutations and KV-token-bucket rate limiting at 60/min session, 10/min anon)
 3. Artist application flow end-to-end
 4. Project creation Worker (creates GitHub repo from template)
 5. Bundle validator Action (deterministic render check) ← workflow file scaffolded
