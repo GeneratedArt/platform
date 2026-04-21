@@ -1,0 +1,89 @@
+name: Deploy Jekyll site to Pages
+
+# Builds the Jekyll site under `site/` with our own Gemfile (NOT the
+# `github-pages` gem) so jekyll-paginate-v2 + jekyll-archives keep working,
+# then publishes the result via the official GitHub Pages actions.
+#
+# Setup, one-time, in repo settings:
+#   Settings → Pages → "Build and deployment" → Source = GitHub Actions
+#   (the legacy "Deploy from a branch" mode must be turned OFF)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "scripts/sync-d1-to-jekyll.mjs"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+  # Nightly rebuild so the homepage stats / sales feed stay fresh even when
+  # nobody pushes to main.
+  schedule:
+    - cron: "23 4 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time. In-flight runs cancel when a newer commit
+# lands so we don't deploy stale builds.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: site
+
+      - name: Set up Node (for D1 sync script)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Snapshot D1 → _data/ (skips when secrets absent)
+        working-directory: ${{ github.workspace }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: node scripts/sync-d1-to-jekyll.mjs site
+
+      - name: Build with Jekyll
+        env:
+          JEKYLL_ENV: production
+        # `baseurl` and `url` come from _config.yml. The CNAME file in site/
+        # (`generatedart.com`) is copied into _site automatically by Jekyll
+        # and tells GitHub Pages to serve at the custom domain.
+        run: bundle exec jekyll build --destination "${{ github.workspace }}/_site"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
