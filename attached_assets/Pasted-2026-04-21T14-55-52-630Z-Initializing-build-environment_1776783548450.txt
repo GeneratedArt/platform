@@ -1,0 +1,443 @@
+2026-04-21T14:55:52.630Z	Initializing build environment...
+2026-04-21T14:55:58.739Z	Success: Finished initializing build environment
+2026-04-21T14:55:59.634Z	Cloning repository...
+2026-04-21T14:56:02.471Z	No build output detected to cache. Skipping.
+2026-04-21T14:56:02.471Z	No dependencies detected to cache. Skipping.
+2026-04-21T14:56:05.165Z	Detected the following tools from environment: pnpm@9.12.0, nodejs@22.16.0, ruby@3.4.7
+2026-04-21T14:56:08.443Z	Installing project dependencies: bun install
+2026-04-21T14:56:08.806Z	bun install v1.2.15 (df017990)
+2026-04-21T14:56:08.864Z	Resolving dependencies
+2026-04-21T14:56:09.501Z	Resolved, downloaded and extracted [102]
+2026-04-21T14:56:09.580Z	Saved lockfile
+2026-04-21T14:56:09.580Z	
+2026-04-21T14:56:09.581Z	+ concurrently@9.2.1
+2026-04-21T14:56:09.584Z	+ typescript@5.9.3 (v6.0.3 available)
+2026-04-21T14:56:09.584Z	
+2026-04-21T14:56:09.584Z	26 packages installed [858.00ms]
+2026-04-21T14:56:09.594Z	Installing ruby 3.4.7
+2026-04-21T14:56:09.680Z	Installing project dependencies: BUNDLE_WITHOUT="development test" bundle install
+2026-04-21T14:56:10.399Z	Bundler 2.6.9 is running, but your lockfile was generated with 2.4.10. Installing Bundler 2.4.10 and restarting using that version.
+2026-04-21T14:56:12.172Z	Fetching gem metadata from https://rubygems.org/.
+2026-04-21T14:56:12.184Z	Fetching bundler 2.4.10
+2026-04-21T14:56:12.375Z	Installing bundler 2.4.10
+2026-04-21T14:56:13.049Z	The Gemfile specifies no dependencies
+2026-04-21T14:56:13.055Z	Bundle complete! 0 Gemfile dependencies, 1 gem now installed.
+2026-04-21T14:56:13.056Z	Gems in the groups 'development' and 'test' were not installed.
+2026-04-21T14:56:13.056Z	Use `bundle info [gemname]` to see where a bundled gem is installed.
+2026-04-21T14:56:13.426Z	Executing user deploy command: npx wrangler deploy
+2026-04-21T14:56:15.297Z	npm warn exec The following package was not found and will be installed: wrangler@4.84.1
+2026-04-21T14:56:29.691Z	
+2026-04-21T14:56:29.693Z	 ⛅️ wrangler 4.84.1
+2026-04-21T14:56:29.693Z	───────────────────
+2026-04-21T14:56:29.739Z	[custom build] Running: cd site && BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 && bundle exec jekyll build
+2026-04-21T14:56:31.428Z	[custom build] Fetching gem metadata from https://rubygems.org/
+2026-04-21T14:56:31.430Z	[custom build] .
+2026-04-21T14:56:31.706Z	[custom build] .
+2026-04-21T14:56:31.936Z	[custom build] .
+2026-04-21T14:56:32.208Z	[custom build] .
+2026-04-21T14:56:32.345Z	[custom build] .
+2026-04-21T14:56:32.541Z	[custom build] .
+2026-04-21T14:56:32.733Z	[custom build] .
+2026-04-21T14:56:32.811Z	[custom build] .
+2026-04-21T14:56:32.845Z	[custom build] .
+2026-04-21T14:56:32.861Z	[custom build] .
+2026-04-21T14:56:33.608Z	[custom build] 
+2026-04-21T14:56:33.612Z	[custom build] 
+2026-04-21T14:56:33.617Z	[custom build] Using bundler 2.4.10
+2026-04-21T14:56:33.617Z	[custom build] 
+2026-04-21T14:56:33.617Z	[custom build] Using colorator 1.1.0
+2026-04-21T14:56:33.617Z	[custom build] 
+2026-04-21T14:56:33.617Z	[custom build] Using concurrent-ruby 1.3.6
+2026-04-21T14:56:33.621Z	[custom build] Using eventmachine 1.2.7
+2026-04-21T14:56:33.621Z	[custom build] Using public_suffix 7.0.5
+2026-04-21T14:56:33.621Z	[custom build] 
+2026-04-21T14:56:33.621Z	[custom build] Using ffi 1.17.4 (x86_64-linux-gnu)
+2026-04-21T14:56:33.621Z	[custom build] Using http_parser.rb 0.8.1
+2026-04-21T14:56:33.621Z	[custom build] 
+2026-04-21T14:56:33.632Z	[custom build] Using forwardable-extended 2.6.0
+2026-04-21T14:56:33.632Z	[custom build] 
+2026-04-21T14:56:33.636Z	[custom build] Using rb-fsevent 0.11.2
+2026-04-21T14:56:33.641Z	[custom build] Fetching logger 1.7.0
+2026-04-21T14:56:33.643Z	[custom build] 
+2026-04-21T14:56:33.644Z	[custom build] Fetching kramdown 1.17.0
+2026-04-21T14:56:33.644Z	[custom build] 
+2026-04-21T14:56:33.651Z	[custom build] Using liquid 4.0.4
+2026-04-21T14:56:33.652Z	[custom build] Fetching mercenary 0.3.6
+2026-04-21T14:56:33.652Z	[custom build] Fetching rouge 3.30.0
+2026-04-21T14:56:33.653Z	[custom build] 
+2026-04-21T14:56:33.920Z	[custom build] Installing logger 1.7.0
+2026-04-21T14:56:33.920Z	[custom build] 
+2026-04-21T14:56:33.923Z	[custom build] Installing mercenary 0.3.6
+2026-04-21T14:56:33.923Z	[custom build] 
+2026-04-21T14:56:33.976Z	[custom build] Using safe_yaml 1.0.5
+2026-04-21T14:56:33.977Z	[custom build] 
+2026-04-21T14:56:33.982Z	[custom build] Fetching nuggets 1.6.1
+2026-04-21T14:56:33.983Z	[custom build] 
+2026-04-21T14:56:34.047Z	[custom build] Installing kramdown 1.17.0
+2026-04-21T14:56:34.048Z	[custom build] 
+2026-04-21T14:56:34.145Z	[custom build] Using rexml 3.4.4
+2026-04-21T14:56:34.145Z	[custom build] 
+2026-04-21T14:56:34.149Z	[custom build] Using webrick 1.9.2
+2026-04-21T14:56:34.150Z	[custom build] 
+2026-04-21T14:56:34.152Z	[custom build] Using addressable 2.9.0
+2026-04-21T14:56:34.152Z	[custom build] 
+2026-04-21T14:56:34.154Z	[custom build] Using em-websocket 0.5.3
+2026-04-21T14:56:34.154Z	[custom build] 
+2026-04-21T14:56:34.155Z	[custom build] Using rb-inotify 0.11.1
+2026-04-21T14:56:34.156Z	[custom build] 
+2026-04-21T14:56:34.157Z	[custom build] Fetching i18n 0.9.5
+2026-04-21T14:56:34.157Z	[custom build] 
+2026-04-21T14:56:34.222Z	[custom build] Installing nuggets 1.6.1
+2026-04-21T14:56:34.223Z	[custom build] 
+2026-04-21T14:56:34.251Z	[custom build] Installing i18n 0.9.5
+2026-04-21T14:56:34.251Z	[custom build] 
+2026-04-21T14:56:34.280Z	[custom build] Installing rouge 3.30.0
+2026-04-21T14:56:34.280Z	[custom build] 
+2026-04-21T14:56:34.510Z	[custom build] Using pathutil 0.16.2
+2026-04-21T14:56:34.511Z	[custom build] 
+2026-04-21T14:56:34.513Z	[custom build] Fetching sass-listen 4.0.0
+2026-04-21T14:56:34.513Z	[custom build] 
+2026-04-21T14:56:34.595Z	[custom build] Installing sass-listen 4.0.0
+2026-04-21T14:56:34.595Z	[custom build] 
+2026-04-21T14:56:34.707Z	[custom build] Using listen 3.10.0
+2026-04-21T14:56:34.708Z	[custom build] 
+2026-04-21T14:56:34.711Z	[custom build] Fetching sass 3.7.4
+2026-04-21T14:56:34.711Z	[custom build] 
+2026-04-21T14:56:34.849Z	[custom build] Installing sass 3.7.4
+2026-04-21T14:56:34.849Z	[custom build] 
+2026-04-21T14:56:34.973Z	[custom build] Using jekyll-watch 2.2.1
+2026-04-21T14:56:34.973Z	[custom build] 
+2026-04-21T14:56:34.976Z	[custom build] Fetching jekyll-tagging 1.1.0
+2026-04-21T14:56:34.976Z	[custom build] 
+2026-04-21T14:56:35.051Z	[custom build] Installing jekyll-tagging 1.1.0
+2026-04-21T14:56:35.052Z	[custom build] 
+2026-04-21T14:56:35.248Z	[custom build] Fetching jekyll-sass-converter 1.5.2
+2026-04-21T14:56:35.249Z	[custom build] 
+2026-04-21T14:56:35.327Z	[custom build] Installing jekyll-sass-converter 1.5.2
+2026-04-21T14:56:35.327Z	[custom build] 
+2026-04-21T14:56:35.735Z	[custom build] Fetching jekyll 3.8.7
+2026-04-21T14:56:35.735Z	[custom build] 
+2026-04-21T14:56:35.814Z	[custom build] Installing jekyll 3.8.7
+2026-04-21T14:56:35.815Z	[custom build] 
+2026-04-21T14:56:35.870Z	[custom build] Fetching jekyll-archives 2.3.0
+2026-04-21T14:56:35.871Z	[custom build] 
+2026-04-21T14:56:35.872Z	[custom build] Fetching jekyll-feed 0.17.0
+2026-04-21T14:56:35.873Z	[custom build] Fetching jekyll-paginate-v2 3.0.0
+2026-04-21T14:56:35.873Z	[custom build] Fetching jekyll-seo-tag 2.8.0
+2026-04-21T14:56:35.874Z	[custom build] 
+2026-04-21T14:56:36.095Z	[custom build] Installing jekyll-archives 2.3.0
+2026-04-21T14:56:36.097Z	[custom build] 
+2026-04-21T14:56:36.097Z	[custom build] Installing jekyll-feed 0.17.0
+2026-04-21T14:56:36.097Z	[custom build] 
+2026-04-21T14:56:36.110Z	[custom build] Installing jekyll-seo-tag 2.8.0
+2026-04-21T14:56:36.110Z	[custom build] 
+2026-04-21T14:56:36.130Z	[custom build] Installing jekyll-paginate-v2 3.0.0
+2026-04-21T14:56:36.130Z	[custom build] 
+2026-04-21T14:56:36.200Z	[custom build] Fetching minima 2.5.2
+2026-04-21T14:56:36.200Z	[custom build] 
+2026-04-21T14:56:36.272Z	[custom build] Installing minima 2.5.2
+2026-04-21T14:56:36.272Z	[custom build] 
+2026-04-21T14:56:36.922Z	[custom build] Bundle complete! 11 Gemfile dependencies, 35 gems now installed.
+2026-04-21T14:56:36.922Z	[custom build] Use `bundle info [gemname]` to see where a bundled gem is installed.
+2026-04-21T14:56:36.922Z	[custom build] 
+2026-04-21T14:56:36.922Z	[custom build] Post-install message from sass:
+2026-04-21T14:56:36.922Z	[custom build] 
+2026-04-21T14:56:36.922Z	[custom build] Ruby Sass has reached end-of-life and should no longer be used.
+2026-04-21T14:56:36.922Z	[custom build] 
+2026-04-21T14:56:36.922Z	[custom build] * If you use Sass as a command-line tool, we recommend using Dart Sass, the new
+2026-04-21T14:56:36.922Z	[custom build]   primary implementation: https://sass-lang.com/install
+2026-04-21T14:56:36.923Z	[custom build] 
+2026-04-21T14:56:36.923Z	[custom build] * If you use Sass as a plug-in for a Ruby web framework, we recommend using the
+2026-04-21T14:56:36.923Z	[custom build]   sassc gem: https://github.com/sass/sassc-ruby#readme
+2026-04-21T14:56:36.923Z	[custom build] 
+2026-04-21T14:56:36.923Z	[custom build] * For more details, please refer to the Sass blog:
+2026-04-21T14:56:36.923Z	[custom build]   https://sass-lang.com/blog/posts/7828841
+2026-04-21T14:56:36.923Z	[custom build] 
+2026-04-21T14:56:36.923Z	[custom build] Post-install message from nuggets:
+2026-04-21T14:56:36.923Z	[custom build] 
+2026-04-21T14:56:36.923Z	[custom build] nuggets-1.6.1 [2022-05-18]:
+2026-04-21T14:56:36.923Z	[custom build] 
+2026-04-21T14:56:36.927Z	[custom build] * Ruby 3.1 compatibility.
+2026-04-21T14:56:36.930Z	[custom build] 
+2026-04-21T14:56:36.932Z	[custom build] Post-install message from jekyll-tagging:
+2026-04-21T14:56:36.932Z	[custom build] 
+2026-04-21T14:56:36.932Z	[custom build] jekyll-tagging-1.1.0 [2017-03-07]:
+2026-04-21T14:56:36.932Z	[custom build] 
+2026-04-21T14:56:36.933Z	[custom build] * Added ability to append extra data to all tag pages. (tfe)
+2026-04-21T14:56:36.933Z	[custom build] * Provides compatibility to the current jekyll (3.4.1).
+2026-04-21T14:56:36.933Z	[custom build] * A few fixes. (felipe)
+2026-04-21T14:56:36.933Z	[custom build] * Some documentation improvements. (wsmoak, jonathanpberger)
+2026-04-21T14:56:36.933Z	[custom build] * Prooves who is the worst open source maintainer. (pattex ^__^)
+2026-04-21T14:56:36.933Z	[custom build] 
+2026-04-21T14:56:36.933Z	[custom build] 
+2026-04-21T14:56:37.522Z	[custom build] bundler: failed to load command: jekyll (/opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll)
+2026-04-21T14:56:37.524Z	[custom build] 
+2026-04-21T14:56:37.564Z	[custom build] <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require': cannot load such file -- csv (LoadError)
+2026-04-21T14:56:37.564Z	[custom build] 	from <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'
+2026-04-21T14:56:37.564Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/jekyll-3.8.7/lib/jekyll.rb:28:in '<top (required)>'
+2026-04-21T14:56:37.564Z	[custom build] 	from <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'
+2026-04-21T14:56:37.564Z	[custom build] 	from <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'
+2026-04-21T14:56:37.564Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/jekyll-3.8.7/exe/jekyll:8:in '<top (required)>'
+2026-04-21T14:56:37.564Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll:25:in 'Kernel#load'
+2026-04-21T14:56:37.564Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll:25:in '<top (required)>'
+2026-04-21T14:56:37.564Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:58:in 'Kernel.load'
+2026-04-21T14:56:37.564Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:58:in 'Bundler::CLI::Exec#kernel_load'
+2026-04-21T14:56:37.565Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:23:in 'Bundler::CLI::Exec#run'
+2026-04-21T14:56:37.565Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:492:in 'Bundler::CLI#exec'
+2026-04-21T14:56:37.565Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/command.rb:27:in 'Bundler::Thor::Command#run'
+2026-04-21T14:56:37.565Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/invocation.rb:127:in 'Bundler::Thor::Invocation#invoke_command'
+2026-04-21T14:56:37.565Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor.rb:392:in 'Bundler::Thor.dispatch'
+2026-04-21T14:56:37.565Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:34:in 'Bundler::CLI.dispatch'
+2026-04-21T14:56:37.566Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/base.rb:485:in 'Bundler::Thor::Base::ClassMethods#start'
+2026-04-21T14:56:37.566Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:28:in 'Bundler::CLI.start'
+2026-04-21T14:56:37.566Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/exe/bundle:45:in 'block in <top (required)>'
+2026-04-21T14:56:37.566Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/friendly_errors.rb:117:in 'Bundler.with_friendly_errors'
+2026-04-21T14:56:37.566Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/exe/bundle:33:in '<top (required)>'
+2026-04-21T14:56:37.566Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in 'Kernel#load'
+2026-04-21T14:56:37.566Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in '<main>'
+2026-04-21T14:56:37.566Z	[custom build] 
+2026-04-21T14:56:37.688Z	✘ [ERROR] Error: Command failed with exit code 1: cd site && BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 && bundle exec jekyll build
+2026-04-21T14:56:37.689Z	
+2026-04-21T14:56:37.689Z	  bundler: failed to load command: jekyll (/opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll)
+2026-04-21T14:56:37.689Z	  <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require': cannot load such file -- csv (LoadError)
+2026-04-21T14:56:37.689Z	  	from <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'
+2026-04-21T14:56:37.689Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/jekyll-3.8.7/lib/jekyll.rb:28:in '<top (required)>'
+2026-04-21T14:56:37.689Z	  	from <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'
+2026-04-21T14:56:37.689Z	  	from <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'
+2026-04-21T14:56:37.689Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/jekyll-3.8.7/exe/jekyll:8:in '<top (required)>'
+2026-04-21T14:56:37.689Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll:25:in 'Kernel#load'
+2026-04-21T14:56:37.690Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll:25:in '<top (required)>'
+2026-04-21T14:56:37.690Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:58:in 'Kernel.load'
+2026-04-21T14:56:37.690Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:58:in 'Bundler::CLI::Exec#kernel_load'
+2026-04-21T14:56:37.690Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:23:in 'Bundler::CLI::Exec#run'
+2026-04-21T14:56:37.690Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:492:in 'Bundler::CLI#exec'
+2026-04-21T14:56:37.691Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/command.rb:27:in 'Bundler::Thor::Command#run'
+2026-04-21T14:56:37.691Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/invocation.rb:127:in 'Bundler::Thor::Invocation#invoke_command'
+2026-04-21T14:56:37.693Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor.rb:392:in 'Bundler::Thor.dispatch'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:34:in 'Bundler::CLI.dispatch'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/base.rb:485:in 'Bundler::Thor::Base::ClassMethods#start'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:28:in 'Bundler::CLI.start'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/exe/bundle:45:in 'block in <top (required)>'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/friendly_errors.rb:117:in 'Bundler.with_friendly_errors'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/exe/bundle:33:in '<top (required)>'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in 'Kernel#load'
+2026-04-21T14:56:37.694Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in '<main>'
+2026-04-21T14:56:37.694Z	  Fetching gem metadata from https://rubygems.org/..........
+2026-04-21T14:56:37.695Z	  Using bundler 2.4.10
+2026-04-21T14:56:37.695Z	  Using colorator 1.1.0
+2026-04-21T14:56:37.695Z	  Using concurrent-ruby 1.3.6
+2026-04-21T14:56:37.695Z	  Using eventmachine 1.2.7
+2026-04-21T14:56:37.695Z	  Using public_suffix 7.0.5
+2026-04-21T14:56:37.695Z	  Using ffi 1.17.4 (x86_64-linux-gnu)
+2026-04-21T14:56:37.695Z	  Using http_parser.rb 0.8.1
+2026-04-21T14:56:37.695Z	  Using forwardable-extended 2.6.0
+2026-04-21T14:56:37.695Z	  Using rb-fsevent 0.11.2
+2026-04-21T14:56:37.695Z	  Fetching logger 1.7.0
+2026-04-21T14:56:37.695Z	  Fetching kramdown 1.17.0
+2026-04-21T14:56:37.696Z	  Using liquid 4.0.4
+2026-04-21T14:56:37.696Z	  Fetching mercenary 0.3.6
+2026-04-21T14:56:37.696Z	  Fetching rouge 3.30.0
+2026-04-21T14:56:37.696Z	  Installing logger 1.7.0
+2026-04-21T14:56:37.696Z	  Installing mercenary 0.3.6
+2026-04-21T14:56:37.696Z	  Using safe_yaml 1.0.5
+2026-04-21T14:56:37.696Z	  Fetching nuggets 1.6.1
+2026-04-21T14:56:37.696Z	  Installing kramdown 1.17.0
+2026-04-21T14:56:37.696Z	  Using rexml 3.4.4
+2026-04-21T14:56:37.697Z	  Using webrick 1.9.2
+2026-04-21T14:56:37.697Z	  Using addressable 2.9.0
+2026-04-21T14:56:37.697Z	  Using em-websocket 0.5.3
+2026-04-21T14:56:37.697Z	  Using rb-inotify 0.11.1
+2026-04-21T14:56:37.697Z	  Fetching i18n 0.9.5
+2026-04-21T14:56:37.697Z	  Installing nuggets 1.6.1
+2026-04-21T14:56:37.697Z	  Installing i18n 0.9.5
+2026-04-21T14:56:37.697Z	  Installing rouge 3.30.0
+2026-04-21T14:56:37.697Z	  Using pathutil 0.16.2
+2026-04-21T14:56:37.697Z	  Fetching sass-listen 4.0.0
+2026-04-21T14:56:37.697Z	  Installing sass-listen 4.0.0
+2026-04-21T14:56:37.697Z	  Using listen 3.10.0
+2026-04-21T14:56:37.698Z	  Fetching sass 3.7.4
+2026-04-21T14:56:37.698Z	  Installing sass 3.7.4
+2026-04-21T14:56:37.698Z	  Using jekyll-watch 2.2.1
+2026-04-21T14:56:37.698Z	  Fetching jekyll-tagging 1.1.0
+2026-04-21T14:56:37.698Z	  Installing jekyll-tagging 1.1.0
+2026-04-21T14:56:37.698Z	  Fetching jekyll-sass-converter 1.5.2
+2026-04-21T14:56:37.699Z	  Installing jekyll-sass-converter 1.5.2
+2026-04-21T14:56:37.699Z	  Fetching jekyll 3.8.7
+2026-04-21T14:56:37.699Z	  Installing jekyll 3.8.7
+2026-04-21T14:56:37.699Z	  Fetching jekyll-archives 2.3.0
+2026-04-21T14:56:37.699Z	  Fetching jekyll-feed 0.17.0
+2026-04-21T14:56:37.699Z	  Fetching jekyll-paginate-v2 3.0.0
+2026-04-21T14:56:37.700Z	  Fetching jekyll-seo-tag 2.8.0
+2026-04-21T14:56:37.700Z	  Installing jekyll-archives 2.3.0
+2026-04-21T14:56:37.700Z	  Installing jekyll-feed 0.17.0
+2026-04-21T14:56:37.700Z	  Installing jekyll-seo-tag 2.8.0
+2026-04-21T14:56:37.700Z	  Installing jekyll-paginate-v2 3.0.0
+2026-04-21T14:56:37.700Z	  Fetching minima 2.5.2
+2026-04-21T14:56:37.700Z	  Installing minima 2.5.2
+2026-04-21T14:56:37.700Z	  Bundle complete! 11 Gemfile dependencies, 35 gems now installed.
+2026-04-21T14:56:37.700Z	  Use `bundle info [gemname]` to see where a bundled gem is installed.
+2026-04-21T14:56:37.700Z	  Post-install message from sass:
+2026-04-21T14:56:37.700Z	  
+2026-04-21T14:56:37.700Z	  Ruby Sass has reached end-of-life and should no longer be used.
+2026-04-21T14:56:37.700Z	  
+2026-04-21T14:56:37.700Z	  * If you use Sass as a command-line tool, we recommend using Dart Sass, the new
+2026-04-21T14:56:37.700Z	    primary implementation: https://sass-lang.com/install
+2026-04-21T14:56:37.700Z	  
+2026-04-21T14:56:37.700Z	  * If you use Sass as a plug-in for a Ruby web framework, we recommend using the
+2026-04-21T14:56:37.701Z	    sassc gem: https://github.com/sass/sassc-ruby#readme
+2026-04-21T14:56:37.701Z	  
+2026-04-21T14:56:37.701Z	  * For more details, please refer to the Sass blog:
+2026-04-21T14:56:37.701Z	    https://sass-lang.com/blog/posts/7828841
+2026-04-21T14:56:37.701Z	  
+2026-04-21T14:56:37.701Z	  Post-install message from nuggets:
+2026-04-21T14:56:37.701Z	  
+2026-04-21T14:56:37.701Z	  nuggets-1.6.1 [2022-05-18]:
+2026-04-21T14:56:37.701Z	  
+2026-04-21T14:56:37.701Z	  * Ruby 3.1 compatibility.
+2026-04-21T14:56:37.701Z	  
+2026-04-21T14:56:37.701Z	  Post-install message from jekyll-tagging:
+2026-04-21T14:56:37.701Z	  
+2026-04-21T14:56:37.701Z	  jekyll-tagging-1.1.0 [2017-03-07]:
+2026-04-21T14:56:37.702Z	  
+2026-04-21T14:56:37.702Z	  * Added ability to append extra data to all tag pages. (tfe)
+2026-04-21T14:56:37.702Z	  * Provides compatibility to the current jekyll (3.4.1).
+2026-04-21T14:56:37.702Z	  * A few fixes. (felipe)
+2026-04-21T14:56:37.702Z	  * Some documentation improvements. (wsmoak, jonathanpberger)
+2026-04-21T14:56:37.702Z	  * Prooves who is the worst open source maintainer. (pattex ^__^)
+2026-04-21T14:56:37.702Z	  
+2026-04-21T14:56:37.702Z	      at makeError (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:53998:18)
+2026-04-21T14:56:37.702Z	      at handlePromise (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:54465:29)
+2026-04-21T14:56:37.702Z	      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-04-21T14:56:37.703Z	      at async runCommand (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:135638:5)
+2026-04-21T14:56:37.704Z	      at async runCustomBuild (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:135651:5)
+2026-04-21T14:56:37.704Z	      at async getEntry (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:232526:3)
+2026-04-21T14:56:37.704Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:233592:23)
+2026-04-21T14:56:37.704Z	      at async /opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182258:26
+2026-04-21T14:56:37.704Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182207:7) {
+2026-04-21T14:56:37.704Z	    shortMessage: "Command failed with exit code 1: cd site && BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 && bundle exec jekyll build",
+2026-04-21T14:56:37.704Z	    command: "cd site && BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 && bundle exec jekyll build",
+2026-04-21T14:56:37.705Z	    escapedCommand: `cd site "&&" "BUNDLE_WITHOUT=''" bundle install --jobs 4 --retry 3 "&&" bundle exec jekyll build`,
+2026-04-21T14:56:37.705Z	    exitCode: 1,
+2026-04-21T14:56:37.705Z	    signal: undefined,
+2026-04-21T14:56:37.705Z	    signalDescription: undefined,
+2026-04-21T14:56:37.705Z	    stdout: 'Fetching gem metadata from https://rubygems.org/..........\n' +
+2026-04-21T14:56:37.706Z	      'Using bundler 2.4.10\n' +
+2026-04-21T14:56:37.706Z	      'Using colorator 1.1.0\n' +
+2026-04-21T14:56:37.706Z	      'Using concurrent-ruby 1.3.6\n' +
+2026-04-21T14:56:37.706Z	      'Using eventmachine 1.2.7\n' +
+2026-04-21T14:56:37.707Z	      'Using public_suffix 7.0.5\n' +
+2026-04-21T14:56:37.707Z	      'Using ffi 1.17.4 (x86_64-linux-gnu)\n' +
+2026-04-21T14:56:37.707Z	      'Using http_parser.rb 0.8.1\n' +
+2026-04-21T14:56:37.707Z	      'Using forwardable-extended 2.6.0\n' +
+2026-04-21T14:56:37.708Z	      'Using rb-fsevent 0.11.2\n' +
+2026-04-21T14:56:37.708Z	      'Fetching logger 1.7.0\n' +
+2026-04-21T14:56:37.708Z	      'Fetching kramdown 1.17.0\n' +
+2026-04-21T14:56:37.708Z	      'Using liquid 4.0.4\n' +
+2026-04-21T14:56:37.708Z	      'Fetching mercenary 0.3.6\n' +
+2026-04-21T14:56:37.708Z	      'Fetching rouge 3.30.0\n' +
+2026-04-21T14:56:37.708Z	      'Installing logger 1.7.0\n' +
+2026-04-21T14:56:37.708Z	      'Installing mercenary 0.3.6\n' +
+2026-04-21T14:56:37.708Z	      'Using safe_yaml 1.0.5\n' +
+2026-04-21T14:56:37.708Z	      'Fetching nuggets 1.6.1\n' +
+2026-04-21T14:56:37.708Z	      'Installing kramdown 1.17.0\n' +
+2026-04-21T14:56:37.708Z	      'Using rexml 3.4.4\n' +
+2026-04-21T14:56:37.708Z	      'Using webrick 1.9.2\n' +
+2026-04-21T14:56:37.708Z	      'Using addressable 2.9.0\n' +
+2026-04-21T14:56:37.708Z	      'Using em-websocket 0.5.3\n' +
+2026-04-21T14:56:37.708Z	      'Using rb-inotify 0.11.1\n' +
+2026-04-21T14:56:37.708Z	      'Fetching i18n 0.9.5\n' +
+2026-04-21T14:56:37.709Z	      'Installing nuggets 1.6.1\n' +
+2026-04-21T14:56:37.709Z	      'Installing i18n 0.9.5\n' +
+2026-04-21T14:56:37.709Z	      'Installing rouge 3.30.0\n' +
+2026-04-21T14:56:37.709Z	      'Using pathutil 0.16.2\n' +
+2026-04-21T14:56:37.709Z	      'Fetching sass-listen 4.0.0\n' +
+2026-04-21T14:56:37.709Z	      'Installing sass-listen 4.0.0\n' +
+2026-04-21T14:56:37.709Z	      'Using listen 3.10.0\n' +
+2026-04-21T14:56:37.709Z	      'Fetching sass 3.7.4\n' +
+2026-04-21T14:56:37.709Z	      'Installing sass 3.7.4\n' +
+2026-04-21T14:56:37.709Z	      'Using jekyll-watch 2.2.1\n' +
+2026-04-21T14:56:37.709Z	      'Fetching jekyll-tagging 1.1.0\n' +
+2026-04-21T14:56:37.709Z	      'Installing jekyll-tagging 1.1.0\n' +
+2026-04-21T14:56:37.709Z	      'Fetching jekyll-sass-converter 1.5.2\n' +
+2026-04-21T14:56:37.709Z	      'Installing jekyll-sass-converter 1.5.2\n' +
+2026-04-21T14:56:37.709Z	      'Fetching jekyll 3.8.7\n' +
+2026-04-21T14:56:37.709Z	      'Installing jekyll 3.8.7\n' +
+2026-04-21T14:56:37.709Z	      'Fetching jekyll-archives 2.3.0\n' +
+2026-04-21T14:56:37.710Z	      'Fetching jekyll-feed 0.17.0\n' +
+2026-04-21T14:56:37.710Z	      'Fetching jekyll-paginate-v2 3.0.0\n' +
+2026-04-21T14:56:37.710Z	      'Fetching jekyll-seo-tag 2.8.0\n' +
+2026-04-21T14:56:37.710Z	      'Installing jekyll-archives 2.3.0\n' +
+2026-04-21T14:56:37.710Z	      'Installing jekyll-feed 0.17.0\n' +
+2026-04-21T14:56:37.710Z	      'Installing jekyll-seo-tag 2.8.0\n' +
+2026-04-21T14:56:37.710Z	      'Installing jekyll-paginate-v2 3.0.0\n' +
+2026-04-21T14:56:37.710Z	      'Fetching minima 2.5.2\n' +
+2026-04-21T14:56:37.710Z	      'Installing minima 2.5.2\n' +
+2026-04-21T14:56:37.710Z	      'Bundle complete! 11 Gemfile dependencies, 35 gems now installed.\n' +
+2026-04-21T14:56:37.710Z	      'Use `bundle info [gemname]` to see where a bundled gem is installed.\n' +
+2026-04-21T14:56:37.710Z	      'Post-install message from sass:\n' +
+2026-04-21T14:56:37.710Z	      '\n' +
+2026-04-21T14:56:37.710Z	      'Ruby Sass has reached end-of-life and should no longer be used.\n' +
+2026-04-21T14:56:37.710Z	      '\n' +
+2026-04-21T14:56:37.710Z	      '* If you use Sass as a command-line tool, we recommend using Dart Sass, the new\n' +
+2026-04-21T14:56:37.710Z	      '  primary implementation: https://sass-lang.com/install\n' +
+2026-04-21T14:56:37.711Z	      '\n' +
+2026-04-21T14:56:37.711Z	      '* If you use Sass as a plug-in for a Ruby web framework, we recommend using the\n' +
+2026-04-21T14:56:37.711Z	      '  sassc gem: https://github.com/sass/sassc-ruby#readme\n' +
+2026-04-21T14:56:37.711Z	      '\n' +
+2026-04-21T14:56:37.711Z	      '* For more details, please refer to the Sass blog:\n' +
+2026-04-21T14:56:37.711Z	      '  https://sass-lang.com/blog/posts/7828841\n' +
+2026-04-21T14:56:37.711Z	      '\n' +
+2026-04-21T14:56:37.711Z	      'Post-install message from nuggets:\n' +
+2026-04-21T14:56:37.711Z	      '\n' +
+2026-04-21T14:56:37.711Z	      'nuggets-1.6.1 [2022-05-18]:\n' +
+2026-04-21T14:56:37.711Z	      '\n' +
+2026-04-21T14:56:37.711Z	      '* Ruby 3.1 compatibility.\n' +
+2026-04-21T14:56:37.711Z	      '\n' +
+2026-04-21T14:56:37.712Z	      'Post-install message from jekyll-tagging:\n' +
+2026-04-21T14:56:37.712Z	      '\n' +
+2026-04-21T14:56:37.712Z	      'jekyll-tagging-1.1.0 [2017-03-07]:\n' +
+2026-04-21T14:56:37.713Z	      '\n' +
+2026-04-21T14:56:37.713Z	      '* Added ability to append extra data to all tag pages. (tfe)\n' +
+2026-04-21T14:56:37.713Z	      '* Provides compatibility to the current jekyll (3.4.1).\n' +
+2026-04-21T14:56:37.713Z	      '* A few fixes. (felipe)\n' +
+2026-04-21T14:56:37.714Z	      '* Some documentation improvements. (wsmoak, jonathanpberger)\n' +
+2026-04-21T14:56:37.714Z	      '* Prooves who is the worst open source maintainer. (pattex ^__^)\n',
+2026-04-21T14:56:37.716Z	    stderr: 'bundler: failed to load command: jekyll (/opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll)\n' +
+2026-04-21T14:56:37.716Z	      "<internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require': cannot load such file -- csv (LoadError)\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/jekyll-3.8.7/lib/jekyll.rb:28:in '<top (required)>'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom <internal:/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/rubygems/core_ext/kernel_require.rb>:37:in 'Kernel#require'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/jekyll-3.8.7/exe/jekyll:8:in '<top (required)>'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll:25:in 'Kernel#load'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll:25:in '<top (required)>'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:58:in 'Kernel.load'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:58:in 'Bundler::CLI::Exec#kernel_load'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli/exec.rb:23:in 'Bundler::CLI::Exec#run'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:492:in 'Bundler::CLI#exec'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/command.rb:27:in 'Bundler::Thor::Command#run'\n" +
+2026-04-21T14:56:37.716Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/invocation.rb:127:in 'Bundler::Thor::Invocation#invoke_command'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor.rb:392:in 'Bundler::Thor.dispatch'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:34:in 'Bundler::CLI.dispatch'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/vendor/thor/lib/thor/base.rb:485:in 'Bundler::Thor::Base::ClassMethods#start'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/cli.rb:28:in 'Bundler::CLI.start'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/exe/bundle:45:in 'block in <top (required)>'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/lib/bundler/friendly_errors.rb:117:in 'Bundler.with_friendly_errors'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.4.10/exe/bundle:33:in '<top (required)>'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in 'Kernel#load'\n" +
+2026-04-21T14:56:37.717Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in '<main>'",
+2026-04-21T14:56:37.717Z	    failed: true,
+2026-04-21T14:56:37.717Z	    timedOut: false,
+2026-04-21T14:56:37.717Z	    isCanceled: false,
+2026-04-21T14:56:37.717Z	    killed: false
+2026-04-21T14:56:37.717Z	  }
+2026-04-21T14:56:37.717Z	
+2026-04-21T14:56:37.717Z	
+2026-04-21T14:56:37.718Z	✘ [ERROR] Running custom build `cd site && BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 && bundle exec jekyll build` failed. There are likely more logs from your build command above.
+2026-04-21T14:56:37.718Z	
+2026-04-21T14:56:37.718Z	
+2026-04-21T14:56:37.718Z	
+2026-04-21T14:56:37.718Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2026-04-21T14:56:37.718Z	
+2026-04-21T14:56:37.722Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2026-04-21_14-56-29_295.log"
+2026-04-21T14:56:37.826Z	Failed: error occurred while running deploy command
