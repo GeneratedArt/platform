@@ -26,7 +26,39 @@ async function getClient(env: Env) {
   return createPublicClient({ chain: base, transport: http(env.ETH_RPC_URL) });
 }
 
-async function indexRange(env: Env, fromBlock: bigint, toBlock: bigint) {
+// Most public RPCs cap eth_getLogs at 2k–10k blocks per request.
+const CHUNK_SIZE = 2000n;
+
+const TOKEN_HASHES_ABI = [
+  {
+    type: "function",
+    name: "tokenHashes",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+] as const;
+
+async function fetchTokenHash(
+  env: Env,
+  contract: Hex,
+  tokenId: bigint
+): Promise<string> {
+  try {
+    const client = await getClient(env);
+    const h = await client.readContract({
+      address: contract,
+      abi: TOKEN_HASHES_ABI,
+      functionName: "tokenHashes",
+      args: [tokenId],
+    });
+    return h as string;
+  } catch {
+    return "0x";
+  }
+}
+
+async function indexChunk(env: Env, fromBlock: bigint, toBlock: bigint) {
   const client = await getClient(env);
 
   // Factory events: ProjectCreated.
@@ -74,13 +106,22 @@ async function indexRange(env: Env, fromBlock: bigint, toBlock: bigint) {
       const editionId = `${proj.contract_address}:${tokenId.toString()}`;
       const isMint = from === "0x0000000000000000000000000000000000000000";
       if (isMint) {
-        // tokenHash will be filled in by a follow-up call to the contract; placeholder here.
+        const tokenHash = await fetchTokenHash(
+          env,
+          proj.contract_address as Hex,
+          tokenId
+        );
         await env.DB.prepare(
           `INSERT INTO editions (id, project_id, token_id, token_hash, owner_address, minted_at)
            VALUES (?, ?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO NOTHING`
+           ON CONFLICT(id) DO UPDATE SET token_hash = excluded.token_hash`
         )
-          .bind(editionId, proj.id, Number(tokenId), "0x", to.toLowerCase(), Date.now())
+          .bind(editionId, proj.id, Number(tokenId), tokenHash, to.toLowerCase(), Date.now())
+          .run();
+        await env.DB.prepare(
+          `UPDATE projects SET minted_count = minted_count + 1 WHERE id = ?`
+        )
+          .bind(proj.id)
           .run();
       } else {
         await env.DB.prepare(
@@ -90,6 +131,15 @@ async function indexRange(env: Env, fromBlock: bigint, toBlock: bigint) {
           .run();
       }
     }
+  }
+}
+
+async function indexRange(env: Env, fromBlock: bigint, toBlock: bigint) {
+  let cursor = fromBlock;
+  while (cursor <= toBlock) {
+    const end = cursor + CHUNK_SIZE - 1n > toBlock ? toBlock : cursor + CHUNK_SIZE - 1n;
+    await indexChunk(env, cursor, end);
+    cursor = end + 1n;
   }
 }
 
@@ -115,12 +165,26 @@ export default {
   async fetch(req: Request, env: Env) {
     const url = new URL(req.url);
     if (url.pathname === "/backfill") {
-      const fromStr = url.searchParams.get("from");
-      if (!fromStr) return new Response("missing ?from=", { status: 400 });
+      const fromStr = url.searchParams.get("from") ?? "0";
+      const toStr = url.searchParams.get("to");
       const client = await getClient(env);
-      const head = await client.getBlockNumber();
-      await indexRange(env, BigInt(fromStr), head);
-      return new Response(`backfilled ${fromStr}..${head}`);
+      const head = toStr ? BigInt(toStr) : await client.getBlockNumber();
+      const from = BigInt(fromStr);
+      await indexRange(env, from, head);
+      // Persist the new high-water mark so the cron picks up from here.
+      await env.INDEXER_STATE.put(
+        `last_block:${env.FACTORY_ADDRESS}`,
+        head.toString()
+      );
+      return new Response(`backfilled ${from}..${head}`);
+    }
+    if (url.pathname === "/status") {
+      const last = await env.INDEXER_STATE.get(`last_block:${env.FACTORY_ADDRESS}`);
+      return Response.json({
+        factory: env.FACTORY_ADDRESS,
+        last_indexed_block: last,
+        chain_id: env.CHAIN_ID,
+      });
     }
     return new Response("generatedart-indexer");
   },

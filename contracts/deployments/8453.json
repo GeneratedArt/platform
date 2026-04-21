@@ -1,0 +1,11 @@
+{
+  "chainId": 8453,
+  "network": "base",
+  "deployedAt": null,
+  "contracts": {
+    "GenArtFactory": null,
+    "stewardMultisig": null,
+    "platformTreasury": null
+  },
+  "projects": {}
+}

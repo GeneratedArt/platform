@@ -28,6 +28,8 @@ contract GenArtProject is IRoyalty {
     uint256 public immutable editionSize;
     uint256 public immutable pricePerMint;
     string  public bundleCID;
+    string  public metadataCID;
+    string  public rendererBase = "https://renderer.generatedart.com/render";
     bytes32 public immutable projectSeed;
 
     uint256 public totalMinted;
@@ -44,6 +46,8 @@ contract GenArtProject is IRoyalty {
     error NotOwner();
     error InvalidRecipient();
     error Reentrancy();
+    error NotArtist();
+    error AlreadyFinalized();
 
     uint256 private _locked = 1;
     modifier nonReentrant() {
@@ -111,7 +115,29 @@ contract GenArtProject is IRoyalty {
 
     function tokenURI(uint256 tokenId) external view returns (string memory) {
         require(tokenId < totalMinted, "NONEXISTENT");
-        return string(abi.encodePacked("ipfs://", bundleCID, "/", _toString(tokenId), ".json"));
+        string memory cid = bytes(metadataCID).length == 0 ? bundleCID : metadataCID;
+        return string(abi.encodePacked("ipfs://", cid, "/", _toString(tokenId), ".json"));
+    }
+
+    /// @notice Off-chain renderer URL for `tokenId`. Mirrors the `animation_url`
+    ///         field in the ERC-721 metadata JSON.
+    function renderURL(uint256 tokenId) external view returns (string memory) {
+        require(tokenId < totalMinted, "NONEXISTENT");
+        return string(
+            abi.encodePacked(
+                rendererBase,
+                "?cid=", bundleCID,
+                "&hash=", _bytes32ToHex(tokenHashes[tokenId])
+            )
+        );
+    }
+
+    /// @notice One-time setter for the metadata CID, called by the artist after
+    ///         the post-mint metadata bundle is pinned to IPFS.
+    function setMetadataCID(string calldata cid) external {
+        if (msg.sender != artist) revert NotArtist();
+        if (bytes(metadataCID).length != 0) revert AlreadyFinalized();
+        metadataCID = cid;
     }
 
     // EIP-2981
@@ -130,6 +156,17 @@ contract GenArtProject is IRoyalty {
             id == 0x80ac58cd || // ERC-721
             id == 0x5b5e139f || // ERC-721 metadata
             id == 0x2a55205a;   // EIP-2981
+    }
+
+    function _bytes32ToHex(bytes32 b) private pure returns (string memory) {
+        bytes memory hexChars = "0123456789abcdef";
+        bytes memory out = new bytes(66);
+        out[0] = "0"; out[1] = "x";
+        for (uint256 i = 0; i < 32; i++) {
+            out[2 + i * 2]     = hexChars[uint8(b[i] >> 4)];
+            out[3 + i * 2]     = hexChars[uint8(b[i] & 0x0f)];
+        }
+        return string(out);
     }
 
     function _toString(uint256 v) private pure returns (string memory) {

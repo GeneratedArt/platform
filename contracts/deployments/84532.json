@@ -1,0 +1,11 @@
+{
+  "chainId": 84532,
+  "network": "base-sepolia",
+  "deployedAt": null,
+  "contracts": {
+    "GenArtFactory": null,
+    "stewardMultisig": null,
+    "platformTreasury": null
+  },
+  "projects": {}
+}
