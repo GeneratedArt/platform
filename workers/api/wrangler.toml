@@ -1,0 +1,63 @@
+name = "generatedart-api"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Bindings are populated by `wrangler` per-environment via dashboard or
+# `wrangler d1 create / kv namespace create / r2 bucket create / queues create`.
+# Replace the placeholder IDs after running those commands.
+
+[vars]
+ENVIRONMENT = "development"
+SITE_ORIGIN = "https://generatedart.com"
+IPFS_GATEWAY = "https://ipfs.generatedart.com"
+GITHUB_ORG = "GeneratedArt"
+CHAIN_ID = "8453"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "generatedart"
+database_id = "REPLACE_WITH_D1_ID"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_WITH_KV_ID"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_ID"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "generatedart-assets"
+
+[[queues.producers]]
+binding = "RENDER_QUEUE"
+queue = "render-jobs"
+
+[[queues.producers]]
+binding = "PIN_QUEUE"
+queue = "ipfs-pin-jobs"
+
+[[queues.consumers]]
+queue = "render-jobs"
+max_batch_size = 5
+max_batch_timeout = 30
+
+[[queues.consumers]]
+queue = "ipfs-pin-jobs"
+max_batch_size = 10
+max_batch_timeout = 30
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+routes = [
+  { pattern = "api.generatedart.com/*", zone_name = "generatedart.com" }
+]
+
+[env.staging]
+vars = { ENVIRONMENT = "staging" }
+routes = [
+  { pattern = "api-staging.generatedart.com/*", zone_name = "generatedart.com" }
+]
