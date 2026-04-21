@@ -1,0 +1,139 @@
+2026-04-21T14:00:46.364Z	Initializing build environment...
+2026-04-21T14:00:57.752Z	Success: Finished initializing build environment
+2026-04-21T14:00:58.595Z	Cloning repository...
+2026-04-21T14:01:01.495Z	No build output detected to cache. Skipping.
+2026-04-21T14:01:01.495Z	No dependencies detected to cache. Skipping.
+2026-04-21T14:01:03.914Z	Detected the following tools from environment: pnpm@9.12.0, nodejs@22.16.0, ruby@3.4.7
+2026-04-21T14:01:06.052Z	Installing project dependencies: bun install
+2026-04-21T14:01:06.303Z	bun install v1.2.15 (df017990)
+2026-04-21T14:01:06.592Z	Resolving dependencies
+2026-04-21T14:01:07.195Z	Resolved, downloaded and extracted [102]
+2026-04-21T14:01:07.281Z	Saved lockfile
+2026-04-21T14:01:07.283Z	
+2026-04-21T14:01:07.283Z	+ concurrently@9.2.1
+2026-04-21T14:01:07.283Z	+ typescript@5.9.3 (v6.0.3 available)
+2026-04-21T14:01:07.283Z	
+2026-04-21T14:01:07.284Z	26 packages installed [1060.00ms]
+2026-04-21T14:01:07.295Z	Installing ruby 3.4.7
+2026-04-21T14:01:07.381Z	Installing project dependencies: BUNDLE_WITHOUT="development test" bundle install
+2026-04-21T14:01:08.208Z	The Gemfile specifies no dependencies
+2026-04-21T14:01:08.257Z	Resolving dependencies...
+2026-04-21T14:01:08.268Z	Bundle complete! 0 Gemfile dependencies, 1 gem now installed.
+2026-04-21T14:01:08.268Z	Gems in the groups 'development' and 'test' were not installed.
+2026-04-21T14:01:08.268Z	Use `bundle info [gemname]` to see where a bundled gem is installed.
+2026-04-21T14:01:09.129Z	Executing user deploy command: npx wrangler deploy
+2026-04-21T14:01:10.642Z	npm warn exec The following package was not found and will be installed: wrangler@4.84.0
+2026-04-21T14:01:22.483Z	
+2026-04-21T14:01:22.484Z	 ⛅️ wrangler 4.84.0
+2026-04-21T14:01:22.484Z	───────────────────
+2026-04-21T14:01:22.527Z	[custom build] Running: cd site && bundle exec jekyll build
+2026-04-21T14:01:23.268Z	[custom build] bundler: failed to load command: jekyll (/opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll)
+2026-04-21T14:01:23.268Z	[custom build] 
+2026-04-21T14:01:23.269Z	[custom build] /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:691:in 'Bundler::Definition#materialize': Could not find jekyll-3.8.7, minima-2.5.2, jekyll-feed-0.17.0, jekyll-paginate-v2-3.0.0, jekyll-tagging-1.1.0, jekyll-archives-2.3.0, i18n-0.9.5, jekyll-sass-converter-1.5.2, kramdown-1.17.0, mercenary-0.3.6, rouge-3.30.0, jekyll-seo-tag-2.8.0, nuggets-1.6.1, sass-3.7.4, sass-listen-4.0.0, logger-1.7.0 in locally installed gems (Bundler::GemNotFound)
+2026-04-21T14:01:23.272Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:237:in 'Bundler::Definition#specs'
+2026-04-21T14:01:23.275Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:304:in 'Bundler::Definition#specs_for'
+2026-04-21T14:01:23.275Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/runtime.rb:18:in 'Bundler::Runtime#setup'
+2026-04-21T14:01:23.276Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler.rb:167:in 'Bundler.setup'
+2026-04-21T14:01:23.276Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/setup.rb:32:in 'block in <top (required)>'
+2026-04-21T14:01:23.276Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/ui/shell.rb:173:in 'Bundler::UI::Shell#with_level'
+2026-04-21T14:01:23.277Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/ui/shell.rb:119:in 'Bundler::UI::Shell#silence'
+2026-04-21T14:01:23.277Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/setup.rb:32:in '<top (required)>'
+2026-04-21T14:01:23.277Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:57:in 'Kernel#require_relative'
+2026-04-21T14:01:23.278Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:57:in 'Bundler::CLI::Exec#kernel_load'
+2026-04-21T14:01:23.278Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:23:in 'Bundler::CLI::Exec#run'
+2026-04-21T14:01:23.278Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:452:in 'Bundler::CLI#exec'
+2026-04-21T14:01:23.278Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/command.rb:28:in 'Bundler::Thor::Command#run'
+2026-04-21T14:01:23.279Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/invocation.rb:127:in 'Bundler::Thor::Invocation#invoke_command'
+2026-04-21T14:01:23.279Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor.rb:538:in 'Bundler::Thor.dispatch'
+2026-04-21T14:01:23.279Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:35:in 'Bundler::CLI.dispatch'
+2026-04-21T14:01:23.279Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/base.rb:584:in 'Bundler::Thor::Base::ClassMethods#start'
+2026-04-21T14:01:23.280Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:29:in 'Bundler::CLI.start'
+2026-04-21T14:01:23.280Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.6.9/exe/bundle:28:in 'block in <top (required)>'
+2026-04-21T14:01:23.281Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/friendly_errors.rb:117:in 'Bundler.with_friendly_errors'
+2026-04-21T14:01:23.281Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.6.9/exe/bundle:20:in '<top (required)>'
+2026-04-21T14:01:23.281Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in 'Kernel#load'
+2026-04-21T14:01:23.281Z	[custom build] 	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in '<main>'
+2026-04-21T14:01:23.281Z	[custom build] 
+2026-04-21T14:01:23.464Z	✘ [ERROR] Error: Command failed with exit code 1: cd site && bundle exec jekyll build
+2026-04-21T14:01:23.468Z	
+2026-04-21T14:01:23.468Z	  bundler: failed to load command: jekyll (/opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll)
+2026-04-21T14:01:23.468Z	  /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:691:in 'Bundler::Definition#materialize': Could not find jekyll-3.8.7, minima-2.5.2, jekyll-feed-0.17.0, jekyll-paginate-v2-3.0.0, jekyll-tagging-1.1.0, jekyll-archives-2.3.0, i18n-0.9.5, jekyll-sass-converter-1.5.2, kramdown-1.17.0, mercenary-0.3.6, rouge-3.30.0, jekyll-seo-tag-2.8.0, nuggets-1.6.1, sass-3.7.4, sass-listen-4.0.0, logger-1.7.0 in locally installed gems (Bundler::GemNotFound)
+2026-04-21T14:01:23.468Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:237:in 'Bundler::Definition#specs'
+2026-04-21T14:01:23.468Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:304:in 'Bundler::Definition#specs_for'
+2026-04-21T14:01:23.468Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/runtime.rb:18:in 'Bundler::Runtime#setup'
+2026-04-21T14:01:23.469Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler.rb:167:in 'Bundler.setup'
+2026-04-21T14:01:23.469Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/setup.rb:32:in 'block in <top (required)>'
+2026-04-21T14:01:23.469Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/ui/shell.rb:173:in 'Bundler::UI::Shell#with_level'
+2026-04-21T14:01:23.469Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/ui/shell.rb:119:in 'Bundler::UI::Shell#silence'
+2026-04-21T14:01:23.469Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/setup.rb:32:in '<top (required)>'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:57:in 'Kernel#require_relative'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:57:in 'Bundler::CLI::Exec#kernel_load'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:23:in 'Bundler::CLI::Exec#run'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:452:in 'Bundler::CLI#exec'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/command.rb:28:in 'Bundler::Thor::Command#run'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/invocation.rb:127:in 'Bundler::Thor::Invocation#invoke_command'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor.rb:538:in 'Bundler::Thor.dispatch'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:35:in 'Bundler::CLI.dispatch'
+2026-04-21T14:01:23.470Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/base.rb:584:in 'Bundler::Thor::Base::ClassMethods#start'
+2026-04-21T14:01:23.471Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:29:in 'Bundler::CLI.start'
+2026-04-21T14:01:23.472Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.6.9/exe/bundle:28:in 'block in <top (required)>'
+2026-04-21T14:01:23.472Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/friendly_errors.rb:117:in 'Bundler.with_friendly_errors'
+2026-04-21T14:01:23.472Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.6.9/exe/bundle:20:in '<top (required)>'
+2026-04-21T14:01:23.472Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in 'Kernel#load'
+2026-04-21T14:01:23.473Z	  	from /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in '<main>'
+2026-04-21T14:01:23.473Z	      at makeError (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:53998:18)
+2026-04-21T14:01:23.473Z	      at handlePromise (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:54465:29)
+2026-04-21T14:01:23.473Z	      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-04-21T14:01:23.473Z	      at async runCommand (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:135638:5)
+2026-04-21T14:01:23.473Z	      at async runCustomBuild (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:135651:5)
+2026-04-21T14:01:23.473Z	      at async getEntry (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:232526:3)
+2026-04-21T14:01:23.473Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:233592:23)
+2026-04-21T14:01:23.473Z	      at async /opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182258:26
+2026-04-21T14:01:23.473Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182207:7) {
+2026-04-21T14:01:23.473Z	    shortMessage: 'Command failed with exit code 1: cd site && bundle exec jekyll build',
+2026-04-21T14:01:23.474Z	    command: 'cd site && bundle exec jekyll build',
+2026-04-21T14:01:23.474Z	    escapedCommand: 'cd site "&&" bundle exec jekyll build',
+2026-04-21T14:01:23.474Z	    exitCode: 1,
+2026-04-21T14:01:23.474Z	    signal: undefined,
+2026-04-21T14:01:23.474Z	    signalDescription: undefined,
+2026-04-21T14:01:23.474Z	    stdout: '',
+2026-04-21T14:01:23.474Z	    stderr: 'bundler: failed to load command: jekyll (/opt/buildhome/.asdf/installs/ruby/3.4.7/bin/jekyll)\n' +
+2026-04-21T14:01:23.475Z	      "/opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:691:in 'Bundler::Definition#materialize': Could not find jekyll-3.8.7, minima-2.5.2, jekyll-feed-0.17.0, jekyll-paginate-v2-3.0.0, jekyll-tagging-1.1.0, jekyll-archives-2.3.0, i18n-0.9.5, jekyll-sass-converter-1.5.2, kramdown-1.17.0, mercenary-0.3.6, rouge-3.30.0, jekyll-seo-tag-2.8.0, nuggets-1.6.1, sass-3.7.4, sass-listen-4.0.0, logger-1.7.0 in locally installed gems (Bundler::GemNotFound)\n" +
+2026-04-21T14:01:23.475Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:237:in 'Bundler::Definition#specs'\n" +
+2026-04-21T14:01:23.476Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/definition.rb:304:in 'Bundler::Definition#specs_for'\n" +
+2026-04-21T14:01:23.476Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/runtime.rb:18:in 'Bundler::Runtime#setup'\n" +
+2026-04-21T14:01:23.476Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler.rb:167:in 'Bundler.setup'\n" +
+2026-04-21T14:01:23.477Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/setup.rb:32:in 'block in <top (required)>'\n" +
+2026-04-21T14:01:23.478Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/ui/shell.rb:173:in 'Bundler::UI::Shell#with_level'\n" +
+2026-04-21T14:01:23.478Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/ui/shell.rb:119:in 'Bundler::UI::Shell#silence'\n" +
+2026-04-21T14:01:23.478Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/setup.rb:32:in '<top (required)>'\n" +
+2026-04-21T14:01:23.478Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:57:in 'Kernel#require_relative'\n" +
+2026-04-21T14:01:23.483Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:57:in 'Bundler::CLI::Exec#kernel_load'\n" +
+2026-04-21T14:01:23.484Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli/exec.rb:23:in 'Bundler::CLI::Exec#run'\n" +
+2026-04-21T14:01:23.484Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:452:in 'Bundler::CLI#exec'\n" +
+2026-04-21T14:01:23.484Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/command.rb:28:in 'Bundler::Thor::Command#run'\n" +
+2026-04-21T14:01:23.484Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/invocation.rb:127:in 'Bundler::Thor::Invocation#invoke_command'\n" +
+2026-04-21T14:01:23.484Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor.rb:538:in 'Bundler::Thor.dispatch'\n" +
+2026-04-21T14:01:23.484Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:35:in 'Bundler::CLI.dispatch'\n" +
+2026-04-21T14:01:23.484Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/vendor/thor/lib/thor/base.rb:584:in 'Bundler::Thor::Base::ClassMethods#start'\n" +
+2026-04-21T14:01:23.485Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/cli.rb:29:in 'Bundler::CLI.start'\n" +
+2026-04-21T14:01:23.485Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.6.9/exe/bundle:28:in 'block in <top (required)>'\n" +
+2026-04-21T14:01:23.485Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/3.4.0/bundler/friendly_errors.rb:117:in 'Bundler.with_friendly_errors'\n" +
+2026-04-21T14:01:23.485Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/lib/ruby/gems/3.4.0/gems/bundler-2.6.9/exe/bundle:20:in '<top (required)>'\n" +
+2026-04-21T14:01:23.485Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in 'Kernel#load'\n" +
+2026-04-21T14:01:23.485Z	      "\tfrom /opt/buildhome/.asdf/installs/ruby/3.4.7/bin/bundle:25:in '<main>'",
+2026-04-21T14:01:23.488Z	    failed: true,
+2026-04-21T14:01:23.489Z	    timedOut: false,
+2026-04-21T14:01:23.490Z	    isCanceled: false,
+2026-04-21T14:01:23.490Z	    killed: false
+2026-04-21T14:01:23.491Z	  }
+2026-04-21T14:01:23.491Z	
+2026-04-21T14:01:23.494Z	
+2026-04-21T14:01:23.500Z	✘ [ERROR] Running custom build `cd site && bundle exec jekyll build` failed. There are likely more logs from your build command above.
+2026-04-21T14:01:23.500Z	
+2026-04-21T14:01:23.500Z	
+2026-04-21T14:01:23.500Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2026-04-21_14-01-22_111.log"
+2026-04-21T14:01:23.501Z	
+2026-04-21T14:01:23.501Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2026-04-21T14:01:23.502Z	
+2026-04-21T14:01:23.594Z	Failed: error occurred while running deploy command
