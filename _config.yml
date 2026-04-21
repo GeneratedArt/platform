@@ -43,6 +43,27 @@ collections:
   home_one_services:
     output: true
 
+# Monorepo: exclude sibling app/contract/worker directories from the Jekyll build.
+exclude:
+  - workers/
+  - contracts/
+  - app/
+  - docs/
+  - node_modules/
+  - .github/
+  - README.md
+  - .local/
+  - .cache/
+  - attached_assets/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
+
+# API base URL for the public site to call the Cloudflare Worker.
+# Override per-environment in CI by writing to _config.production.yml or via
+# `--config _config.yml,_config.production.yml`.
+api_base_url: "http://localhost:8787"
+
 ############################################################
 # Site configuration for the Jekyll 3 Pagination Gem
 # The values here represent the defaults if nothing is set
