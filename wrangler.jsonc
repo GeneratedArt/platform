@@ -1,0 +1,21 @@
+// Cloudflare Workers static-assets deploy for the public Jekyll site.
+// The Jekyll source moved into site/, so we must override Cloudflare's
+// auto-detection (which assumed root and produced `npx bundle exec jekyll build`).
+//
+// Workers (api / indexer / renderer / github-bot) and the Astro app each have
+// their own wrangler config under workers/* and app/. They are deployed
+// separately by .github/workflows/deploy-workers.yml.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "generatedart-site",
+  "compatibility_date": "2026-04-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "site/_site",
+    "not_found_handling": "404-page"
+  },
+  "build": {
+    "command": "cd site && bundle exec jekyll build"
+  }
+}
