@@ -1,0 +1,53 @@
+name: build-site
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/build-site.yml"]
+  pull_request:
+    paths: ["site/**"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: site
+      - name: Optionally seed _data from API
+        if: ${{ vars.API_BASE_URL != '' }}
+        env:
+          API_BASE: ${{ vars.API_BASE_URL }}
+        run: |
+          mkdir -p _data
+          curl -fsSL "$API_BASE/projects" -o _data/projects.json || echo '{"projects":[]}' > _data/projects.json
+      - run: bundle exec jekyll build
+
+  # Cloudflare Pages deployment is handled by the repo's Cloudflare connection
+  # using the root wrangler.jsonc, not by this workflow. To re-enable a manual
+  # deploy here, set the CLOUDFLARE_DEPLOY_ENABLED repo variable to "true" and
+  # provide CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID secrets.
+  deploy:
+    needs: build
+    if: ${{ vars.CLOUDFLARE_DEPLOY_ENABLED == 'true' && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: site
+      - run: cd site && bundle exec jekyll build
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

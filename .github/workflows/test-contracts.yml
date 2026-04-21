@@ -1,0 +1,30 @@
+name: test-contracts
+
+on:
+  push:
+    branches: [main]
+    paths: ["contracts/**", ".github/workflows/test-contracts.yml"]
+  pull_request:
+    paths: ["contracts/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install libraries
+        run: |
+          forge install --no-git --no-commit foundry-rs/forge-std
+          forge install --no-git --no-commit OpenZeppelin/openzeppelin-contracts
+          forge install --no-git --no-commit chiru-labs/ERC721A
+      - run: forge build --sizes
+      - run: forge test -vv
+      - name: Coverage (informational, non-blocking)
+        continue-on-error: true
+        run: forge coverage --report summary
