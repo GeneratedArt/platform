@@ -1,0 +1,48 @@
+---
+layout: genart
+---
+<article class="ga-container">
+  <header class="ga-section" style="border-top:0">
+    <p class="ga-eyebrow">Gallery</p>
+    <h1 class="ga-display">{{ page.name }}</h1>
+    {% if page.address %}<p class="ga-mono" style="color:var(--fg-muted);margin-top:1rem">{{ page.address }}</p>{% endif %}
+    {% if page.tagline %}<p class="ga-lede" style="margin-top:2rem">{{ page.tagline }}</p>{% endif %}
+
+    {% if page.hours or page.directions %}
+    <dl class="ga-entity__features" style="margin-top:2rem;max-width:640px">
+      {% if page.hours %}<div><dt>Hours</dt><dd>{{ page.hours }}</dd></div>{% endif %}
+      {% if page.directions %}<div><dt>Directions</dt><dd>{{ page.directions }}</dd></div>{% endif %}
+      {% if page.phone %}<div><dt>Phone</dt><dd>{{ page.phone }}</dd></div>{% endif %}
+      {% if page.email %}<div><dt>Email</dt><dd><a href="mailto:{{ page.email }}">{{ page.email }}</a></dd></div>{% endif %}
+    </dl>
+    {% endif %}
+  </header>
+
+  {% if page.current_exhibition %}
+  <section class="ga-section">
+    <div class="ga-section__head">
+      <div>
+        <p class="ga-eyebrow">Now showing</p>
+        <h2 class="ga-h2">{{ page.current_exhibition.title }}</h2>
+      </div>
+      <span class="ga-mono">{{ page.current_exhibition.dates }}</span>
+    </div>
+    <div style="max-width:64ch">{{ page.current_exhibition.description | markdownify }}</div>
+  </section>
+  {% endif %}
+
+  {% if page.dongle_edition %}
+  <section class="ga-section">
+    <div class="ga-section__head">
+      <h2 class="ga-h2">Dongle edition</h2>
+      <a href="{{ site.app_base_url }}/mint/{{ page.dongle_edition.slug }}">Mint →</a>
+    </div>
+    <p class="ga-lede">{{ page.dongle_edition.description }}</p>
+    <p class="ga-mono" style="color:var(--fg-muted)">
+      {{ page.dongle_edition.edition_size }} physical units · ESP32-S3 + ePaper · ships from Geneva
+    </p>
+  </section>
+  {% endif %}
+
+  {{ content }}
+</article>

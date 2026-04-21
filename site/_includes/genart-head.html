@@ -1,0 +1,34 @@
+<!-- GeneratedArt editorial <head>. Loaded by every page using layout: genart -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f8f7f4" media="(prefers-color-scheme: light)" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+
+<title>{% if page.title %}{{ page.title }} — {% endif %}{{ site.title }}</title>
+<meta name="description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description | strip_newlines }}{% endif %}" />
+
+<!-- Open Graph + Twitter, all powered from page front matter. -->
+<meta property="og:site_name" content="{{ site.title }}" />
+<meta property="og:type" content="{{ page.og_type | default: 'website' }}" />
+<meta property="og:title" content="{{ page.title | default: site.title }}" />
+<meta property="og:description" content="{{ page.description | default: site.description | strip_newlines }}" />
+{% if page.og_image %}<meta property="og:image" content="{{ page.og_image | absolute_url }}" />{% endif %}
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="canonical" href="{{ page.url | absolute_url }}" />
+<link rel="alternate" type="application/atom+xml" title="Blog" href="/blog/index.xml" />
+<link rel="icon" href="/assets/images/favicon.ico" sizes="any" />
+
+<link rel="stylesheet" href="/assets/css/genart.css" />
+
+<!-- Theme toggle: read preference *before* paint to avoid a light-flash. -->
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem("ga-theme");
+      var sys = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", saved || sys);
+    } catch (e) { /* private browsing — fall through to dark */ }
+  })();
+</script>

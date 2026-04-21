@@ -1,0 +1,8 @@
+{
+  "_comment": "Seed snapshot. Overwritten on every CI build by scripts/sync-d1-to-jekyll.mjs which queries D1 via the Cloudflare API and writes this file plus _data/artists/projects/galleries.json.",
+  "generated_at": "2026-04-21T00:00:00Z",
+  "stats": { "projects": 0, "artists": 0, "editions": 0 },
+  "next_drop": null,
+  "featured_artists": [],
+  "sales": []
+}

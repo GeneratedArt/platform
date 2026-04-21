@@ -74,7 +74,13 @@ Jekyll 3.8.x predates Ruby 3.x stdlib changes. `site/Gemfile` adds:
 7. Renderer subdomain serving demo bundle ← **implemented** (`workers/renderer`: fetches `ipfs://<cid>/index.html`, injects `<script>` exposing `$ga.{hash,width,height,rand,features,preview}` with Mulberry32 seeded from the hash, serves with strict CSP + `X-Frame-Options: SAMEORIGIN` so consumers must use `<iframe sandbox="allow-scripts allow-pointer-lock">`; `res=WxH` clamped to 64–4096). Capture pipeline in `workers/capture` consumes the `render-jobs` queue via Cloudflare Browser Rendering / Puppeteer, waits for the `ga:preview` postMessage, screenshots PNG, writes to R2 at `captures/<contract>/<tokenId>.png` (or `previews/<slug>/<hash>.png` for ad-hoc), and patches `editions.preview_r2_key`
 8. Mint page on Astro ← scaffolded at `/mint/:slug`
 9. Indexer Worker backfilling editions ← worker scaffolded
-10. Gallery + exhibition pages on Jekyll
+10. Public Jekyll site ← **implemented** — new editorial layer lives alongside the legacy agency template:
+    - `site/_layouts/{genart,artist,project,gallery}.html` — clean layouts with Inter + Fraunces, dark default + light toggle (theme preference set before paint, no flash)
+    - `site/assets/css/genart.css` — design tokens, grid, countdown, filter bar, editorial article type
+    - Pages: `/` (hero + next-drop countdown + featured artists + latest-sales table), `/artists`, `/projects` (filterable: all/live/upcoming/sold-out), `/galleries`, `/manifesto`, `/docs`, `/blog`
+    - Jekyll collections `artists`, `projects`, `galleries` permalinked at `/artists/:slug/`, `/projects/:slug/`, `/galleries/:slug/` — one markdown file per entity in `_artists/`, `_projects/`, `_galleries/`
+    - Seed entries: `oona-keller` (artist), `field-notes` (project) and `geneva` (flagship gallery, with hours, directions, current exhibition, 32-unit dongle edition)
+    - `scripts/sync-d1-to-jekyll.mjs` snapshots D1 → `_data/latest.json` (+ regenerates collection markdown) in CI using `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_D1_DATABASE_ID`; safe to re-run, skips gracefully when secrets are absent
 11. Physical bridge + Telegram relay
 12. Governance charter + curator console
 13. Base mainnet launch (genesis drop)

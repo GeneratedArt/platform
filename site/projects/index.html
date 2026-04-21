@@ -1,0 +1,74 @@
+---
+layout: genart
+title: "Projects"
+description: "Catalog of every generative project published on GeneratedArt."
+permalink: /projects/
+---
+<section class="ga-section ga-container">
+  <p class="ga-eyebrow">Catalog</p>
+  <h1 class="ga-display">Projects</h1>
+  <p class="ga-lede" style="margin-top:1.5rem">
+    Every project is a deterministic generative work — same hash in, same render out.
+    Source on GitHub, bundle on IPFS, contract on Base.
+  </p>
+
+  <div style="margin-top:2.5rem;display:flex;gap:0.75rem;flex-wrap:wrap" data-ga-filter-bar>
+    <button data-ga-filter="all" aria-pressed="true">All</button>
+    <button data-ga-filter="live">Live</button>
+    <button data-ga-filter="upcoming">Upcoming</button>
+    <button data-ga-filter="sold-out">Sold out</button>
+  </div>
+</section>
+
+<section class="ga-section ga-container">
+  <div class="ga-grid ga-grid--wide" data-ga-projects>
+    {% assign sorted = site.projects | sort: "starts_at" | reverse %}
+    {% for p in sorted %}
+      <article class="ga-card" data-ga-status="{{ p.status | default: 'live' }}">
+        <a href="{{ p.url }}" class="ga-card__media">
+          {% if p.bundle_cid %}
+            <iframe
+              class="ga-render"
+              src="{{ site.renderer_base_url }}/render?cid={{ p.bundle_cid }}&hash={{ p.demo_hash | default: '0xdeadbeefcafebabefeedfacedeadbeefcafebabefeedfacedeadbeefcafebabe' }}&res=512x512"
+              sandbox="allow-scripts allow-pointer-lock"
+              loading="lazy"
+              title="{{ p.title }} preview"></iframe>
+          {% elsif p.preview_image %}
+            <img src="{{ p.preview_image }}" alt="{{ p.title }}" loading="lazy" />
+          {% endif %}
+        </a>
+        <h3 class="ga-card__title"><a href="{{ p.url }}">{{ p.title }}</a></h3>
+        <div class="ga-card__meta">
+          <span>{{ p.artist_name }}</span>
+          <span class="ga-card__price">{{ p.mint_price }} ETH</span>
+        </div>
+        <div class="ga-card__meta">
+          <span style="color:var(--fg-subtle)">{{ p.minted | default: 0 }} / {{ p.edition_size }}</span>
+          <span class="ga-mono" style="color:var(--fg-subtle)">{{ p.status | default: 'live' }}</span>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<style>
+  [data-ga-filter-bar] button {
+    background: transparent; color: var(--fg-muted);
+    border: 1px solid var(--rule); border-radius: 999px;
+    padding: 0.4rem 1rem; font-size: 0.85rem; font-family: var(--sans); cursor: pointer;
+  }
+  [data-ga-filter-bar] button[aria-pressed="true"] { color: var(--fg); border-color: var(--fg); }
+</style>
+<script>
+  var bar = document.querySelector("[data-ga-filter-bar]");
+  var grid = document.querySelector("[data-ga-projects]");
+  bar?.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-ga-filter]");
+    if (!btn) return;
+    bar.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b === btn); });
+    var f = btn.dataset.gaFilter;
+    grid.querySelectorAll("[data-ga-status]").forEach(function (card) {
+      card.style.display = (f === "all" || card.dataset.gaStatus === f) ? "" : "none";
+    });
+  });
+</script>

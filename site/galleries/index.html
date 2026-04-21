@@ -1,0 +1,32 @@
+---
+layout: genart
+title: "Galleries"
+description: "Partner galleries showing GeneratedArt projects in physical space."
+permalink: /galleries/
+---
+<section class="ga-section ga-container">
+  <p class="ga-eyebrow">Physical homes</p>
+  <h1 class="ga-display">Galleries</h1>
+  <p class="ga-lede" style="margin-top:1.5rem">
+    Generative work belongs in galleries as much as it belongs on screens. Our
+    flagship space in Geneva exhibits curated drops, ships ePaper dongles, and
+    archives every project on physical media.
+  </p>
+</section>
+
+<section class="ga-section ga-container">
+  <div class="ga-grid ga-grid--wide">
+    {% for g in site.galleries %}
+      <article class="ga-card">
+        <a href="{{ g.url }}" class="ga-card__media">
+          {% if g.cover_image %}<img src="{{ g.cover_image }}" alt="{{ g.name }}" loading="lazy" />{% endif %}
+        </a>
+        <h3 class="ga-card__title"><a href="{{ g.url }}">{{ g.name }}</a>{% if g.featured %} <span class="ga-mono" style="color:var(--warn);font-size:0.7rem;letter-spacing:0.16em">FLAGSHIP</span>{% endif %}</h3>
+        <div class="ga-card__meta">
+          <span>{{ g.city }}</span>
+          <span class="ga-card__price">{{ g.exhibitions_count | default: 0 }} shows</span>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>

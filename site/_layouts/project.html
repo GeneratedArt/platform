@@ -1,0 +1,56 @@
+---
+layout: genart
+---
+<article class="ga-container">
+  <header class="ga-entity">
+    <div class="ga-entity__media">
+      {% assign demo_hash = page.demo_hash | default: "0xdeadbeefcafebabefeedfacedeadbeefcafebabefeedfacedeadbeefcafebabe" %}
+      {% if page.bundle_cid %}
+        <iframe
+          class="ga-render"
+          src="{{ site.renderer_base_url }}/render?cid={{ page.bundle_cid }}&hash={{ demo_hash }}&res=1024x1024"
+          sandbox="allow-scripts allow-pointer-lock"
+          title="{{ page.title }} — live preview"
+          loading="lazy"></iframe>
+      {% elsif page.preview_image %}
+        <img src="{{ page.preview_image }}" alt="{{ page.title }}" />
+      {% endif %}
+    </div>
+    <div class="ga-entity__body">
+      <p class="ga-eyebrow">Project · by <a href="/artists/{{ page.artist_slug }}">{{ page.artist_name }}</a></p>
+      <h1 class="ga-entity__title">{{ page.title }}</h1>
+      {% if page.tagline %}<p class="ga-lede">{{ page.tagline }}</p>{% endif %}
+
+      <dl class="ga-entity__features">
+        <div><dt>Edition</dt><dd>{{ page.minted | default: 0 }} / {{ page.edition_size }}</dd></div>
+        <div><dt>Price</dt><dd>{{ page.mint_price }} ETH</dd></div>
+        <div><dt>Chain</dt><dd>{{ page.chain | default: "Base" }}</dd></div>
+        <div><dt>Royalty</dt><dd>{{ page.royalty_bps | default: 1000 | divided_by: 100 }}%</dd></div>
+        {% if page.license %}<div><dt>License</dt><dd>{{ page.license }}</dd></div>{% endif %}
+        {% if page.release_tag %}<div><dt>Release</dt><dd class="ga-mono">{{ page.release_tag }}</dd></div>{% endif %}
+      </dl>
+
+      <p style="margin-top:2rem;display:flex;gap:1rem">
+        <a class="ga-nav__cta" href="{{ site.app_base_url }}/mint/{{ page.slug }}">Mint on app</a>
+        {% if page.repo_url %}<a href="{{ page.repo_url }}" rel="noopener">Source</a>{% endif %}
+        {% if page.bundle_cid %}<a href="https://ipfs.generatedart.com/ipfs/{{ page.bundle_cid }}" rel="noopener">IPFS bundle</a>{% endif %}
+      </p>
+    </div>
+  </header>
+
+  {% if page.description %}
+  <section class="ga-section">
+    <div class="ga-section__head"><h2 class="ga-h2">About</h2></div>
+    <div style="max-width:64ch">{{ page.description | markdownify }}</div>
+  </section>
+  {% endif %}
+
+  {% if page.features_explainer %}
+  <section class="ga-section">
+    <div class="ga-section__head"><h2 class="ga-h2">Features</h2></div>
+    <div style="max-width:64ch">{{ page.features_explainer | markdownify }}</div>
+  </section>
+  {% endif %}
+
+  {{ content }}
+</article>

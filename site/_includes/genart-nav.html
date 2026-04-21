@@ -1,0 +1,16 @@
+<nav class="ga-nav" aria-label="Primary">
+  <div class="ga-container ga-nav__row">
+    <a href="/" class="ga-nav__brand">Generated<em>Art</em></a>
+    <div class="ga-nav__links">
+      <a href="/projects" {% if page.url contains '/projects' %}aria-current="page"{% endif %}>Projects</a>
+      <a href="/artists" {% if page.url contains '/artists' %}aria-current="page"{% endif %}>Artists</a>
+      <a href="/galleries" {% if page.url contains '/galleries' %}aria-current="page"{% endif %}>Galleries</a>
+      <a href="/blog" {% if page.url contains '/blog' %}aria-current="page"{% endif %}>Journal</a>
+      <a href="/manifesto" {% if page.url contains '/manifesto' %}aria-current="page"{% endif %}>Manifesto</a>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <button class="ga-theme-toggle" type="button" data-ga-theme-toggle aria-label="Toggle light/dark">◐</button>
+      <a class="ga-nav__cta" href="{{ site.app_base_url }}">Open app</a>
+    </div>
+  </div>
+</nav>

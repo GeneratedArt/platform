@@ -1,15 +1,125 @@
 ---
-layout: default
+layout: genart
+title: ""
+description: "Code-based generative art on Base, with a permanent home in Geneva."
 ---
-{% include google_analytics.html %}
-<link href="/assets/css/home-light.css" rel="stylesheet"/>
-<div class="home-light-style"> 
-{% include header_5.html %}
-{% include slider_5.html %}
-{% include about_5.html %}
-{% include about_4.html %}
-{% include contact_2.html %}
-{% include footer_5.html %}
-</div>
+<section class="ga-hero ga-container">
+  <p class="ga-eyebrow">Generative art · Base · Geneva</p>
+  <h1 class="ga-display">
+    Art that is <em>written</em>,<br />
+    not painted.
+  </h1>
+  <p class="ga-lede" style="margin-top:2rem;font-size:1.25rem">
+    GeneratedArt is a community-run platform for code-based generative work.
+    Every piece is open-source, deterministic from a single hash, pinned to IPFS,
+    and minted on Base. Selected editions are exhibited in our Geneva gallery
+    and shipped as ePaper dongles.
+  </p>
 
+  <dl class="ga-hero__meta">
+    <div><dt>Projects live</dt><dd>{{ site.data.latest.stats.projects | default: 0 }}</dd></div>
+    <div><dt>Artists</dt><dd>{{ site.data.latest.stats.artists | default: 0 }}</dd></div>
+    <div><dt>Editions minted</dt><dd>{{ site.data.latest.stats.editions | default: 0 }}</dd></div>
+  </dl>
+</section>
 
+{% if site.data.latest.next_drop %}
+<section class="ga-section ga-container">
+  <div class="ga-drop">
+    <div>
+      <p class="ga-eyebrow">Next drop</p>
+      <h2 class="ga-drop__title">{{ site.data.latest.next_drop.title }}</h2>
+      <p style="color:var(--fg-muted);margin:0.5rem 0 1.5rem">
+        by <a href="/artists/{{ site.data.latest.next_drop.artist_slug }}">{{ site.data.latest.next_drop.artist_name }}</a>
+        · {{ site.data.latest.next_drop.edition_size }} editions · {{ site.data.latest.next_drop.mint_price }} ETH
+      </p>
+      <p class="ga-drop__count" data-ga-countdown="{{ site.data.latest.next_drop.starts_at }}">
+        opens {{ site.data.latest.next_drop.starts_at }}
+      </p>
+    </div>
+    <a class="ga-drop__cta" href="/projects/{{ site.data.latest.next_drop.slug }}">View project</a>
+  </div>
+</section>
+{% endif %}
+
+<section class="ga-section ga-container">
+  <div class="ga-section__head">
+    <h2 class="ga-h2">Featured artists</h2>
+    <a href="/artists">All artists →</a>
+  </div>
+  <div class="ga-grid">
+    {% assign featured = site.data.latest.featured_artists | default: site.artists | slice: 0, 6 %}
+    {% for a in featured %}
+      {% assign artist = site.artists | where: "slug", a.slug | first | default: a %}
+      <article class="ga-card">
+        <a href="/artists/{{ artist.slug }}" class="ga-card__media">
+          {% if artist.cover_image %}<img src="{{ artist.cover_image }}" alt="{{ artist.name }}" loading="lazy" />{% endif %}
+        </a>
+        <h3 class="ga-card__title"><a href="/artists/{{ artist.slug }}">{{ artist.name }}</a></h3>
+        <div class="ga-card__meta">
+          <span>{{ artist.location }}</span>
+          <span class="ga-card__price">{{ artist.project_count | default: 0 }} projects</span>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="ga-section ga-container">
+  <div class="ga-section__head">
+    <h2 class="ga-h2">Latest sales</h2>
+    <a href="/projects">All projects →</a>
+  </div>
+  {% assign sales = site.data.latest.sales | default: empty %}
+  {% if sales.size > 0 %}
+  <table class="ga-table">
+    <thead>
+      <tr><th>Project</th><th>Edition</th><th>Buyer</th><th class="num">Price</th><th class="num">When</th></tr>
+    </thead>
+    <tbody>
+      {% for s in sales limit: 12 %}
+      <tr>
+        <td><a href="/projects/{{ s.project_slug }}">{{ s.project_title }}</a></td>
+        <td class="num">#{{ s.token_id }}</td>
+        <td class="ga-mono" style="color:var(--fg-muted)">{{ s.buyer_short }}</td>
+        <td class="num">{{ s.price_eth }} ETH</td>
+        <td class="num" style="color:var(--fg-subtle)" data-ga-relative="{{ s.at }}">{{ s.at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--fg-muted)">No sales yet — be the first.</p>
+  {% endif %}
+</section>
+
+<script>
+  // Pretty-print the countdown to the next drop and the relative timestamps
+  // in the sales feed. All timestamps are ISO-8601 in UTC.
+  document.querySelectorAll("[data-ga-relative]").forEach(function (el) {
+    var t = Date.parse(el.dataset.gaRelative);
+    if (!t) return;
+    var diff = (t - Date.now()) / 1000;
+    var abs = Math.abs(diff);
+    var unit, n;
+    if (abs < 60) { unit = "s"; n = Math.round(abs); }
+    else if (abs < 3600) { unit = "m"; n = Math.round(abs / 60); }
+    else if (abs < 86400) { unit = "h"; n = Math.round(abs / 3600); }
+    else { unit = "d"; n = Math.round(abs / 86400); }
+    el.textContent = (diff < 0 ? "" : "in ") + n + unit + (diff < 0 ? " ago" : "");
+  });
+  var cd = document.querySelector("[data-ga-countdown]");
+  if (cd) {
+    var target = Date.parse(cd.dataset.gaCountdown);
+    function tick() {
+      var d = target - Date.now();
+      if (d <= 0) { cd.textContent = "opens now"; return; }
+      var days = Math.floor(d / 86400000);
+      var hrs  = Math.floor((d % 86400000) / 3600000);
+      var mins = Math.floor((d % 3600000) / 60000);
+      var secs = Math.floor((d % 60000) / 1000);
+      cd.textContent = (days ? days + "d " : "") + hrs + "h " + mins + "m " + secs + "s";
+    }
+    tick(); setInterval(tick, 1000);
+  }
+</script>

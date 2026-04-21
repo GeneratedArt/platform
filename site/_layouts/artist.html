@@ -1,0 +1,42 @@
+---
+layout: genart
+---
+<article class="ga-container">
+  <header class="ga-section" style="border-top:0;padding-bottom:1rem">
+    <p class="ga-eyebrow">Artist</p>
+    <h1 class="ga-display">{{ page.name }}</h1>
+    {% if page.location %}<p class="ga-mono" style="color:var(--fg-muted);margin-top:1rem">{{ page.location }}</p>{% endif %}
+    {% if page.bio %}<p class="ga-lede" style="margin-top:2rem">{{ page.bio }}</p>{% endif %}
+
+    {% if page.socials %}
+      <p style="margin-top:2rem;display:flex;gap:1.5rem;flex-wrap:wrap">
+        {% for s in page.socials %}<a href="{{ s.url }}" rel="noopener">{{ s.label }}</a>{% endfor %}
+      </p>
+    {% endif %}
+  </header>
+
+  {% if page.projects %}
+  <section class="ga-section">
+    <div class="ga-section__head"><h2 class="ga-h2">Projects</h2></div>
+    <div class="ga-grid ga-grid--wide">
+      {% for slug in page.projects %}
+        {% assign p = site.projects | where: "slug", slug | first %}
+        {% if p %}
+          <article class="ga-card">
+            <a href="{{ p.url }}" class="ga-card__media">
+              {% if p.preview_image %}<img src="{{ p.preview_image }}" alt="{{ p.title }}" loading="lazy" />{% endif %}
+            </a>
+            <h3 class="ga-card__title"><a href="{{ p.url }}">{{ p.title }}</a></h3>
+            <div class="ga-card__meta">
+              <span>{{ p.edition_size }} editions</span>
+              <span class="ga-card__price">{{ p.mint_price }} ETH</span>
+            </div>
+          </article>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {{ content }}
+</article>

@@ -1,55 +1,33 @@
 ---
-layout: page
+layout: genart
 title: "Artists"
+description: "All artists currently publishing on GeneratedArt."
+permalink: /artists/
 ---
+<section class="ga-section ga-container">
+  <p class="ga-eyebrow">All artists</p>
+  <h1 class="ga-display">{{ site.artists | size }} artists</h1>
+  <p class="ga-lede" style="margin-top:1.5rem">
+    Approved artists publish their work as open-source repositories under the
+    <a href="https://github.com/GeneratedArt" rel="noopener">GeneratedArt</a> org.
+    Every project is reviewed by a curator before deploy.
+  </p>
+</section>
 
-<!--Team Section-->
-<section class="team-section alternate">
-    <div class="auto-container">
-        <div class="row clearfix">
-            <!--Block-->
-            <div class="team-block col-lg-4 col-md-6 col-sm-12">
-                <div class="inner-box wow fadeInUp" data-wow-delay="0ms">
-                    <div class="image-box">
-                        <figure class="image"><img src="/assets/images/resource/artist-1.jpg" alt="" title=""></figure>
-                    </div>
-                    <div class="lower-box">
-                        <div class="designation">Geneva, Switzerland</div>
-                        <h3 class="name">Rvig</h3>
-                        <div class="text">RVig, Richard Vigniel born in 1976 in Lyon, France, is a generative digital artist based in Geneva, Switzerland. He has been active in this field since 1999, utilizing his computer science background. His work creatively blends algorithms and coding to create unique art. RVig's journey in generative art led him to the NFT space with his 2021 project “Flowers”.</div>
-                        <div class="more-content">
-                            <div class="more-btn">+</div>
-                            <div class="share-list">
-                                <ul>
-                                    <li><a href="https://twitter.com/rvig_art"><span class="fab fa-facebook-f"></span></a></li>
-                                    <li><a href="https://www.instagram.com/rvig.art/"><span class="fab fa-instagram"></span></a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!--Block-->
-            <div class="team-block col-lg-4 col-md-6 col-sm-12">
-                <div class="inner-box wow fadeInUp" data-wow-delay="0ms">
-                    <div class="image-box">
-                        <figure class="image"><img src="/assets/images/resource/artist-2.jpg" alt="" title=""></figure>
-                    </div>
-                    <div class="lower-box">
-                        <div class="designation">Geneva, Switzerland</div>
-                        <h3 class="name">Sha22</h3>
-                        <div class="text">Sha22, a collaboration between graphic designer Alisha Henry and 3D artist Boris Rabusseau, specializes in merging various graphic styles using digital technologies like VJing and virtual reality. Since 1992, they've been at the forefront of combining traditional and digital art forms, focusing on adapting to modern lifestyles and critically evaluating the impact of digital technologies.</div>
-                        <div class="more-content">
-                            <div class="more-btn">+</div>
-                            <div class="share-list">
-                                <ul>
-                                    <li><a href="https://www.instagram.com/sha22art"><span class="fab fa-instagram"></span></a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<section class="ga-section ga-container">
+  <div class="ga-grid">
+    {% assign sorted = site.artists | sort: "name" %}
+    {% for a in sorted %}
+      <article class="ga-card">
+        <a href="{{ a.url }}" class="ga-card__media">
+          {% if a.cover_image %}<img src="{{ a.cover_image }}" alt="{{ a.name }}" loading="lazy" />{% endif %}
+        </a>
+        <h3 class="ga-card__title"><a href="{{ a.url }}">{{ a.name }}</a></h3>
+        <div class="ga-card__meta">
+          <span>{{ a.location }}</span>
+          <span class="ga-card__price">{{ a.projects | size }} projects</span>
         </div>
-    </div>
+      </article>
+    {% endfor %}
+  </div>
 </section>

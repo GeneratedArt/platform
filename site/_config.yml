@@ -43,6 +43,32 @@ plugins:
 collections:
   home_one_services:
     output: true
+  artists:
+    output: true
+    permalink: /artists/:slug/
+  projects:
+    output: true
+    permalink: /projects/:slug/
+  galleries:
+    output: true
+    permalink: /galleries/:slug/
+
+defaults:
+  - scope: { path: "", type: artists }
+    values: { layout: artist }
+  - scope: { path: "", type: projects }
+    values: { layout: project }
+  - scope: { path: "", type: galleries }
+    values: { layout: gallery }
+
+exclude:
+  - node_modules
+  - Gemfile
+  - Gemfile.lock
+  - .sass-cache
+  - .jekyll-cache
+  - vendor
+  - README.md
 
 ############################################################
 # jekyll-paginate-v2

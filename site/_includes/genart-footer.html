@@ -1,0 +1,53 @@
+<footer class="ga-foot">
+  <div class="ga-container">
+    <div class="ga-foot__row">
+      <div>
+        <div class="ga-nav__brand" style="font-size:1.4rem;display:inline-block;margin-bottom:0.75rem">Generated<em>Art</em></div>
+        <p style="max-width:38ch;margin:0">
+          A community-run platform for code-based generative art. Smart contracts on Base,
+          a permanent home in Geneva, and a working physical-digital bridge.
+        </p>
+      </div>
+      <div>
+        <h4>Platform</h4>
+        <ul>
+          <li><a href="/projects">Projects</a></li>
+          <li><a href="/artists">Artists</a></li>
+          <li><a href="/galleries">Galleries</a></li>
+          <li><a href="{{ site.app_base_url }}/mint">Mint</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Read</h4>
+        <ul>
+          <li><a href="/manifesto">Manifesto</a></li>
+          <li><a href="/blog">Journal</a></li>
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="https://github.com/GeneratedArt" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Geneva</h4>
+        <ul>
+          <li>{{ site.office_address }}</li>
+          <li><a href="mailto:{{ site.email }}">{{ site.email }}</a></li>
+          <li><a href="{{ site.telegram_url }}" rel="noopener">Telegram</a></li>
+          <li><a href="{{ site.twitter_url }}" rel="noopener">X / Twitter</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ga-foot__bot">
+      <span>{{ site.copyright_text }}</span>
+      <span><a href="https://github.com/GeneratedArt/website" rel="noopener">Source</a> · <a href="/docs">Open standards</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelector("[data-ga-theme-toggle]")?.addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+    var next = cur === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("ga-theme", next); } catch (e) {}
+  });
+</script>
