@@ -1,0 +1,71 @@
+**The core issue:** Cloudflare Pages (via Wrangler) runs its own automatic `bundle install` with `BUNDLE_WITHOUT="development test"` *before* your custom build command. Your `wrangler.jsonc` build command only does `cd site && bundle exec jekyll build` (missing the full `bundle install`), so Bundler can't find the gems listed in `site/Gemfile` (jekyll-3.8.7, minima, plugins like jekyll-paginate-v2, etc.). This is a common Jekyll + Cloudflare Pages gotcha, especially with newer build systems.
+
+### Quick Fix (Recommended)
+Update your `wrangler.jsonc` build command to explicitly handle the install without the `WITHOUT` restriction:
+
+```jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "generatedart-site",
+  "compatibility_date": "2026-04-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "site/_site",
+    "not_found_handling": "404-page"
+  },
+  "build": {
+    "command": "cd site && BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 && bundle exec jekyll build"
+  }
+}
+```
+
+- `BUNDLE_WITHOUT=''` overrides Cloudflare's default (which skips groups that some Jekyll setups rely on indirectly).
+- `--jobs 4 --retry 3` speeds it up and makes it more reliable.
+
+Commit + push and redeploy.
+
+### Better Long-Term Setup
+1. **Use a custom deploy script** (more reliable for complex monorepos):
+   - Create `.cloudflare/deploy-site.sh` (make it executable: `chmod +x .cloudflare/deploy-site.sh`):
+
+     ```bash
+     #!/bin/bash
+     set -e
+
+     cd site
+     BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 --path vendor/bundle
+     bundle exec jekyll build
+     ```
+
+   - Update `wrangler.jsonc` build command to: `bash .cloudflare/deploy-site.sh`
+
+2. **In Cloudflare Pages dashboard** (if using direct Git integration instead of pure Wrangler/GitHub Actions):
+   - **Build command**: `cd site && BUNDLE_WITHOUT='' bundle install && bundle exec jekyll build`
+   - **Output directory**: `site/_site`
+   - **Build system version**: Try V1 or V3 if V2 keeps causing issues.
+
+3. **Update Gemfile / lockfile** (your `site/Gemfile` looks mostly good, but):
+   - Consider bumping to a newer Jekyll if possible (3.8.7 is quite old).
+   - Ensure `Gemfile.lock` is committed (it is).
+   - Add `gem "webrick"` and `rexml` (you already have them for Ruby 3.x compatibility).
+
+### GitHub Actions Side (Your Workflow)
+Your Actions log shows Wrangler is handling the build. If you have a custom workflow (e.g., using `cloudflare/wrangler-action`), ensure it checks out the full repo and runs from root. Example snippet:
+
+```yaml
+- name: Deploy with Wrangler
+  uses: cloudflare/wrangler-action@v3
+  with:
+    apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    command: deploy
+```
+
+### Additional Tips
+- Run `./scripts/bootstrap.sh` locally (as mentioned in README) and `pnpm build:site` to verify.
+- Clean Bundler cache locally if needed: `cd site && rm -rf vendor/bundle Gemfile.lock && bundle install`.
+- Ruby version: Cloudflare detected 3.4.7; your lockfile/platform is `x86_64-linux` — should be fine, but the `BUNDLE_WITHOUT` is the blocker.
+- If using GitHub Pages fallback or hybrid, note that GH Pages has stricter gem support.
+
+After the change, the build should run `bundle install` properly, materialize the gems, and produce `site/_site` for Wrangler's static assets deployment. Let me know the new log if it still fails!

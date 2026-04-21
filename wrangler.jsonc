@@ -16,6 +16,6 @@
     "not_found_handling": "404-page"
   },
   "build": {
-    "command": "cd site && bundle install && bundle exec jekyll build"
+    "command": "cd site && BUNDLE_WITHOUT='' bundle install --jobs 4 --retry 3 && bundle exec jekyll build"
   }
 }
