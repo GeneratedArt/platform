@@ -38,3 +38,16 @@ externalPort = 80
 deploymentTarget = "static"
 build = ["bundle", "exec", "jekyll", "build"]
 publicDir = "_site"
+
+[userenv]
+
+[userenv.shared]
+CLOUDFLARE_D1_DATABASE_ID = "6c83d3f6-b3be-4e8d-9be2-a3274ad24e2a"
+CLOUDFLARE_KV_SESSIONS_ID = "4c07b557b1b64e9dbe4b76427328c54a"
+CLOUDFLARE_KV_RATE_LIMIT_ID = "071e1e836716455d9e30fd37389c03fa"
+CLOUDFLARE_KV_INDEXER_STATE_ID = "20884d2a97504b82822f34b6dc725e02"
+CLOUDFLARE_KV_NAMESPACE_ID = "4c07b557b1b64e9dbe4b76427328c54a"
+CLOUDFLARE_R2_BUCKET_NAME = "generatedart-assets"
+CLOUDFLARE_QUEUE_NAME = "render-jobs"
+CLOUDFLARE_ZONE_ID = "5f16e1194f7d4b9f508b955e49c7c6ad"
+CLOUDFLARE_PROJECT_NAME = "generatedart-website"

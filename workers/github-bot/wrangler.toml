@@ -11,7 +11,7 @@ API_BASE_URL = "https://api.generatedart.com"
 [[d1_databases]]
 binding = "DB"
 database_name = "generatedart"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "6c83d3f6-b3be-4e8d-9be2-a3274ad24e2a"
 
 [[queues.producers]]
 binding = "PIN_QUEUE"

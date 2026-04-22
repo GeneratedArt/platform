@@ -15,7 +15,7 @@ bucket_name = "generatedart-assets"
 [[d1_databases]]
 binding = "DB"
 database_name = "generatedart"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "6c83d3f6-b3be-4e8d-9be2-a3274ad24e2a"
 
 # Cloudflare Browser Rendering binding. Requires the Browser Rendering add-on
 # on the account; without it `wrangler deploy` will refuse.

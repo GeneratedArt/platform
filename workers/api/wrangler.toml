@@ -17,16 +17,16 @@ CHAIN_ID = "8453"
 [[d1_databases]]
 binding = "DB"
 database_name = "generatedart"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "6c83d3f6-b3be-4e8d-9be2-a3274ad24e2a"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "REPLACE_WITH_KV_ID"
+id = "4c07b557b1b64e9dbe4b76427328c54a"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "REPLACE_WITH_KV_ID"
+id = "071e1e836716455d9e30fd37389c03fa"
 
 [[r2_buckets]]
 binding = "ASSETS"
