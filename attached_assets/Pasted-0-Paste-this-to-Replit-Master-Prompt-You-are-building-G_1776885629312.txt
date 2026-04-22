@@ -1,0 +1,448 @@
+0. Paste-this-to-Replit — Master Prompt
+You are building GeneratedArt, a global, decentralized NFT platform and artist collective for code-based generative art (hand-written p5.js / three.js / WebGL / GLSL / Processing / creative-coding in any language — not AI/prompt-generated imagery). Think of it as neutral infrastructure: like OpenSea (agnostic, global, anyone can mint) merged with fxhash (artist-first, deterministic, code-verified). No editorial gatekeeping. No single curatorial direction. All decisions are visible on GitHub and made by elected community curators.
+The platform must be operable end-to-end by a decentralized, forked community using only GitHub + Jekyll + Cloudflare + Ethereum/Base. No traditional servers, no AWS, no databases-as-a-service outside Cloudflare's free tier. The source code is the spec. Anyone can audit it, fork the entire org, run a mirror, or propose changes via PR.
+Think mirror-able, community-governable infrastructure. Not a company. Not a gated gallery. A public good.
+Treat this document as the spec. Work iteratively: scaffold the monorepo first, get the Jekyll public site + one Worker + one smart-contract stub talking to each other, then layer features. Do not try to build everything before the first deploy.
+
+1. Non-Negotiable Tech Stack
+LayerTechnologyPurposeStatic public siteJekyll 4.x built by GitHub Actions, served by Cloudflare PagesLanding, artist directory, project catalog, gallery partner pages, blog, docsDynamic appCloudflare Workers (TypeScript, wrangler)All API endpoints, auth, GitHub orchestration, mint indexingRelational storeCloudflare D1 (SQLite)Users, artists, projects, editions, sales, galleriesKV storeCloudflare KVSessions, rate-limit counters, feature flagsObject storageCloudflare R2Thumbnails, preview captures, high-res renders, signed uploadsQueuesCloudflare QueuesRender/capture jobs, IPFS pin jobs, webhook retriesEthereum RPCCloudflare Web3 Ethereum GatewayRead-only chain queries from WorkersIPFS gatewayCloudflare Web3 IPFS Gateway (DNSLink subdomain, e.g. ipfs.generatedart.com)Serve artist bundles and token metadataIPFS pinningPinata or web3.storage (Cloudflare gateway does NOT pin — do not skip this)Persistent storage of artist code bundles and metadataSource of truth for codeGitHub (org GeneratedArt, one repo per project under GeneratedArt/art-<slug>)Artist code, reviews via PR, immutability via tagsCIGitHub ActionsJekyll build, Worker deploy, smart-contract tests, project bundle validationWalletWalletConnect v2 + viem + wagmi (frontend)User-side signing; platform never holds keysSmart contractsSolidity 0.8.24, Foundry for tests, deployed to Base mainnet (L2, cheap) + Base Sepolia for testnetMinting, royalties (EIP-2981), primary/secondary splitFrontend framework for dynamic pagesAstro islands or Preact + HTMX served from Cloudflare Pages (NOT Next.js, NOT Vercel)Keeps the static-first postureRendering sandboxA static renderer.generatedart.com subdomain serving token HTML from IPFS inside an isolated <iframe sandbox>Security boundary for untrusted artist code
+Explicit non-goals: no AWS, no Vercel, no Firebase, no Supabase, no MongoDB, no Node.js server, no Rails, no Python backend, no Stripe-as-primary-rails (Stripe is optional for fiat on-ramp to the gallery). Do not reach for any of these even if they feel easier.
+
+2. Reality-Check Caveats (build these in, don't paper over them)
+
+Jekyll is static. It renders the catalog, artist profiles, and gallery pages from D1 exports committed to the repo during a nightly or post-mint GitHub Actions job. Dynamic views (mint page, wallet-gated pages, dashboards) are Astro/Preact served by Pages and hydrated with Worker APIs.
+Cloudflare IPFS gateway is read-only. Pinning happens via Pinata/web3.storage. Wire both as failover. Never rely on the gateway to keep content alive.
+Cloudflare Ethereum gateway is RPC. Minting requires the collector's wallet to sign the tx — the platform never holds funds. The Worker only reads chain state and indexes events.
+GitHub is the code registry. Each approved generative project lives in its own repo. A Worker uses a GitHub App (not a PAT) to create repos, open PRs, merge, tag, and trigger release workflows. The GitHub App's private key lives in a Worker Secret.
+Smart contracts are the ledger. D1 is a cache/index of on-chain state, never the source of truth. Indexer must be re-runnable from genesis.
+Community-runnable means: one make bootstrap command, a documented wrangler.toml.example, no proprietary secrets hardcoded, and a CONTRIBUTING.md that explains how to fork the whole org.
+
+
+3. Personas & Roles
+
+Visitor — browses the catalog, reads about artists, no account needed. Anyone in the world.
+Collector — connects a wallet to mint an iteration, view their holdings, resell on secondary. Anyone with ETH/Base.
+Artist — signs in with GitHub OAuth + wallet, applies to publish, owns project repos, receives royalties. Anyone (geographically agnostic).
+Curator — a community-elected reviewer who approves artist applications and project bundles via GitHub PR reviews. Role is community-voted, not appointed.
+Gallery Partner (optional) — a physical or virtual gallery anywhere that curates an exhibition page on the platform, features artists' work, possibly co-creates physical editions (prints, merchandise, plotted output). Completely optional; the platform works without them.
+Steward (DAO council) — 5–7 community-elected members who hold the org-level GitHub admin key and a multisig that controls contract upgrades. Quarterly elections, transparent voting on governance proposals.
+
+Role is stored per-user in D1, versioned in a roles.yml commit-history in the org repo for full transparency and auditability.
+
+4. Monorepo Layout
+Create a GitHub org GeneratedArt and one monorepo GeneratedArt/platform with this shape. Replit clones this repo and develops inside it.
+platform/
+├── site/                         # Jekyll site → Cloudflare Pages (generatedart.com)
+│   ├── _config.yml
+│   ├── _data/                    # catalog.json, artists.json, galleries.json (generated from D1)
+│   ├── _layouts/
+│   ├── _includes/
+│   ├── assets/
+│   ├── _posts/                   # blog
+│   ├── projects/                 # one .md per project, front-matter pulled from D1
+│   ├── artists/
+│   ├── galleries/
+│   └── index.md
+├── app/                          # Astro app → Cloudflare Pages (app.generatedart.com)
+│   ├── src/pages/                # mint, studio, dashboard, settings
+│   ├── src/components/
+│   └── astro.config.mjs
+├── workers/
+│   ├── api/                      # REST/JSON API (Hono on Workers)
+│   ├── github-bot/               # GitHub App event handler
+│   ├── indexer/                  # Cron-triggered chain indexer
+│   ├── renderer/                 # Proxies IPFS, injects token hash, capture service
+│   └── shared/                   # Drizzle schemas for D1, zod types
+├── contracts/                    # Foundry project
+│   ├── src/
+│   │   ├── GenArtFactory.sol
+│   │   ├── GenArtProject.sol     # ERC-721A per project
+│   │   └── RoyaltySplitter.sol
+│   ├── test/
+│   └── script/
+├── .github/
+│   ├── workflows/                # build-site.yml, deploy-workers.yml, validate-bundle.yml, test-contracts.yml
+│   └── CODEOWNERS
+├── docs/
+├── scripts/
+│   └── bootstrap.sh
+├── wrangler.toml
+├── package.json                  # pnpm workspaces
+└── README.md
+
+5. Data Model (D1)
+Start with this schema. Use Drizzle for types. Generate migrations; every migration runs in CI.
+sqlCREATE TABLE users (
+  id              TEXT PRIMARY KEY,         -- ulid
+  github_login    TEXT UNIQUE,
+  wallet_address  TEXT UNIQUE,              -- lowercased, 0x...
+  display_name    TEXT,
+  bio             TEXT,
+  avatar_r2_key   TEXT,
+  role            TEXT NOT NULL DEFAULT 'collector', -- collector|artist|gallery|curator|steward
+  created_at      INTEGER NOT NULL
+);
+
+CREATE TABLE artists (
+  user_id         TEXT PRIMARY KEY REFERENCES users(id),
+  slug            TEXT UNIQUE NOT NULL,
+  website         TEXT,
+  socials_json    TEXT,                     -- {twitter, instagram, ...}
+  status          TEXT NOT NULL DEFAULT 'pending', -- pending|approved|suspended
+  approved_at     INTEGER,
+  approved_by     TEXT REFERENCES users(id)
+);
+
+CREATE TABLE projects (
+  id              TEXT PRIMARY KEY,
+  artist_id       TEXT NOT NULL REFERENCES users(id),
+  slug            TEXT UNIQUE NOT NULL,
+  title           TEXT NOT NULL,
+  description     TEXT,
+  github_repo     TEXT NOT NULL,            -- 'GeneratedArt/art-<slug>'
+  release_tag     TEXT,                     -- 'v1.0.0', matches immutable git tag
+  bundle_cid      TEXT,                     -- IPFS CID of the zipped bundle
+  license         TEXT NOT NULL DEFAULT 'CC-BY-NC-4.0',
+  edition_size    INTEGER NOT NULL,
+  price_wei       TEXT NOT NULL,            -- stringified uint256
+  royalty_bps     INTEGER NOT NULL DEFAULT 750, -- 7.5%
+  contract_address TEXT,                    -- set after factory deploy
+  status          TEXT NOT NULL DEFAULT 'draft', -- draft|review|approved|live|sold_out|archived
+  created_at      INTEGER NOT NULL,
+  minted_count    INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE editions (
+  id              TEXT PRIMARY KEY,         -- contract_address:token_id
+  project_id      TEXT NOT NULL REFERENCES projects(id),
+  token_id        INTEGER NOT NULL,
+  token_hash      TEXT NOT NULL,            -- 0x... 32-byte seed
+  owner_address   TEXT NOT NULL,
+  minted_at       INTEGER NOT NULL,
+  preview_r2_key  TEXT,
+  metadata_cid    TEXT,
+  UNIQUE(project_id, token_id)
+);
+
+CREATE TABLE galleries (
+  id              TEXT PRIMARY KEY,
+  slug            TEXT UNIQUE NOT NULL,
+  name            TEXT NOT NULL,
+  city            TEXT,
+  country         TEXT,
+  description     TEXT,
+  steward_user_id TEXT REFERENCES users(id),
+  physical        INTEGER NOT NULL DEFAULT 0 -- bool
+);
+
+CREATE TABLE exhibitions (
+  id              TEXT PRIMARY KEY,
+  gallery_id      TEXT NOT NULL REFERENCES galleries(id),
+  title           TEXT NOT NULL,
+  starts_at       INTEGER NOT NULL,
+  ends_at         INTEGER,
+  project_ids_json TEXT NOT NULL            -- JSON array
+);
+
+CREATE TABLE physical_editions (
+  edition_id      TEXT PRIMARY KEY REFERENCES editions(id),
+  dongle_serial   TEXT UNIQUE,
+  print_spec_json TEXT,                     -- {paper, size, plotter, ink}
+  shipped_to      TEXT,                     -- encrypted address
+  status          TEXT NOT NULL DEFAULT 'pending'
+);
+
+CREATE TABLE sessions (
+  token           TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL REFERENCES users(id),
+  expires_at      INTEGER NOT NULL
+);
+
+CREATE TABLE audit_log (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_user_id   TEXT,
+  action          TEXT NOT NULL,
+  subject         TEXT,
+  details_json    TEXT,
+  created_at      INTEGER NOT NULL
+);
+
+6. Worker API Contract (Hono on Workers)
+Base URL: https://api.generatedart.com
+Auth: Bearer session token (from GitHub OAuth callback) OR a SIWE (Sign-In With Ethereum, ERC-4361) signature. Both produce a session row.
+POST   /auth/github/callback          → session token
+POST   /auth/siwe/verify              → session token
+GET    /me                            → current user + roles
+
+# Artists
+POST   /artists/apply                 body: {slug, bio, portfolio_links}
+GET    /artists/:slug
+PATCH  /artists/:slug                 (self or curator)
+POST   /artists/:slug/approve         (curator+)
+
+# Projects
+POST   /projects                      body: {title, slug, description, edition_size, price_eth, royalty_bps, license}
+                                      → creates GeneratedArt/art-<slug> repo, returns clone URL
+GET    /projects
+GET    /projects/:slug
+POST   /projects/:slug/submit         → moves status to 'review', opens release PR
+POST   /projects/:slug/approve        (curator+) → merges PR, tags release, pins to IPFS,
+                                                   calls factory.createProject() via a
+                                                   relayer tx signed by the steward multisig
+POST   /projects/:slug/archive
+
+# Mint (frontend talks to chain directly; these are helpers)
+GET    /projects/:slug/mint-params    → {contract, price_wei, merkle_proof?}
+POST   /projects/:slug/preview        body: {token_hash}  → renders and returns R2 URL of capture
+
+# Editions
+GET    /editions/:contract/:token_id
+GET    /owners/:address/editions
+
+# Galleries
+POST   /galleries                     (steward+)
+POST   /galleries/:slug/exhibitions   (gallery steward)
+
+# Physical bridge
+POST   /editions/:id/request-physical body: {print_spec, dongle}
+Every mutating endpoint writes to audit_log before responding.
+Rate limiting: 60 req/min per session, 10 req/min unauthenticated, enforced via Cloudflare's KV+Durable-Object token bucket.
+
+7. Smart Contracts
+Chain: Base (L2). Rationale: sub-cent mints, EVM compatibility, Coinbase distribution. Testnet: Base Sepolia. All addresses committed to contracts/deployments/<chain>.json.
+Contracts:
+
+GenArtFactory.sol — deploys one GenArtProject per approved project. Emits ProjectCreated(address project, string slug, address artist). Only callable by the steward multisig.
+GenArtProject.sol — ERC721A with:
+
+uint256 public immutable editionSize;
+uint256 public immutable pricePerMint;
+string public bundleCID; (IPFS CID of the HTML bundle)
+bytes32 public immutable projectSeed; (set at deploy from keccak256(bundleCID, artist, block.number))
+mapping(uint256 => bytes32) public tokenHashes; set in _mint via keccak256(abi.encode(projectSeed, tokenId, minter, block.prevrandao))
+tokenURI(id) returns ipfs://<metadataCID>/<id>.json; metadata's animation_url is https://renderer.generatedart.com/render?cid=<bundleCID>&hash=<tokenHashes[id]>
+EIP-2981 royalties pointing to a RoyaltySplitter
+
+
+RoyaltySplitter.sol — splits primary + secondary: 85% artist, 10% platform (multisig), 5% gallery (if exhibitedAt != address(0)).
+
+Write Foundry tests covering: determinism of tokenHash, supply cap, royalty math, access control, re-entrancy on mint.
+Indexer: A scheduled Worker (workers/indexer) runs every minute. It reads the latest block from Cloudflare Ethereum Gateway, fetches Transfer + ProjectCreated logs, upserts into editions + projects. Re-runnable from block 0 via a ?from= query param.
+
+8. Artist Onboarding & Project Lifecycle
+This is the heart of the platform — spend the most design effort here.
+8.1 Onboarding
+
+Artist visits /apply, signs in with GitHub.
+They complete a profile (bio, portfolio links, wallet address).
+Application posts as a GitHub Issue in GeneratedArt/applications via the GitHub App.
+Curators review and label approved → a Worker webhook flips the DB row and upgrades the user's role.
+
+8.2 Creating a Project
+
+Approved artist clicks New Project in the Studio dashboard.
+Frontend calls POST /projects. The Worker:
+
+Creates repo GeneratedArt/art-<slug> via GitHub App, seeded from templates/fxhash-compatible (an HTML + <script> template with a $ga SDK exposing $ga.hash, $ga.rand(), $ga.features, $ga.preview()).
+Adds CODEOWNERS (artist + curators), branch protection on main, PR-required workflow.
+Returns clone URL + instructions.
+
+
+Artist develops locally using a dev container (provided in the template repo) or directly in Replit.
+When ready, they open a PR to main with label ready-for-review.
+A GitHub Actions workflow (validate-bundle.yml) checks:
+
+Total zipped size ≤ 3 MB
+index.html at root
+No external network calls (grep fetch(, XMLHttpRequest, import()
+Deterministic render: runs the bundle twice with the same hash, diffs pixel output via headless Chromium
+Dependency list against an allowlist (p5, three, regl, tone, d3 — no eval, no remote imports)
+
+
+Curators review; on approval the GitHub App merges, creates tag v1.0.0, triggers release.yml:
+
+Zips main at the tag
+Pushes to Pinata + web3.storage, gets CID
+Calls POST /projects/:slug/publish with the CID
+The Steward signs a factory tx on Base, deploying the project contract
+D1 projects.status → live, contract address stored
+
+
+
+8.3 Immutability
+Once live, the release tag is protected and the IPFS bundle is pinned redundantly. Code is frozen. Artist can propose a v1.0.1 fix that becomes a new project (new contract) if the fix is material.
+
+9. Rendering & Capture Pipeline
+Render URL format:
+https://renderer.generatedart.com/render?cid=<bundleCID>&hash=<tokenHash>&res=<w>x<h>
+Renderer Worker:
+
+Fetches ipfs://<cid>/index.html through the Cloudflare IPFS gateway.
+Rewrites a single <script> inject at the top that sets window.$ga = { hash: '<tokenHash>', rand: seeded PRNG from hash, features: {}, preview: () => postMessage('ga:preview') }.
+Returns HTML served with a strict CSP: default-src 'self' https://ipfs.generatedart.com; script-src 'unsafe-inline' https://ipfs.generatedart.com; (inline OK inside the sandboxed iframe).
+Sets X-Frame-Options: SAMEORIGIN for renderer.generatedart.com only — all embedding pages load it in <iframe sandbox="allow-scripts allow-pointer-lock">.
+
+Capture service: Browser Rendering API (Cloudflare) or a Puppeteer Worker. Triggered per edition at mint time via the Queue. Stores a 2048×2048 PNG to R2 at captures/<contract>/<tokenId>.png, updates editions.preview_r2_key.
+
+11. Public Jekyll Site
+generatedart.com is the global marketplace face and community hub. Pages:
+
+/ — Hero: "The open platform for generative art. Artist-owned. Community-governed. Forever decentralized." Featured drops, recent mints, artist count, live edit link to GitHub, join Discord.
+/artists — grid of all verified artists worldwide; searchable by location, medium, style.
+/artists/:slug — bio, portfolio, projects, all minted works (rendered as iframes).
+/projects — browsable, filterable catalog (by artist, theme, price, release date). Hot this week, trending, earliest, highest-grossing.
+/projects/:slug — project page: live generative preview iframe, description, artist bio, minting stats, secondary sales (if any), feature spec.
+/galleries — directory of partner galleries worldwide (optional, for V1.1+). Each can curate exhibitions.
+/governance — link to the DAO charter, steward council members, curator election schedule, voting history.
+/docs — artist handbook, contributor guide, smart-contract audits, tech stack explanation, fork-and-run guide.
+/manifesto — the platform's values: open, decentralized, artist-first, forever.
+/blog — community essays, featured artist profiles, technique deep-dives, platform updates.
+
+Build trigger: every merge to main + a nightly cron + a webhook from the Worker whenever D1 mutates. Build writes D1 exports to site/_data/*.json, then jekyll build, then Pages deploy.
+Design: global, minimal, fast. Let the generative art be the brand. Think fxhash's simplicity crossed with an art museum's gravitas. High contrast, good typography, dark default, light toggle.
+
+11. Astro App (app.generatedart.com)
+Pages:
+
+/studio — artist dashboard: projects (draft/review/live), earnings, GitHub repo links, release controls
+/studio/new — project creation wizard
+/mint/:slug — live generative preview iframe (one-shot render, refresh button to roll new hash preview), wallet connect, mint button, mint progress, tx link
+/collect/:address — any wallet's holdings, re-rendered live
+/dashboard — collector dashboard
+/admin — curator console (role-gated): pending applications, pending PR reviews, flagged content
+/exhibitions/new — gallery steward flow
+
+All data loaded via fetch to api.generatedart.com. Islands hydrate only where needed (wallet connect, mint button). Ship minimal JS.
+
+10. Gallery Partners & Physical Editions (Optional, Community-Driven)
+The platform is digital-first. But galleries, museums, and print studios anywhere can opt in to create complementary physical editions.
+
+Each GenArtProject contract has an optional physicalEditionSize ≤ editionSize parameter.
+A gallery partner creates an exhibition (curates a set of projects), and can mint physical editions: framed prints, plotted output, merchandise, etc.
+When a collector mints, they can optionally request a co-printed physical edition from a partner gallery. The gallery handles fulfillment (print, frame, ship). The blockchain records ownership; the gallery handles logistics.
+The platform provides a /galleries page where any gallery worldwide can list itself, describe its exhibitions, and link back to projects.
+Physical editions split royalties: primary goes to the artist; secondary goes to the artist + gallery. Smart contract handles the split.
+No single gallery is privileged. No "official" physical presence. Anyone can set up shop.
+
+Galleries are discovered via the platform directory and word-of-mouth in the community.
+For MVP: physical editions are out of scope. They can be a V1.1 add-on once the digital marketplace proves itself. But the contract architecture leaves room for them.
+
+13. Community Governance (lightweight, GitHub-native)
+
+Curator elections happen in GeneratedArt/governance via a GitHub Discussions poll. Elected curators get their role flipped in D1 by a Steward.
+Project approval requires N-of-M curator approvals via CODEOWNERS + branch protection. No DAO voting for individual projects (too slow). For the MVP: 2-of-5 curators.
+Treasury lives in a Safe multisig on Base. The 10% platform cut flows there. Quarterly distributions proposed as issues in governance and executed by Safe signers.
+Charter in governance/CHARTER.md, amendable by PR with 4-of-5 curator approvals.
+
+
+14. Auth
+
+GitHub OAuth for artist/curator identity (handled by a Worker with the OAuth app secret in Worker Secrets).
+SIWE (ERC-4361) for collector identity and for linking a wallet to a GitHub account.
+A user can have both identities; the Worker upserts on linkage.
+Sessions are opaque tokens (ulid) in KV with expires_at; 30-day expiry, sliding.
+
+
+15. Observability
+
+Cloudflare Workers Logs + Logpush to R2 for 90-day retention.
+Sentry (free tier) for frontend errors.
+A /status page as a static Jekyll page pulling live Worker health from a KV key updated by a cron Worker.
+Every contract deployment emits a GitHub Release with tx hash, ABI, and block number.
+
+
+16. Dev Workflow Inside Replit
+Replit is the development environment, not the runtime.
+
+Replit clones GeneratedArt/platform.
+pnpm install at the root (workspace).
+pnpm dev runs three things concurrently via concurrently:
+
+jekyll serve on :4000
+astro dev on :4321
+wrangler dev for the API Worker on :8787 with a local D1 via wrangler d1 execute --local
+
+
+A seeded local dataset lives in scripts/seed.sql so the catalog isn't empty on first run.
+Secrets in Replit are set via Replit's secret manager, mirrored to .dev.vars for Wrangler. .dev.vars is gitignored.
+To ship, the agent pushes a branch, opens a PR; GitHub Actions runs tests + preview deploys to a Pages preview URL. Merging to main deploys production.
+
+
+17. MVP Scope (Ship Order)
+Do these in order. Each step ends with a deployable, demonstrable thing.
+
+Monorepo + Jekyll site skeleton deployed to a Pages preview. Navigation, two placeholder artist pages, one mock project page. No auth.
+GitHub OAuth Worker + /me. User row in D1.
+Artist application flow end-to-end (issue-created, curator-approves, role-flips).
+Project creation Worker that actually creates a GitHub repo from a template.
+Project bundle validator GitHub Action (deterministic render check).
+Contracts on Base Sepolia — factory + one project + Foundry tests.
+Renderer subdomain serving a demo bundle from IPFS with seeded hash.
+Mint page on Astro: wallet connect, read price, call mint.
+Indexer Worker backfilling editions + rebuilding the public catalog nightly.
+Gallery + exhibition pages on Jekyll.
+Physical bridge + Telegram relay.
+Governance charter + curator console.
+Base mainnet launch with one curated genesis drop.
+
+Do not let the agent skip step 5 or step 6. Bundle validation and contract tests are the two places silent bugs cost real money.
+
+18. Acceptance Criteria (smoke tests the agent must pass)
+
+ curl https://generatedart.com/projects/<slug> returns a static HTML page with the project details.
+ curl https://api.generatedart.com/me with a valid session returns the user JSON.
+ Deploying a new project via the Studio creates a GitHub repo within 10 seconds.
+ validate-bundle.yml fails a PR that has non-deterministic render output.
+ Minting on Base Sepolia from a connected wallet produces a token visible in /collect/<address> within 2 minutes (indexer lag).
+ The renderer iframe URL, given the same cid + hash, produces a pixel-identical capture on two consecutive runs (hash of PNG matches).
+ A community member can fork GeneratedArt/platform, run ./scripts/bootstrap.sh, and have a working local clone with seeded demo data in under 10 minutes.
+ No secret is checked into git; git-secrets pre-commit hook is wired.
+ Lighthouse score ≥ 95 on the Jekyll homepage.
+
+
+18. Brand & Voice (Global, Community-First)
+GeneratedArt is a global public platform, not a branded experience.
+
+Tone: educational, inviting, anti-gatekeeping. Honor the 60-year history of generative art (Vera Molnár, Georg Nees, Manfred Mohr, Sol LeWitt, Herbert W. Franke) and show how this platform is a continuation of that lineage, now decentralized.
+No curated aesthetic. The platform shows all approved work equally. High-resolution geometric abstraction and chaotic glitch art sit next to each other. Variety is the point.
+No "official" accounts or channels. The community drives social media. The platform links to community channels (Discord, Twitter, Reddit) but doesn't create them.
+Design philosophy: clean, fast, accessible. Dark mode by default (generative artists appreciate the canvas). Responsive. Designed for artists to feel ownership, not like they're uploading to a third party's service.
+Language: "GeneratedArt is a home for code-based generative art, run by and for its community. No corporations. No gatekeeping. Just artists, code, and math."
+
+Visual identity: Neutral color palette (black, white, high-contrast accent color — let the art speak). Typeface: Inter + JetBrains Mono (nod to code). No hero video. The generative works are the hero. Reference the aesthetic of the fxhash homepage but stripped of any commercial gloss.
+The existing generatedart.com domain redirects to the new platform, or becomes a blog/docs hub. Decision is yours, but the brand is reborn as community infrastructure, not inherited.
+
+19. What to Ask Me (the human) Before Starting
+Before you generate a single file, confirm:
+
+The GitHub org is GeneratedArt and I (the human) will grant the Replit agent a scoped PAT with repo + admin:org for initial scaffolding. After scaffolding, you will create a GitHub App and the PAT is revoked.
+The target L2 is Base (Ethereum Layer 2). If I say "Tezos," "Solana," or "Ethereum L1" instead, adjust the contract layer but keep everything else identical.
+The Pinata + web3.storage accounts exist, or will exist — I will add API keys to Replit secrets on request.
+The Cloudflare account has Workers Paid ($5/mo) enabled so D1, Queues, and Browser Rendering work. Pages, KV, and Web3 gateways don't require paid tier.
+Domain strategy: Do we rebrand generatedart.com to point to the new platform, or do we launch on a new domain (e.g., app.generatedart.com as primary, or a separate TLD)? This affects initial launch optics.
+Which artists will be the genesis drop? (needed to seed the catalog and create early momentum)
+Do you want to invite a community council of 3–5 people to be the initial Stewards, or bootstrap with just me and you?
+
+If any of those are unclear, stop and ask. Don't invent answers.
+
+20. Out of Scope for V1 (don't get distracted)
+
+Physical editions — galleries + prints are a V1.1 expansion, not MVP. The contract reserves the feature, but fulfillment logistics are complex. Ship digital-only first.
+Secondary-market order book — use OpenSea/Blur via EIP-2981 royalties until in-house volume justifies custom order book. Link to secondary, don't build it yet.
+Multi-chain minting — Base only at launch. Tezos bridge, Solana support, etc. are V2 conversations.
+On-chain storage of the bundle — keep code on IPFS. On-chain storage (Art Blocks style) is a research project, not a launch feature. It's also expensive.
+Fiat on-ramp — can add Coinbase Pay or Stripe later. MVP assumes collector has ETH/stablecoin already.
+Mobile app — the site is responsive. No native app.
+Governance token — no $GENART token, no DAO treasury voting on individual projects. Curator voting on PRs is enough for V1. Token economics is a V2 discussion.
+Relayer network for gasless mints — minters pay their own gas; it's transparent and low on Base. Relayers = added complexity.
+
+Build the boring, reliable, auditable version first. The generative art community rewards durability, transparency, and code quality over feature novelty.
+
+21. Closing: Why This Stack, Why This Way
+This is not a traditional startup pitch. It's an open-source public good masquerading as a marketplace.
+Every line of code is auditable. The database schema is in git. The contract ABI is published. The rendering pipeline has no black box. A college student in São Paulo can fork the entire org, run it on her own Cloudflare account, and create a mirror. An artist can pack up and move to a different host if governance goes sideways. No single point of failure. No API keys held by a company that might fold.
+This is intentional. Web3 platforms fail when they centralize (see: most NFT marketplaces post-2023). GeneratedArt succeeds by being forkable, auditable, and governable by the community.
+The tech stack reflects this: Cloudflare (read-only IPFS, no vendor lock-in), GitHub (the actual ledger of decision-making), Ethereum Base (open, censorship-resistant), open-source tooling everywhere (Foundry, Drizzle, Astro, Jekyll). No proprietary databases. No SaaS platform lock-in. Just boring, well-tested, community-audited infrastructure.
+The generative art community invented by forkable, sharable code. Honor that. Give them a platform that feels the same way.
+
+End of prompt. When you're ready to start coding, answer the questions in §19 and let's go.

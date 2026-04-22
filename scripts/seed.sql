@@ -19,12 +19,24 @@ INSERT OR IGNORE INTO projects (
   'Random Walks',
   'A meditation on stochastic geometry. p5.js. 256 editions.',
   'GeneratedArt/art-random-walks', 'CC-BY-NC-4.0',
-  256, '1000000000000000', 750, 'draft',
+  256, '1000000000000000', 750, 'live',
   strftime('%s','now') * 1000, 0
 );
+
+UPDATE projects SET tagline = 'A meditation on stochastic geometry.', starts_at = strftime('%s','now') * 1000 + 7 * 86400000
+  WHERE id = 'p_demo_walks';
+
+UPDATE users SET location = 'Berlin, DE', avatar_url = 'https://avatars.githubusercontent.com/u/0?v=4'
+  WHERE id = 'u_demo_artist';
 
 INSERT OR IGNORE INTO galleries (id, slug, name, city, country, description, physical)
 VALUES ('g_geneva', 'geneva', 'GeneratedArt Geneva',
         'Geneva', 'Switzerland',
         'Physical gallery and project space at Rue François-Versonnex 17BIS.',
         1);
+
+UPDATE galleries SET address = 'Rue François-Versonnex 17BIS, 1207 Geneva',
+                     website = 'https://generatedart.com/galleries/geneva/',
+                     tagline = 'Flagship space — curated drops + the dongle bench.',
+                     featured = 1
+  WHERE id = 'g_geneva';

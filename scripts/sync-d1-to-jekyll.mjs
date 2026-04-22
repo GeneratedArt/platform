@@ -105,14 +105,14 @@ async function writeCollection(dirName, rows, toFields) {
 
   const projects = await d1(
     `SELECT p.slug, p.title, p.tagline, p.description, p.edition_size, p.minted_count AS minted,
-            p.mint_price_wei, p.royalty_bps, p.license, p.bundle_cid, p.release_tag,
+            p.price_wei AS mint_price_wei, p.royalty_bps, p.license, p.bundle_cid, p.release_tag,
             p.status, p.starts_at, p.contract_address,
             a.slug AS artist_slug, u.display_name AS artist_name
      FROM projects p
      JOIN artists a ON a.user_id = p.artist_id
      JOIN users u ON u.id = a.user_id
-     WHERE p.status IN ('live','approved','sold-out','upcoming')
-     ORDER BY p.starts_at DESC NULLS LAST, p.created_at DESC`
+     WHERE p.status IN ('live','approved','sold_out','upcoming')
+     ORDER BY p.starts_at DESC, p.created_at DESC`
   );
 
   const galleries = await d1(
@@ -121,7 +121,7 @@ async function writeCollection(dirName, rows, toFields) {
   );
 
   const sales = await d1(
-    `SELECT e.token_id, e.owner_address AS buyer, e.mint_price_wei AS price_wei, e.minted_at AS at,
+    `SELECT e.token_id, e.owner_address AS buyer, p.price_wei, e.minted_at AS at,
             p.slug AS project_slug, p.title AS project_title
      FROM editions e JOIN projects p ON p.id = e.project_id
      ORDER BY e.minted_at DESC LIMIT 24`
