@@ -1,0 +1,10 @@
+Rebuild project history to fix corruption and push to new repository
+
+Rebuilds the Git repository's history using `fast-export` and `fast-import` to resolve corruption issues and pushes the clean history to the platform repository.
+
+Replit-Commit-Author: Agent
+Replit-Commit-Session-Id: dcf84fd7-3cfd-4e9a-b390-8335b111007d
+Replit-Commit-Checkpoint-Type: full_checkpoint
+Replit-Commit-Event-Id: 43dfe9a7-5ea1-4046-af4c-2ab01d6a2812
+Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/92746b6e-53bd-4fe6-adba-ef8f57a6f224/dcf84fd7-3cfd-4e9a-b390-8335b111007d/zXeWnwi
+Replit-Helium-Checkpoint-Created: true
