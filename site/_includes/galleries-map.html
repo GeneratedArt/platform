@@ -1,0 +1,44 @@
+{%- comment -%}
+  §17 Step 5 — Leaflet world map of partner galleries.
+  Tiles: CartoDB Voyager (light) / DarkMatter (dark), free + on-brand.
+  Markers: small SVG circles, --accent for flagship, --fg-muted for partners.
+  Auto-fits bounds, swaps tile layer when the site theme toggles.
+{%- endcomment -%}
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="" />
+<section class="ga-map-section">
+  <div class="ga-container">
+    <div class="ga-section__head">
+      <div>
+        <p class="ga-eyebrow">Where it lives</p>
+        <h2 class="ga-h2" style="margin:.4rem 0 0">A network of physical homes</h2>
+      </div>
+      <div class="ga-map-legend">
+        <span><span class="ga-map-dot ga-map-dot--flagship"></span> Flagship</span>
+        <span><span class="ga-map-dot ga-map-dot--partner"></span> Partner</span>
+      </div>
+    </div>
+    <div id="ga-map" class="ga-map" aria-label="Map of GeneratedArt partner galleries">
+      <noscript><p class="ga-muted" style="padding:2rem">Map requires JavaScript. {{ site.galleries.size }} galleries listed below.</p></noscript>
+    </div>
+  </div>
+</section>
+<script id="ga-map-data" type="application/json">
+[{% for g in site.galleries %}{% if g.lat and g.lng %}{
+  "slug":     {{ g.slug | jsonify }},
+  "name":     {{ g.name | jsonify }},
+  "city":     {{ g.city | jsonify }},
+  "country":  {{ g.country | default: "" | jsonify }},
+  "tagline":  {{ g.tagline | default: "" | jsonify }},
+  "url":      {{ g.url | jsonify }},
+  "status":   {{ g.status | default: "partner" | jsonify }},
+  "lat":      {{ g.lat }},
+  "lng":      {{ g.lng }}
+}{% unless forloop.last %},{% endunless %}{% endif %}{% endfor %}]
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin="" defer></script>
+<script src="/assets/js/galleries-map.js" defer></script>
