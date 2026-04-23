@@ -17,11 +17,13 @@ description: "Code-based generative art on Base, with a permanent home in Geneva
   </p>
 
   <dl class="ga-hero__meta">
-    <div><dt>Projects live</dt><dd>{{ site.data.latest.stats.projects | default: 0 }}</dd></div>
-    <div><dt>Artists</dt><dd>{{ site.data.latest.stats.artists | default: 0 }}</dd></div>
-    <div><dt>Editions minted</dt><dd>{{ site.data.latest.stats.editions | default: 0 }}</dd></div>
+    <div><dt>Projects live</dt><dd data-ga-stat="projects">{{ site.data.latest.stats.projects | default: 0 }}</dd></div>
+    <div><dt>Artists</dt><dd data-ga-stat="artists">{{ site.data.latest.stats.artists | default: 0 }}</dd></div>
+    <div><dt>Galleries</dt><dd data-ga-stat="galleries">{{ site.data.latest.stats.galleries | default: 0 }}</dd></div>
+    <div><dt>Editions minted</dt><dd data-ga-stat="editions">{{ site.data.latest.stats.editions | default: 0 }}</dd></div>
   </dl>
 </section>
+<script src="/assets/js/stats-poll.js" defer></script>
 
 {% if site.data.latest.next_drop %}
 {% assign d = site.data.latest.next_drop %}
