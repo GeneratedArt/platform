@@ -61,58 +61,9 @@ description: "Code-based generative art on Base, with a permanent home in Geneva
 <script src="/assets/js/stats-poll.js" defer></script>
 <script src="/assets/js/hero-rotator.js" defer></script>
 
-{% if site.data.latest.next_drop %}
-{% assign d = site.data.latest.next_drop %}
-{% assign minted = d.minted | default: 0 %}
-{% assign size = d.edition_size | default: 1 %}
-{% assign pct = minted | times: 100 | divided_by: size %}
-{% assign is_live = d.status | default: 'upcoming' %}
-<section class="ga-section ga-container">
-  <div class="ga-feature">
-    <a href="/projects/{{ d.slug }}" class="ga-feature__media" aria-label="{{ d.title }} preview" style="border:0">
-      {% if d.bundle_cid %}
-        <iframe
-          src="{{ site.renderer_base_url }}/render?cid={{ d.bundle_cid }}&hash={{ d.demo_hash | default: '0xdeadbeefcafebabefeedfacedeadbeefcafebabefeedfacedeadbeefcafebabe' }}&res=1024x1024"
-          sandbox="allow-scripts allow-pointer-lock"
-          loading="lazy"
-          title="{{ d.title }} live preview"></iframe>
-      {% elsif d.preview_image %}
-        <img src="{{ d.preview_image }}" alt="{{ d.title }}" />
-      {% endif %}
-    </a>
-    <div class="ga-feature__pane">
-      <div class="ga-feature__top">
-        <p class="ga-eyebrow" style="margin:0">
-          {% if is_live == 'live' %}<span class="ga-dot" aria-hidden="true"></span>Live now{% else %}Featured drop{% endif %}
-        </p>
-        <h2 class="ga-feature__title">{{ d.title }}</h2>
-        <p class="ga-feature__by">by <a href="/artists/{{ d.artist_slug }}">{{ d.artist_name }}</a></p>
-        <div>
-          <div class="ga-feature__count">
-            <span>{{ minted }}</span><span style="color:var(--fg-muted)">/ {{ size }} minted</span>
-          </div>
-          <span class="ga-progress" aria-hidden="true"><span class="ga-progress__bar" style="width:{{ pct }}%"></span></span>
-        </div>
-        <dl class="ga-feature__stats">
-          <div><dt>Price</dt><dd>{{ d.mint_price }} ETH</dd></div>
-          <div><dt>Chain</dt><dd>{{ d.chain | default: 'Base' }}</dd></div>
-          {% if is_live != 'live' and d.starts_at %}
-          <div style="grid-column:1 / -1"><dt>Opens in</dt><dd class="ga-mono" data-ga-countdown="{{ d.starts_at }}">{{ d.starts_at }}</dd></div>
-          {% endif %}
-        </dl>
-      </div>
-      <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
-        {% if is_live == 'live' %}
-        <a class="ga-feature__cta" href="{{ site.app_base_url }}/mint/{{ d.slug }}">Mint now</a>
-        {% else %}
-        <a class="ga-feature__cta" href="/projects/{{ d.slug }}">View project</a>
-        {% endif %}
-        <a class="ga-feature__cta ga-feature__cta--ghost" href="/projects/{{ d.slug }}">Details</a>
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
+{% include editors-choice-strip.html %}
+
+{% include latest-drops.html %}
 
 <section class="ga-section ga-container">
   <div class="ga-section__head">
@@ -137,61 +88,3 @@ description: "Code-based generative art on Base, with a permanent home in Geneva
   </div>
 </section>
 
-<section class="ga-section ga-container">
-  <div class="ga-section__head">
-    <h2 class="ga-h2">Latest sales</h2>
-    <a href="/projects">All projects →</a>
-  </div>
-  {% assign sales = site.data.latest.sales | default: empty %}
-  {% if sales.size > 0 %}
-  <table class="ga-table">
-    <thead>
-      <tr><th>Project</th><th>Edition</th><th>Buyer</th><th class="num">Price</th><th class="num">When</th></tr>
-    </thead>
-    <tbody>
-      {% for s in sales limit: 12 %}
-      <tr>
-        <td><a href="/projects/{{ s.project_slug }}">{{ s.project_title }}</a></td>
-        <td class="num">#{{ s.token_id }}</td>
-        <td class="ga-mono" style="color:var(--fg-muted)">{{ s.buyer_short }}</td>
-        <td class="num">{{ s.price_eth }} ETH</td>
-        <td class="num" style="color:var(--fg-subtle)" data-ga-relative="{{ s.at }}">{{ s.at }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p style="color:var(--fg-muted)">No sales yet — be the first.</p>
-  {% endif %}
-</section>
-
-<script>
-  // Pretty-print the countdown to the next drop and the relative timestamps
-  // in the sales feed. All timestamps are ISO-8601 in UTC.
-  document.querySelectorAll("[data-ga-relative]").forEach(function (el) {
-    var t = Date.parse(el.dataset.gaRelative);
-    if (!t) return;
-    var diff = (t - Date.now()) / 1000;
-    var abs = Math.abs(diff);
-    var unit, n;
-    if (abs < 60) { unit = "s"; n = Math.round(abs); }
-    else if (abs < 3600) { unit = "m"; n = Math.round(abs / 60); }
-    else if (abs < 86400) { unit = "h"; n = Math.round(abs / 3600); }
-    else { unit = "d"; n = Math.round(abs / 86400); }
-    el.textContent = (diff < 0 ? "" : "in ") + n + unit + (diff < 0 ? " ago" : "");
-  });
-  var cd = document.querySelector("[data-ga-countdown]");
-  if (cd) {
-    var target = Date.parse(cd.dataset.gaCountdown);
-    function tick() {
-      var d = target - Date.now();
-      if (d <= 0) { cd.textContent = "opens now"; return; }
-      var days = Math.floor(d / 86400000);
-      var hrs  = Math.floor((d % 86400000) / 3600000);
-      var mins = Math.floor((d % 3600000) / 60000);
-      var secs = Math.floor((d % 60000) / 1000);
-      cd.textContent = (days ? days + "d " : "") + hrs + "h " + mins + "m " + secs + "s";
-    }
-    tick(); setInterval(tick, 1000);
-  }
-</script>

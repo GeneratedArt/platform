@@ -347,6 +347,106 @@ a:hover { border-color: var(--fg); }
   .ga-hero__pills { flex-direction: column; }
 }
 
+/* -- Editor's Choice strip (§17.2) --------------------------------------- */
+/* Native horizontal overflow with snap. No JS, no carousel library. */
+.ga-strip {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 18rem;
+  gap: 1.25rem; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding: 0.5rem 0 1.25rem;
+  scrollbar-width: thin;
+}
+.ga-strip__card {
+  scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 0.75rem;
+  border: 1px solid var(--rule); background: var(--bg);
+  text-decoration: none; color: var(--fg);
+  transition: border-color 80ms ease-out, transform 80ms ease-out;
+}
+.ga-strip__card:hover { border-color: var(--fg); transform: translateY(-1px); }
+.ga-strip__media { aspect-ratio: 1 / 1; overflow: hidden; background: var(--bg-elev, #111); }
+.ga-strip__media iframe,
+.ga-strip__media img { width: 100%; height: 100%; border: 0; display: block; object-fit: cover; }
+.ga-strip__ph {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-weight: 300; font-size: 1.5rem; color: var(--fg);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent 50%),
+    var(--bg-elev, #111);
+}
+.ga-strip__meta { padding: 0 0.9rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.ga-strip__title { font-family: var(--display); font-size: 1.05rem; font-weight: 400; }
+.ga-strip__by    { font-family: var(--mono); font-size: 0.72rem; color: var(--fg-muted); letter-spacing: 0.04em; }
+.ga-strip__row   { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.25rem; font-family: var(--mono); font-size: 0.78rem; }
+.ga-strip__price { color: var(--fg-muted); margin-left: auto; }
+
+/* GA Score pill — small, mono, neutral. */
+.ga-score {
+  display: inline-block; padding: 0.1rem 0.45rem;
+  border: 1px solid var(--rule); border-radius: 999px;
+  font-family: var(--mono); font-size: 0.72rem; line-height: 1.4;
+  color: var(--fg);
+}
+
+/* -- Latest Drops (§17.3) ------------------------------------------------ */
+.ga-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+.ga-chip {
+  padding: 0.4rem 0.95rem; border: 1px solid var(--rule); background: transparent;
+  border-radius: 999px; font-family: var(--mono); font-size: 0.78rem;
+  color: var(--fg-muted); cursor: pointer;
+  transition: border-color 80ms ease-out, color 80ms ease-out, background 80ms ease-out;
+}
+.ga-chip:hover { color: var(--fg); border-color: var(--fg); }
+.ga-chip.is-active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+.ga-drops {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+@media (max-width: 720px) { .ga-drops { grid-template-columns: 1fr; } }
+
+/* CSS-only chip filter: hide tiles whose status doesn't match the active chip. */
+.ga-drops[data-filter="live"]     .ga-drop-tile:not([data-status="live"])     { display: none; }
+.ga-drops[data-filter="sold_out"] .ga-drop-tile:not([data-status="sold_out"]) { display: none; }
+.ga-drops[data-filter="collab"]   .ga-drop-tile:not([data-status="collab"])   { display: none; }
+
+.ga-drop-tile {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--rule); background: var(--bg);
+  text-decoration: none; color: var(--fg);
+  transition: border-color 80ms ease-out;
+}
+.ga-drop-tile:hover { border-color: var(--fg); }
+.ga-drop-tile__media { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: var(--bg-elev, #111); }
+.ga-drop-tile__media iframe,
+.ga-drop-tile__media img { width: 100%; height: 100%; border: 0; display: block; object-fit: cover; }
+.ga-drop-tile__ph {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-weight: 300; font-size: 2rem; color: var(--fg);
+  background:
+    radial-gradient(circle at 70% 80%, rgba(255,255,255,0.04), transparent 60%),
+    var(--bg-elev, #111);
+}
+.ga-drop-tile__badge {
+  position: absolute; top: 0.75rem; left: 0.75rem;
+  padding: 0.2rem 0.6rem; border-radius: 999px;
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--bg); color: var(--fg); border: 1px solid var(--rule);
+}
+.ga-drop-tile__badge--live     { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.ga-drop-tile__badge--sold_out { color: var(--fg-muted); }
+.ga-drop-tile__badge--collab   { color: var(--fg); }
+
+.ga-drop-tile__body  { padding: 1rem 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.ga-drop-tile__title { font-family: var(--display); font-size: 1.25rem; font-weight: 400; }
+.ga-drop-tile__by    { font-family: var(--mono); font-size: 0.75rem; color: var(--fg-muted); letter-spacing: 0.04em; }
+.ga-drop-tile__progress { height: 2px; background: var(--rule); overflow: hidden; margin-top: 0.25rem; }
+.ga-drop-tile__bar      { display: block; height: 100%; background: var(--fg); }
+.ga-drop-tile__row      { display: flex; align-items: center; gap: 0.6rem; font-family: var(--mono); font-size: 0.78rem; }
+.ga-drop-tile__count    { color: var(--fg-muted); }
+.ga-drop-tile__price    { margin-left: auto; }
+
 /* -- countdown ----------------------------------------------------------- */
 .ga-drop {
   display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--col-gap);
