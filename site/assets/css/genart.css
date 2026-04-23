@@ -534,9 +534,19 @@ a:hover { border-color: var(--fg); }
 .ga-foot a { border: 0; color: var(--fg-muted); }
 .ga-foot a:hover { color: var(--fg); }
 .ga-foot__bot {
-  display: flex; justify-content: space-between; padding-top: 1.5rem;
-  border-top: 1px solid var(--rule); color: var(--fg-subtle); font-size: 0.78rem;
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding-top: 1.5rem; border-top: 1px solid var(--rule);
+  color: var(--fg-subtle); font-size: 0.78rem; flex-wrap: wrap;
 }
+.ga-foot__build {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em;
+  color: var(--fg-subtle); border: 1px solid var(--rule);
+  padding: 0.18rem 0.55rem; border-radius: 3px; text-decoration: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ga-foot__build code { font: inherit; color: var(--fg-muted); }
+.ga-foot__build:hover { color: var(--fg); border-color: var(--fg-muted); }
+.ga-foot__build:hover code { color: var(--fg); }
 @media (max-width: 720px) {
   .ga-foot__row { grid-template-columns: 1fr 1fr; }
   .ga-hero__meta { grid-template-columns: 1fr; }

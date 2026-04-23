@@ -43,8 +43,11 @@
       </div>
     </div>
     <div class="ga-foot__bot">
-      <span>{{ site.copyright_text }}</span>
-      <span><a href="https://github.com/GeneratedArt/website" rel="noopener">Source</a> · <a href="/docs">Open standards</a></span>
+      <span>© {{ site.time | date: "%Y" }} GeneratedArt — community-run, open standards.</span>
+      <a class="ga-foot__build" href="{{ site.build.commit_url }}" rel="noopener" title="Built {{ site.build.built_at }} from {{ site.build.commit_long | default: 'local' }}">
+        build <code>{{ site.build.commit_short }}</code>
+      </a>
+      <span><a href="{{ site.build.repo_url }}" rel="noopener">Source</a> · <a href="/docs">Open standards</a></span>
     </div>
   </div>
 </footer>
