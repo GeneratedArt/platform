@@ -1,0 +1,15 @@
+---
+import AppLayout from "~/layouts/AppLayout.astro";
+import CollabAcceptIsland from "~/components/CollabAcceptIsland.tsx";
+export const prerender = false;
+const { id } = Astro.params as { id: string };
+---
+<AppLayout title="Collaboration — GeneratedArt">
+  <section class="container page-head">
+    <p class="eyebrow">Co-sign agreement</p>
+    <h1 class="h-display">Review &amp; counter-sign</h1>
+  </section>
+  <section class="container section">
+    <CollabAcceptIsland client:load id={id} />
+  </section>
+</AppLayout>

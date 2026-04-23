@@ -17,6 +17,7 @@ import { ownerRoutes } from "./routes/owners";
 import { galleryRoutes } from "./routes/galleries";
 import { applicationRoutes } from "./routes/applications";
 import { webhookRoutes } from "./routes/webhooks";
+import { projectCollabRoutes, collabRoutes } from "./routes/collabs";
 
 export type { Env };
 
@@ -69,6 +70,8 @@ app.route("/auth", authRoutes);
 app.route("/me", meRoutes);
 app.route("/artists", artistRoutes);
 app.route("/projects", projectRoutes);
+app.route("/projects", projectCollabRoutes);
+app.route("/collabs", collabRoutes);
 app.route("/editions", editionRoutes);
 app.route("/owners", ownerRoutes);
 app.route("/galleries", galleryRoutes);

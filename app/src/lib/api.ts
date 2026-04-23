@@ -16,6 +16,10 @@ export const RENDERER_BASE: string =
 export const SITE_BASE: string =
   // @ts-ignore
   (import.meta as any).env?.PUBLIC_SITE_BASE ?? "https://generatedart.com";
+export const CHAIN_ID: number = Number(
+  // @ts-ignore
+  (import.meta as any).env?.PUBLIC_CHAIN_ID ?? 84532
+);
 
 const TOKEN_KEY = "ga.session_token";
 

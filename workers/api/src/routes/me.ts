@@ -31,3 +31,22 @@ meRoutes.get("/projects", requireAuth, async (c) => {
     .all();
   return c.json({ projects: rows.results ?? [] });
 });
+
+/** Pending collab invites addressed to the caller's wallet. Drives the
+ *  "Agreement Request from @collab.eth" card on /dashboard. */
+meRoutes.get("/collab-invites", requireAuth, async (c) => {
+  const userId = c.get("userId")!;
+  const me = await c.env.DB.prepare(`SELECT wallet_address FROM users WHERE id = ?`)
+    .bind(userId).first<{ wallet_address: string | null }>();
+  if (!me?.wallet_address) return c.json({ invites: [] });
+  const rows = await c.env.DB.prepare(
+    `SELECT c.id, c.role, c.bps, c.inviter_address, c.created_at,
+            p.slug AS project_slug, p.title AS project_title
+       FROM collabs c JOIN projects p ON p.id = c.project_id
+      WHERE c.collaborator_address = ? AND c.status = 'pending'
+      ORDER BY c.created_at DESC LIMIT 50`
+  )
+    .bind(me.wallet_address.toLowerCase())
+    .all();
+  return c.json({ invites: rows.results ?? [] });
+});
