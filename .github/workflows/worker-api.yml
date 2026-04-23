@@ -13,9 +13,8 @@ name: Deploy API Worker
 #   CLOUDFLARE_API_TOKEN   — token with "Workers Scripts:Edit" + "D1:Edit"
 #   CLOUDFLARE_ACCOUNT_ID  — numeric account id
 #
-# This intentionally lives in a separate workflow from cloudflare-pages.yml
-# (the static site) so a broken Jekyll build never blocks an API hotfix and
-# vice versa.
+# This intentionally lives in a separate workflow from pages.yml (the static
+# site) so a broken Jekyll build never blocks an API hotfix and vice versa.
 
 on:
   push:
@@ -47,15 +46,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: workers/api/package-lock.json
 
       - name: Install API worker deps
         working-directory: workers/api
-        run: npm ci --no-audit --no-fund
+        # Foundation phase: no package-lock.json yet. Switch to `npm ci` (and
+        # restore the cache + cache-dependency-path block above) once a lock
+        # file is committed.
+        run: npm install --no-audit --no-fund
+
+      - name: Detect D1 migrations
+        id: detect_migrations
+        run: |
+          if [ -d workers/api/migrations ] && [ -n "$(ls -A workers/api/migrations 2>/dev/null)" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Apply D1 migrations (idempotent)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: |
+          steps.detect_migrations.outputs.present == 'true' &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
         working-directory: workers/api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

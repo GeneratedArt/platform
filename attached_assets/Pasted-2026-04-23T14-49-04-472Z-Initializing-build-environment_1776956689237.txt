@@ -1,0 +1,106 @@
+2026-04-23T14:49:04.472Z	Initializing build environment...
+2026-04-23T14:49:06.724Z	Success: Finished initializing build environment
+2026-04-23T14:49:07.990Z	Cloning repository...
+2026-04-23T14:49:12.727Z	No build output detected to cache. Skipping.
+2026-04-23T14:49:12.727Z	No dependencies detected to cache. Skipping.
+2026-04-23T14:49:12.729Z	Detected the following tools from environment: ruby@3.4.7
+2026-04-23T14:49:12.732Z	Installing ruby 3.4.7
+2026-04-23T14:49:12.932Z	Installing project dependencies: BUNDLE_WITHOUT="development test" bundle install
+2026-04-23T14:49:13.782Z	Fetching https://github.com/eventmachine/eventmachine.git
+2026-04-23T14:49:17.255Z	Fetching gem metadata from https://rubygems.org/...........
+2026-04-23T14:49:17.318Z	Resolving dependencies...
+2026-04-23T14:49:17.770Z	Fetching bigdecimal 4.1.2
+2026-04-23T14:49:17.908Z	Installing bigdecimal 4.1.2 with native extensions
+2026-04-23T14:49:28.971Z	Fetching logger 1.7.0
+2026-04-23T14:49:28.989Z	Installing logger 1.7.0
+2026-04-23T14:49:36.643Z	Fetching jekyll 4.3.4
+2026-04-23T14:49:36.748Z	Installing jekyll 4.3.4
+2026-04-23T14:49:36.854Z	Fetching jekyll-archives 2.3.0
+2026-04-23T14:49:36.854Z	Fetching jekyll-feed 0.17.0
+2026-04-23T14:49:36.868Z	Installing jekyll-archives 2.3.0
+2026-04-23T14:49:36.879Z	Installing jekyll-feed 0.17.0
+2026-04-23T14:49:36.890Z	Fetching jekyll-paginate-v2 3.0.0
+2026-04-23T14:49:36.904Z	Installing jekyll-paginate-v2 3.0.0
+2026-04-23T14:49:37.601Z	Bundle complete! 11 Gemfile dependencies, 36 gems now installed.
+2026-04-23T14:49:37.602Z	Gems in the groups 'development' and 'test' were not installed.
+2026-04-23T14:49:37.602Z	Use `bundle info [gemname]` to see where a bundled gem is installed.
+2026-04-23T14:49:38.189Z	Executing user deploy command: npx wrangler deploy
+2026-04-23T14:49:40.338Z	npm warn exec The following package was not found and will be installed: wrangler@4.84.1
+2026-04-23T14:49:52.020Z	
+2026-04-23T14:49:52.024Z	 ⛅️ wrangler 4.84.1
+2026-04-23T14:49:52.027Z	───────────────────
+2026-04-23T14:49:52.199Z	▲ [WARNING] No lock file has been detected in the current working directory. This might indicate that the project is part of a workspace. Auto-configuration of projects inside workspaces is limited. See https://developers.cloudflare.com/workers/framework-guides/automatic-configuration/#workspaces
+2026-04-23T14:49:52.200Z	
+2026-04-23T14:49:52.200Z	
+2026-04-23T14:49:52.208Z	
+2026-04-23T14:49:52.209Z	Detected Project Settings:
+2026-04-23T14:49:52.209Z	 - Worker Name: platform
+2026-04-23T14:49:52.209Z	 - Framework: Static
+2026-04-23T14:49:52.209Z	 - Build Command: npx bundle exec jekyll build
+2026-04-23T14:49:52.210Z	 - Output Directory: _site
+2026-04-23T14:49:52.210Z	
+2026-04-23T14:49:52.210Z	? Do you want to modify these settings?
+2026-04-23T14:49:52.210Z	🤖 Using fallback value in non-interactive context: no
+2026-04-23T14:49:52.213Z	
+2026-04-23T14:49:52.213Z	📄 Create wrangler.jsonc:
+2026-04-23T14:49:52.213Z	  {
+2026-04-23T14:49:52.213Z	    "$schema": "node_modules/wrangler/config-schema.json",
+2026-04-23T14:49:52.213Z	    "name": "platform",
+2026-04-23T14:49:52.213Z	    "compatibility_date": "2026-04-23",
+2026-04-23T14:49:52.213Z	    "observability": {
+2026-04-23T14:49:52.213Z	      "enabled": true
+2026-04-23T14:49:52.214Z	    },
+2026-04-23T14:49:52.214Z	    "assets": {
+2026-04-23T14:49:52.214Z	      "directory": "_site"
+2026-04-23T14:49:52.214Z	    },
+2026-04-23T14:49:52.214Z	    "compatibility_flags": [
+2026-04-23T14:49:52.214Z	      "nodejs_compat"
+2026-04-23T14:49:52.214Z	    ]
+2026-04-23T14:49:52.214Z	  }
+2026-04-23T14:49:52.214Z	
+2026-04-23T14:49:52.214Z	? Proceed with setup?
+2026-04-23T14:49:52.214Z	🤖 Using fallback value in non-interactive context: yes
+2026-04-23T14:49:52.267Z	├ Adding Wrangler files to the .gitignore file
+2026-04-23T14:49:52.268Z	│ updated .gitignore file
+2026-04-23T14:49:52.269Z	│
+2026-04-23T14:49:52.269Z	[build] Running: npx bundle exec jekyll build
+2026-04-23T14:49:53.041Z	[build] npm error could not determine executable to run
+2026-04-23T14:49:53.044Z	[build] 
+2026-04-23T14:49:53.044Z	[build] npm error A complete log of this run can be found in: /opt/buildhome/.npm/_logs/2026-04-23T14_49_52_412Z-debug-0.log
+2026-04-23T14:49:53.045Z	[build] 
+2026-04-23T14:49:53.142Z	✘ [ERROR] Error: Command failed with exit code 1: npx bundle exec jekyll build
+2026-04-23T14:49:53.142Z	
+2026-04-23T14:49:53.142Z	  npm error could not determine executable to run
+2026-04-23T14:49:53.142Z	  npm error A complete log of this run can be found in: /opt/buildhome/.npm/_logs/2026-04-23T14_49_52_412Z-debug-0.log
+2026-04-23T14:49:53.142Z	      at makeError (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:53998:18)
+2026-04-23T14:49:53.142Z	      at handlePromise (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:54465:29)
+2026-04-23T14:49:53.142Z	      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-04-23T14:49:53.142Z	      at async runCommand (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:135638:5)
+2026-04-23T14:49:53.142Z	      at async runAutoConfig (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:232240:7)
+2026-04-23T14:49:53.142Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:233538:41)
+2026-04-23T14:49:53.143Z	      at async /opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182258:26
+2026-04-23T14:49:53.143Z	      at async Object.handler (/opt/buildhome/.npm/_npx/32026684e21afda6/node_modules/wrangler/wrangler-dist/cli.js:182207:7) {
+2026-04-23T14:49:53.143Z	    shortMessage: 'Command failed with exit code 1: npx bundle exec jekyll build',
+2026-04-23T14:49:53.143Z	    command: 'npx bundle exec jekyll build',
+2026-04-23T14:49:53.143Z	    escapedCommand: 'npx bundle exec jekyll build',
+2026-04-23T14:49:53.144Z	    exitCode: 1,
+2026-04-23T14:49:53.144Z	    signal: undefined,
+2026-04-23T14:49:53.144Z	    signalDescription: undefined,
+2026-04-23T14:49:53.144Z	    stdout: '',
+2026-04-23T14:49:53.144Z	    stderr: 'npm error could not determine executable to run\n' +
+2026-04-23T14:49:53.144Z	      'npm error A complete log of this run can be found in: /opt/buildhome/.npm/_logs/2026-04-23T14_49_52_412Z-debug-0.log',
+2026-04-23T14:49:53.144Z	    failed: true,
+2026-04-23T14:49:53.144Z	    timedOut: false,
+2026-04-23T14:49:53.144Z	    isCanceled: false,
+2026-04-23T14:49:53.144Z	    killed: false
+2026-04-23T14:49:53.144Z	  }
+2026-04-23T14:49:53.144Z	
+2026-04-23T14:49:53.144Z	
+2026-04-23T14:49:53.148Z	
+2026-04-23T14:49:53.148Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2026-04-23T14:49:53.151Z	
+2026-04-23T14:49:53.153Z	✘ [ERROR] Running custom build `npx bundle exec jekyll build` failed. There are likely more logs from your build command above.
+2026-04-23T14:49:53.153Z	
+2026-04-23T14:49:53.153Z	
+2026-04-23T14:49:53.169Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2026-04-23_14-49-50_702.log"
+2026-04-23T14:49:53.341Z	Failed: error occurred while running deploy command

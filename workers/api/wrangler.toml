@@ -1,0 +1,19 @@
+name = "generatedart-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Bindings (D1, KV, R2, Queues) are intentionally omitted from the default
+# environment so the worker boots cleanly during the foundation phase.
+# They will be re-introduced as features are layered back on.
+
+[observability]
+enabled = true
+
+# ---- production ----
+# Attaches the Worker to api.generatedart.com once the zone DNS is configured.
+[env.production]
+name = "generatedart-api"
+routes = [
+  { pattern = "api.generatedart.com/*", zone_name = "generatedart.com" }
+]

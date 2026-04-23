@@ -1,10 +1,11 @@
 # General Settings
-title: "Snowlake - Creative Business and Startup Jekyll Theme"
-email: "tortoizthemes@gmail.com"
-email_2: "support@tortoizthemes.com"
-description: >- # this means to ignore newlines until "baseurl:"
-  Snowlake Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
-  with a variety of UI elements and countless features. A perfect theme to build your next dream project.
+title: "GeneratedArt"
+email: "hello@generatedart.com"
+email_2: "stewards@generatedart.com"
+description: >-
+  Community-run generative art platform and NFT marketplace for code-based
+  generative art. A spiritual successor to fxhash and Art Blocks, with a
+  physical-digital bridge through the Geneva gallery.
 favicon: "/assets/images/favicon.webp"
 
 # Seo Meta Settings
@@ -12,7 +13,7 @@ meta_og_image: "/assets/images/meta-image.webp"
 meta_twitter_image: "/assets/images/meta-image.webp"
 
 # Site Wide Theme Color Setting
-color_scheme:  #Aqua Blue Brown Cobalt Green Hibiscus Leaf Meander Orange Pink Purple Red Rose Sky Teal Violet Yellow
+color_scheme: red  #Aqua Blue Brown Cobalt Green Hibiscus Leaf Meander Orange Pink Purple Red Rose Sky Teal Violet Yellow
 
 # Site Wide Theme Font Setting
 font_scheme:  # Jost, Nunito , DM Sans + Zilla Slab , HK Grotesk, Abhaya, Libre
@@ -28,7 +29,7 @@ address_01: 'Moonshine St. <br>14/05 Light City,<br /> London, United Kingdom'
 phone_number: "+00 (123) 456 78 90"
 
 # Site Wide Copyright
-copyright_text: "© 2025 Snowlake. All rights reserved."
+copyright_text: "© 2026 GeneratedArt. Released under MIT (platform code) and CC-BY-NC-4.0 (artist bundles, default)."
 
 # Site Wide Google Analytics
 google_analytics:

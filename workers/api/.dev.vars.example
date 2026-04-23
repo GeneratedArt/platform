@@ -1,0 +1,2 @@
+# Copy to .dev.vars for local `wrangler dev` runs. Never commit .dev.vars.
+# Secrets are populated as features are layered on; foundation needs none.

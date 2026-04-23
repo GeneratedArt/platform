@@ -16,12 +16,12 @@ node_modules/
 .pnpm-store/
 *.log
 
-# Jekyll
-site/_site/
-site/.sass-cache/
-site/.jekyll-cache/
-site/.jekyll-metadata
-site/vendor/
+# Jekyll (build at repo root)
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+vendor/
 
 # Cloudflare Workers / Wrangler
 .wrangler/
@@ -38,10 +38,6 @@ contracts/broadcast/
 contracts/lib/
 !contracts/lib/.gitkeep
 
-# Astro
-app/dist/
-app/.astro/
-
 # Build artifacts
 dist/
 build/
@@ -52,3 +48,6 @@ build/
 .env.*
 !.env.example
 secrets/
+
+# Stale legacy git dir from April 2026 reset (do not commit)
+.git.broken/
