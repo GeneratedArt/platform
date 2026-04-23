@@ -1,85 +1,49 @@
 name: Deploy Jekyll site to Cloudflare Pages
 
-# Builds the Jekyll site under `site/` and publishes it to the Cloudflare
-# Pages project `generatedart-website` (subdomain: generatedart-website.pages.dev).
-#
-# This runs in addition to the GitHub Pages workflow (.github/workflows/pages.yml).
-# Cloudflare Pages gives us:
-#   • a unique preview URL per branch / PR
-#   • global edge cache + free TLS for any custom domain
-#   • the same artifact path the production custom domain (generatedart.com)
-#     will eventually be CNAME'd to
-#
-# Required repo secrets (Settings → Secrets and variables → Actions):
-#   CLOUDFLARE_API_TOKEN     — token with "Pages:Edit" permission for the account
-#   CLOUDFLARE_ACCOUNT_ID    — numeric account id
-# Optional (used by the D1-sync step, gracefully skipped if absent):
-#   CLOUDFLARE_D1_DATABASE_ID
-
 on:
   push:
-    branches: [main]
-    paths:
-      - "site/**"
-      - "scripts/sync-d1-to-jekyll.mjs"
-      - ".github/workflows/cloudflare-pages.yml"
-  pull_request:
-    paths:
-      - "site/**"
-      - "scripts/sync-d1-to-jekyll.mjs"
-      - ".github/workflows/cloudflare-pages.yml"
+    branches: [ main ]
   workflow_dispatch:
-  schedule:
-    - cron: "23 4 * * *"
-
-permissions:
-  contents: read
-  deployments: write
-  pull-requests: write
-
-concurrency:
-  group: cf-pages-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build & publish to Cloudflare Pages
+    permissions:
+      contents: read
+      deployments: write
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: ruby/setup-ruby@v1
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2"
+          ruby-version: '3.2'
           bundler-cache: true
-          working-directory: site
+          working-directory: ./site
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
 
-      - name: Snapshot D1 → _data/ (skips when secrets absent)
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+      - name: Sync D1 data to Jekyll (optional - skips if no secrets)
         run: node scripts/sync-d1-to-jekyll.mjs site
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.c016d64a9a4f4a2900fb3385bd08144f }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.cfut_aChQEkqL6xQ9mrNq54d89kHSjHdJGD8lCKwkf6PC0c307700 }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
 
-      - name: Build with Jekyll
-        working-directory: site
+      - name: Build Jekyll site
+        working-directory: ./site
+        run: bundle exec jekyll build --destination "/home/runner/work/platform/platform/_site"
         env:
           JEKYLL_ENV: production
-        run: bundle exec jekyll build --destination "${{ github.workspace }}/_site"
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # `wrangler pages deploy` honours the branch flag — main pushes go to
-          # the production environment, every other ref gets its own preview URL.
-          command: >-
-            pages deploy _site
-            --project-name=generatedart-website
-            --branch=${{ github.head_ref || github.ref_name }}
-            --commit-hash=${{ github.sha }}
+          apiToken: ${{ secrets.c016d64a9a4f4a2900fb3385bd08144f }}
+          accountId: ${{ secrets.cfut_aChQEkqL6xQ9mrNq54d89kHSjHdJGD8lCKwkf6PC0c307700 }}
+          command: pages deploy _site --project-name=generatedart-website --branch=main
