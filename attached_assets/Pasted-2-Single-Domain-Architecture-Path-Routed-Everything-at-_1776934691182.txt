@@ -1,0 +1,30 @@
+2. Single-Domain Architecture (Path-Routed)
+Everything at https://generatedart.com/.... Implementation uses Cloudflare Pages (serves the static Jekyll+Astro output) with Pages Functions (Workers) handling /api/*, /render/*, /ipfs/*, and webhooks. DNSLink maps /ipfs/* to the IPFS gateway.
+generatedart.com/                      Jekyll homepage
+generatedart.com/artists               Jekyll directory
+generatedart.com/artists/:slug         Jekyll profile page
+generatedart.com/projects              Jekyll catalog
+generatedart.com/projects/:slug        Jekyll project page (with live iframe to /render)
+generatedart.com/galleries             Jekyll gallery directory
+generatedart.com/galleries/:slug       Jekyll gallery page
+generatedart.com/docs/*                Jekyll docs
+generatedart.com/manifesto             Jekyll static
+generatedart.com/blog/*                Jekyll posts
+
+generatedart.com/studio                Astro SPA — artist studio dashboard
+generatedart.com/studio/new            Astro SPA — create project wizard
+generatedart.com/studio/:slug          Astro SPA — project editor (repo, release, earnings)
+generatedart.com/mint/:slug            Astro SPA — collector mint page
+generatedart.com/dashboard             Astro SPA — collector dashboard (holdings, activity)
+generatedart.com/gallery-console       Astro SPA — gallery operator console
+generatedart.com/showcase              Astro SPA — gallery kiosk/display mode (fullscreen)
+generatedart.com/showcase/:gallerySlug Astro SPA — public showcase of a gallery's exhibition
+generatedart.com/collaborate/:agreementId  Astro SPA — co-sign agreements
+generatedart.com/profile/:address      Astro SPA — any wallet's public profile
+
+generatedart.com/api/*                 Pages Functions (Hono) — all REST endpoints
+generatedart.com/render/:cid/:hash     Pages Function — renders a bundle with seeded hash
+generatedart.com/ipfs/:cid/*           IPFS gateway (DNSLink universal path)
+generatedart.com/webhooks/github       Pages Function — GitHub App events
+generatedart.com/webhooks/chain        Pages Function — Alchemy/Cloudflare webhook receiver
+Iframe sandbox note: The renderer lives on the same origin as the parent. Security comes from <iframe sandbox="allow-scripts allow-pointer-lock"> without allow-same-origin — this gives the iframe a null origin, which is actually more isolated than a cross-origin subdomain (can't read parent cookies, localStorage, or IndexedDB at all). Cookies for /render/* are scoped via SameSite=Strict; Secure and the renderer sets Content-Security-Policy: default-src 'self' blob: data:; script-src 'unsafe-inline' 'unsafe-eval' blob:; plus Cross-Origin-Resource-Policy: cross-origin so the iframe is fully isolated from the host page.
