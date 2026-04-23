@@ -1,0 +1,52 @@
+13. Gallery Flow — Sign Up, Agreement, Showcase
+This is a first-class feature. Galleries can run GeneratedArt as their primary display infrastructure.
+13.1 Gallery sign-up
+
+Any wallet visits /galleries/apply.
+Fill form: name, city, country, timezone, physical address (optional, encrypted), website, number of screens, venue description.
+Signs EIP-712 GalleryApplication(name, city, venueHash).
+Application posts to GeneratedArt/gallery-applications as a signed GitHub Issue.
+Curators verify legitimacy (website, address, public presence) and approve → role flips to gallery, verified=1 if real-world venue confirmed.
+
+13.2 Gallery Console (/gallery-console)
+Tabs:
+
+Discover — browse all artists + projects, filter by style/chain/price/score, bookmark
+Agreements — all pending/active/expired agreements
+Showcase — display configurations and launch kiosk
+Exhibitions — curated public pages (public-facing at /galleries/:slug)
+Revenue — royalty earnings if co-sell agreements
+Settings — screens, wallets, verified domains
+
+13.3 Creating a gallery↔artist agreement
+
+Gallery clicks Propose Agreement on any artist's profile or project page.
+Form:
+
+Scope: exhibit_only / exhibit_and_sell / co_mint / physical_print
+Projects: multi-select from artist's approved projects
+Dates: start, end
+Revenue split (if scope includes sale): gallery bps, default 10% of secondary, 0% of primary
+Terms: free-text markdown (gallery's standard terms), auto-pinned to IPFS on submission
+
+
+Gallery reviews final terms, signs EIP-712 GalleryAgreement(…).
+Artist receives notification on /dashboard → Agreement Request from @gallery.eth.
+Artist reviews full terms (rendered from IPFS), can:
+
+Counter-sign → signs their EIP-712 → one party submits GalleryAgreement.register() on-chain
+Negotiate → free-text comment, creates a new version (either party can keep iterating)
+Reject → closes the proposal with a reason
+
+
+On-chain registration emits AgreementRegistered; indexer flips agreements.status='active'.
+
+13.4 What an active agreement enables
+
+Project page shows "Exhibited at @gallery.eth" with link to gallery profile
+Gallery gains access to Showcase Mode for those specific projects (see §14)
+If scope includes co_mint or physical_print, the RoyaltySplitter routes the agreed bps to the gallery on future sales
+Both parties' profiles display the relationship publicly
+
+13.5 Revocation
+Either party can /api/agreements/:id/revoke with a signed revocation. On-chain revoke() call. Royalty splitting stops for future mints; already-minted royalties continue to flow per the original terms (protects collectors).

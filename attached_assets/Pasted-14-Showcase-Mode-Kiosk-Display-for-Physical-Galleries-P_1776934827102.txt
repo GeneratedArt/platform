@@ -1,0 +1,50 @@
+14. Showcase Mode — Kiosk Display for Physical Galleries
+Physical galleries install a display PC / Raspberry Pi / dedicated screen pointed at /showcase/:configId with a signed URL. The screen signs in with the gallery's wallet (or an authorized sub-wallet) and runs fullscreen.
+14.1 Creating a showcase config
+Gallery Console → Showcase → New Config. Form:
+
+Name: "Main Hall — 4K Landscape"
+Active agreements: multi-select — determines which projects are eligible
+Resolution: dropdown — 1920x1080, 2560x1440, 3840x2160, 7680x4320 (8K), 2160x3840 (portrait), 5120x1440 (ultrawide), or custom WxH
+Aspect ratio: derived from resolution, but overridable
+Display mode:
+
+Single piece — one edition, selected by the gallery, full-bleed
+Slideshow — rotation through all agreed pieces, configurable dwell time (default 120s)
+Grid — N×M mosaic of live-rendering iframes (mind GPU — max 4 simultaneous by default)
+
+
+Overlay style:
+
+Minimal — small corner card: artist name + title, fade-in on motion
+Museum — bottom third panel: artist bio, piece title, description, year, medium, edition 5/100, QR to /projects/:slug
+Hidden — pure art, no overlay
+
+
+Burn-in protection: periodic pixel-shift for OLED screens, toggle
+Color calibration profile: sRGB / P3 / Rec.709
+
+14.2 Launching a kiosk
+Gallery clicks Launch → generates a short-lived signed URL: /showcase/:configId?t=<ephemeralToken>. Paste into the display PC's browser (any Chromium), it enters fullscreen and stays there. Token rotates every 24h from the console.
+14.3 Kiosk runtime
+
+The page calls /api/showcase/:configId/manifest on load and every 60s to get:
+
+Current piece(s) to show
+Signed render URLs (/render/<cid>/<hash>)
+Metadata for overlays
+
+
+Pieces render in sandboxed iframes sized to the configured resolution
+Offline resilience: caches the last 5 manifests + their bundles in Cache API; if network drops, keeps rotating the cached set
+Remote control: gallery operator opens /gallery-console/showcase/:configId on phone → sees live preview + can Next, Pause, Swap, Emergency Off (sends message via a Durable Object pub-sub)
+
+14.4 Resolution handling per piece
+Generative pieces are resolution-independent in principle. In practice the renderer:
+
+Queries the bundle's declared ideal aspect (from ga.meta.aspect in index.js, optional)
+If the config resolution's aspect mismatches the piece's ideal, letterboxes (black bars) or frames (museum-style passepartout) — never stretches
+Forces DPR=1 or 2 depending on hardware to avoid blur on 4K/8K
+
+14.5 Analytics
+Each showcase play logs (off-chain) {configId, projectId, tokenId, startedAt, duration} for the gallery's dashboard — "Your 'Main Hall' screen played 47 pieces today, top piece: …". No PII, no tracking.
