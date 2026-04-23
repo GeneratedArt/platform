@@ -3,27 +3,63 @@ layout: genart
 title: ""
 description: "Code-based generative art on Base, with a permanent home in Geneva."
 ---
-<section class="ga-hero ga-container">
-  <p class="ga-eyebrow">Generative art · Base · Geneva</p>
-  <h1 class="ga-display">
-    Art that is <em>written</em>,<br />
-    not painted.
-  </h1>
-  <p class="ga-lede" style="margin-top:2rem;font-size:1.25rem">
-    GeneratedArt is a community-run platform for code-based generative work.
-    Every piece is open-source, deterministic from a single hash, pinned to IPFS,
-    and minted on Base. Selected editions are exhibited in our Geneva gallery
-    and shipped as ePaper dongles.
-  </p>
+{%- assign choice = site.data.editors_choice | default: empty -%}
+<section class="ga-hero ga-hero--split" aria-label="Editor's Choice hero">
+  <div class="ga-hero__stage" data-ga-hero-stage aria-live="off">
+    {% if choice.size > 0 %}
+      {% for c in choice %}
+      <a class="ga-hero__cell{% if forloop.first %} is-visible{% endif %}"
+         href="/projects/{{ c.slug }}"
+         aria-label="{{ c.title }} by {{ c.artist_handle }}"
+         tabindex="{% if forloop.first %}0{% else %}-1{% endif %}">
+        {% if c.bundle_cid and c.bundle_cid != "" %}
+          <iframe
+            {% if forloop.first %}src{% else %}data-src{% endif %}="{{ site.renderer_base_url }}/render?cid={{ c.bundle_cid }}&hash={{ c.demo_hash | default: '0xdeadbeefcafebabefeedfacedeadbeefcafebabefeedfacedeadbeefcafebabe' }}&res=1600x1600"
+            sandbox="allow-scripts allow-pointer-lock"
+            loading="lazy"
+            title="{{ c.title }} live preview"></iframe>
+        {% elsif c.preview_image %}
+          <img src="{{ c.preview_image }}" alt="{{ c.title }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" />
+        {% else %}
+          <div class="ga-hero__placeholder" aria-hidden="true">
+            <span class="ga-hero__ph-title">{{ c.title }}</span>
+            <span class="ga-hero__ph-by">{{ c.artist_handle }}</span>
+          </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    {% else %}
+      <div class="ga-hero__cell is-visible ga-hero__placeholder" aria-hidden="true">
+        <span class="ga-hero__ph-title">GeneratedArt</span>
+      </div>
+    {% endif %}
+  </div>
 
-  <dl class="ga-hero__meta">
-    <div><dt>Projects live</dt><dd data-ga-stat="projects">{{ site.data.latest.stats.projects | default: 0 }}</dd></div>
-    <div><dt>Artists</dt><dd data-ga-stat="artists">{{ site.data.latest.stats.artists | default: 0 }}</dd></div>
-    <div><dt>Galleries</dt><dd data-ga-stat="galleries">{{ site.data.latest.stats.galleries | default: 0 }}</dd></div>
-    <div><dt>Editions minted</dt><dd data-ga-stat="editions">{{ site.data.latest.stats.editions | default: 0 }}</dd></div>
-  </dl>
+  <div class="ga-hero__pane">
+    <p class="ga-eyebrow">Generative art · Base · Geneva</p>
+    <h1 class="ga-display">
+      The open platform<br />for <em>generative art</em>.
+    </h1>
+    <p class="ga-lede" style="margin-top:1.5rem">
+      Artist-owned. Code-audited. Chain-anchored. Forever forkable.
+    </p>
+
+    <div class="ga-hero__pills">
+      <a class="ga-pill ga-pill--solid" href="/projects">Explore works <span aria-hidden="true">→</span></a>
+      <a class="ga-pill" href="/apply">Apply as artist <span aria-hidden="true">→</span></a>
+      <a class="ga-pill" href="/galleries/apply">Register gallery <span aria-hidden="true">→</span></a>
+    </div>
+
+    <p class="ga-hero__caption">
+      <span data-ga-stat="projects">{{ site.data.latest.stats.projects | default: 0 }}</span> works ·
+      <span data-ga-stat="artists">{{ site.data.latest.stats.artists | default: 0 }}</span> artists ·
+      <span data-ga-stat="galleries">{{ site.data.latest.stats.galleries | default: 0 }}</span> galleries ·
+      <span data-ga-stat="editions">{{ site.data.latest.stats.editions | default: 0 }}</span> editions minted
+    </p>
+  </div>
 </section>
 <script src="/assets/js/stats-poll.js" defer></script>
+<script src="/assets/js/hero-rotator.js" defer></script>
 
 {% if site.data.latest.next_drop %}
 {% assign d = site.data.latest.next_drop %}
