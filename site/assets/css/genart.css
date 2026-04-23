@@ -103,8 +103,9 @@ a:hover { border-color: var(--fg); }
 .ga-mark__blob {
   fill: #e63b2e;
   transform-origin: 50% 50%;
-  animation: ga-mark-morph 9s ease-in-out infinite,
-             ga-mark-spin 26s linear infinite;
+  animation: ga-mark-morph 4.5s ease-in-out infinite,
+             ga-mark-spin 14s linear infinite,
+             ga-mark-bubble 3.2s ease-in-out infinite;
   shape-rendering: geometricPrecision;
 }
 .ga-mark__letters {
@@ -126,6 +127,10 @@ a:hover { border-color: var(--fg); }
 }
 @keyframes ga-mark-spin {
   to { transform: rotate(360deg); }
+}
+@keyframes ga-mark-bubble {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.06, 0.94); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ga-mark__blob {
