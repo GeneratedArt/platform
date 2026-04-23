@@ -3,6 +3,12 @@
 ## Overview
 Community-run generative art platform and NFT marketplace for code-based generative art (p5.js / three.js / WebGL / GLSL). Spiritual successor to fxhash and Art Blocks, with a physical-digital bridge through the Geneva gallery.
 
+## Repository
+- **Canonical remote**: `https://github.com/GeneratedArt/platform.git` (this is the live monorepo)
+- **Archived predecessor**: `https://github.com/GeneratedArt/website` — held only the Jekyll site under the old layout; superseded April 2026
+- Migration April 23 2026 was a `fast-export | fast-import` rebuild (resolves a corrupt-pack issue in the old object DB and drops 26 MB of stale root-level `_site/` build output that pre-dated the `site/` move). 63 commits preserved, message/author/date intact, but commit shas differ from any pre-migration local clone — anyone with an older checkout should re-clone.
+- Auth: pushes from this Replit use a fine-grained PAT in `GITHUB_PAT` (Contents: R/W, Workflows: R/W, Metadata: R/O), scoped to `GeneratedArt/platform` only. Token never lands on disk or in the remote URL — supplied to git via an inline credential helper.
+
 ## Monorepo layout
 ```
 platform/
