@@ -1,0 +1,58 @@
+---
+import "../styles/app.css";
+import SignInIsland from "../components/SignInIsland.tsx";
+const { title = "GeneratedArt", description = "Studio, mint, dashboard, and curator console for GeneratedArt." } = Astro.props as { title?: string; description?: string };
+const path = Astro.url.pathname;
+const link = (h: string, label: string) => ({ h, label, current: path === h || (h !== "/" && path.startsWith(h)) });
+const links = [
+  link("/studio", "Studio"),
+  link("/dashboard", "Dashboard"),
+  link("/admin", "Admin"),
+];
+const apiBase = (import.meta as any).env?.PUBLIC_API_BASE ?? "https://api.generatedart.com";
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0b0c" />
+    <link rel="canonical" href={`https://app.generatedart.com${path}`} />
+    <link rel="preconnect" href={apiBase} crossorigin />
+  </head>
+  <body>
+    <header class="app-nav">
+      <div class="container app-nav__row">
+        <a href="/" class="app-nav__brand" aria-label="GeneratedArt — app home">
+          <svg class="app-nav__mark" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="46" />
+            <text x="50" y="50" text-anchor="middle" dominant-baseline="central">GA</text>
+          </svg>
+          <span>Generated<em>Art</em></span>
+        </a>
+        <nav class="app-nav__links" aria-label="Primary">
+          {links.map((l) => (
+            <a href={l.h} aria-current={l.current ? "page" : undefined}>{l.label}</a>
+          ))}
+        </nav>
+        <div id="ga-signin-slot">
+          <SignInIsland client:load />
+        </div>
+      </div>
+    </header>
+    <main><slot /></main>
+    <footer class="app-foot">
+      <div class="container row row--between">
+        <span>GeneratedArt — community-run, on Base.</span>
+        <span>
+          <a href="https://generatedart.com" rel="noopener">generatedart.com</a>
+          &nbsp;·&nbsp;
+          <a href="https://github.com/GeneratedArt" rel="noopener">GitHub</a>
+        </span>
+      </div>
+    </footer>
+  </body>
+</html>

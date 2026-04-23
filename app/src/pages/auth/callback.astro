@@ -1,0 +1,47 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro";
+---
+<AppLayout title="Signing in… — GeneratedArt">
+  <section class="container section">
+    <div class="card" style="max-width:520px">
+      <p class="eyebrow">Authentication</p>
+      <h1 class="h-section">Signing you in</h1>
+      <p class="muted" id="msg">Exchanging your GitHub code for a session…</p>
+      <p class="error" id="err" hidden></p>
+    </div>
+  </section>
+</AppLayout>
+
+<script type="module">
+  import { apiFetch, setToken } from "~/lib/api.ts";
+
+  const msg = document.getElementById("msg");
+  const err = document.getElementById("err");
+  const url = new URL(location.href);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  let expected = null;
+  try { expected = sessionStorage.getItem("ga.oauth_state"); } catch {}
+  let ret = "/dashboard";
+  try { ret = sessionStorage.getItem("ga.oauth_return") || ret; } catch {}
+
+  function fail(m) { msg.hidden = true; err.hidden = false; err.textContent = m; }
+
+  (async () => {
+    if (!code) return fail("Missing OAuth code in the callback URL.");
+    if (!expected || expected !== state) return fail("OAuth state mismatch — please retry sign-in.");
+    try {
+      const res = await apiFetch("/auth/github/callback", {
+        method: "POST",
+        body: JSON.stringify({ code, redirect_uri: location.origin + "/auth/callback" }),
+        auth: false,
+      });
+      if (!res?.token) return fail("Sign-in didn't return a session token.");
+      setToken(res.token);
+      try { sessionStorage.removeItem("ga.oauth_state"); sessionStorage.removeItem("ga.oauth_return"); } catch {}
+      location.replace(ret);
+    } catch (e) {
+      fail(e.message || "Sign-in failed.");
+    }
+  })();
+</script>

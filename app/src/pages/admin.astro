@@ -1,0 +1,96 @@
+---
+import AppLayout from "../layouts/AppLayout.astro";
+---
+<AppLayout title="Admin — Curator console">
+  <section class="container page-head">
+    <p class="eyebrow">Curator console · role-gated</p>
+    <h1 class="h-display">Admin</h1>
+    <p class="page-head__sub">Pending artist applications, projects waiting for curator approval, and flagged content.</p>
+  </section>
+
+  <section class="container section">
+    <div id="admin-root"><p class="muted">Loading…</p></div>
+  </section>
+</AppLayout>
+
+<script type="module">
+  import { apiFetch, SITE_BASE } from "~/lib/api.ts";
+  import { loadMe, startGithubLogin } from "~/lib/session.ts";
+
+  const root = document.getElementById("admin-root");
+  function escape(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+  function fmtDate(s) { try { return new Date(s).toLocaleDateString(); } catch { return s ?? ""; } }
+
+  (async () => {
+    const me = await loadMe().catch(() => null);
+    if (!me) {
+      root.innerHTML = `<div class="card" style="max-width:520px"><h2 class="h-section">Sign in</h2><button class="btn" id="b">Sign in with GitHub</button></div>`;
+      document.getElementById("b").onclick = () => startGithubLogin("/admin");
+      return;
+    }
+    if (me.role !== "curator" && me.role !== "steward") {
+      root.innerHTML = `<p class="error">This area is restricted to curators and stewards.</p>`;
+      return;
+    }
+
+    root.innerHTML = `
+      <div class="grid" style="grid-template-columns:1fr;gap:2.5rem">
+        <section><h2 class="h-section">Pending applications</h2><div id="apps"><p class="muted">Loading…</p></div></section>
+        <section><h2 class="h-section">Projects in review</h2><div id="projs"><p class="muted">Loading…</p></div></section>
+      </div>`;
+
+    // Applications — fields per Worker: id, artist_slug, status, github_issue,
+    // github_url, created_at, github_login, display_name.
+    try {
+      const a = await apiFetch("/applications?status=pending");
+      const items = a?.applications || [];
+      const target = document.getElementById("apps");
+      if (items.length === 0) target.innerHTML = `<p class="muted">No pending applications.</p>`;
+      else {
+        target.innerHTML = `<table class="table"><thead><tr><th>Applicant</th><th>Artist slug</th><th>Submitted</th><th></th></tr></thead><tbody>${
+          items.map((it) => `<tr>
+            <td>${escape(it.display_name || it.github_login || "—")}${it.github_login ? ` <span class="mono subtle" style="font-size:.78rem">@${escape(it.github_login)}</span>` : ""}</td>
+            <td class="mono subtle" style="font-size:.85rem">${escape(it.artist_slug || "—")}</td>
+            <td class="mono subtle" style="font-size:.78rem">${escape(fmtDate(it.created_at))}</td>
+            <td>${it.github_url ? `<a href="${escape(it.github_url)}" target="_blank" rel="noopener" class="btn btn--ghost btn--small">Review on GitHub →</a>` : ""}</td>
+          </tr>`).join("")
+        }</tbody></table>`;
+      }
+    } catch (e) {
+      document.getElementById("apps").innerHTML = `<p class="error">Couldn't load applications: ${escape(e.message)}</p>`;
+    }
+
+    // Projects awaiting approval. The public /projects list filters to
+    // live/sold_out only, but curators get any status from the same route.
+    try {
+      const p = await apiFetch("/projects?status=in_review");
+      const items = p?.projects || [];
+      const target = document.getElementById("projs");
+      if (items.length === 0) target.innerHTML = `<p class="muted">No projects awaiting review.</p>`;
+      else {
+        target.innerHTML = `<table class="table"><thead><tr><th>Project</th><th>Edition</th><th>Created</th><th></th></tr></thead><tbody>${
+          items.map((it) => `<tr>
+            <td><a href="${escape(SITE_BASE)}/projects/${escape(it.slug)}/" target="_blank" rel="noopener">${escape(it.title)}</a></td>
+            <td class="mono subtle" style="font-size:.85rem">${escape(it.edition_size ?? "—")}</td>
+            <td class="mono subtle" style="font-size:.78rem">${escape(fmtDate(it.created_at))}</td>
+            <td>
+              <button class="btn btn--small" data-approve="${escape(it.slug)}">Approve</button>
+              ${it.github_repo ? `<a class="btn btn--ghost btn--small" href="https://github.com/${escape(it.github_repo)}" target="_blank" rel="noopener">Repo ↗</a>` : ""}
+            </td>
+          </tr>`).join("")
+        }</tbody></table>`;
+
+        target.querySelectorAll("[data-approve]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const slug = btn.dataset.approve;
+            btn.disabled = true; btn.textContent = "Approving…";
+            try { await apiFetch(`/projects/${slug}/approve`, { method: "POST" }); btn.textContent = "Approved"; }
+            catch (e) { btn.disabled = false; btn.textContent = "Approve"; alert(e.message); }
+          });
+        });
+      }
+    } catch (e) {
+      document.getElementById("projs").innerHTML = `<p class="error">Couldn't load projects: ${escape(e.message)}</p>`;
+    }
+  })();
+</script>

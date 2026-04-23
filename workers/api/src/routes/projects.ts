@@ -110,13 +110,19 @@ projectRoutes.post("/", requireRole("artist"), async (c) => {
  *  own drafts use GET /me/projects (authenticated). */
 projectRoutes.get("/", async (c) => {
   const status = c.req.query("status");
-  const allowed = new Set(["live", "sold_out"]);
-  const filter = status && allowed.has(status) ? status : null;
+  const role = c.get("userRole") ?? "collector";
+  const isCurator = role === "curator" || role === "steward";
+  // Curators may filter by any status (incl. draft / in_review / approved /
+  // archived) so the Admin console can render its review queue. Everyone else
+  // is locked to the public catalogue (live / sold_out).
+  const publicAllowed = new Set(["live", "sold_out"]);
+  const validStatus = /^[a-z_]{1,20}$/.test(status ?? "");
+  const filter = status && validStatus && (isCurator || publicAllowed.has(status)) ? status : null;
+  const cols = `id, slug, title, description, edition_size, minted_count, status,
+                contract_address, github_repo, bundle_cid, created_at`;
   const sql = filter
-    ? `SELECT id, slug, title, description, edition_size, minted_count, status, contract_address, created_at
-       FROM projects WHERE status = ? ORDER BY created_at DESC LIMIT 100`
-    : `SELECT id, slug, title, description, edition_size, minted_count, status, contract_address, created_at
-       FROM projects WHERE status IN ('live','sold_out') ORDER BY created_at DESC LIMIT 100`;
+    ? `SELECT ${cols} FROM projects WHERE status = ? ORDER BY created_at DESC LIMIT 100`
+    : `SELECT ${cols} FROM projects WHERE status IN ('live','sold_out') ORDER BY created_at DESC LIMIT 100`;
   const stmt = filter ? c.env.DB.prepare(sql).bind(filter) : c.env.DB.prepare(sql);
   const rows = await stmt.all();
   return c.json({ projects: rows.results ?? [] });

@@ -1,0 +1,63 @@
+---
+import AppLayout from "../../layouts/AppLayout.astro";
+const { address } = Astro.params;
+const short = (a: string) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
+---
+<AppLayout title={`Collection — ${short(address!)} — GeneratedArt`}>
+  <section class="container page-head">
+    <p class="eyebrow">Collection</p>
+    <h1 class="h-display"><span class="mono" style="font-size:.6em">{address}</span></h1>
+    <p class="page-head__sub">Every edition held by this wallet, rendered live from its token hash.</p>
+  </section>
+
+  <section class="container section">
+    <div id="collect-root" data-address={address}>
+      <p class="muted">Loading holdings…</p>
+    </div>
+  </section>
+</AppLayout>
+
+<script type="module">
+  import { apiFetch, RENDERER_BASE, SITE_BASE } from "~/lib/api.ts";
+
+  const root = document.getElementById("collect-root");
+  const address = root.dataset.address;
+  function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }
+  function escape(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    root.innerHTML = `<p class="error">That doesn't look like a valid Ethereum address.</p>`;
+  } else {
+    try {
+      const res = await apiFetch(`/owners/${address}/editions`, { auth: false });
+      const items = res?.editions || [];
+      if (items.length === 0) {
+        root.innerHTML = `<p class="muted">No editions held by this wallet yet.</p>`;
+      } else {
+        root.innerHTML = `<p class="eyebrow">${items.length} edition${items.length === 1 ? "" : "s"}</p>
+          <div class="grid" id="grid"></div>`;
+        const grid = document.getElementById("grid");
+        for (const e of items) {
+          grid.appendChild(el(`
+            <article class="card">
+              <a class="card__media" href="${escape(SITE_BASE)}/projects/${escape(e.project_slug)}/" style="border:0">
+                ${e.bundle_cid
+                  ? `<iframe src="${escape(RENDERER_BASE)}/render?cid=${escape(e.bundle_cid)}&hash=${escape(e.token_hash)}&res=512x512" sandbox="allow-scripts allow-pointer-lock" loading="lazy" title="${escape(e.project_title)} #${escape(e.token_id)}"></iframe>`
+                  : `<div style="display:grid;place-items:center;height:100%;color:var(--fg-subtle)">no preview</div>`}
+              </a>
+              <div class="row row--between">
+                <h3 class="card__title" style="font-size:1rem">${escape(e.project_title)}</h3>
+                <span class="mono subtle" style="font-size:.75rem">#${escape(e.token_id)}</span>
+              </div>
+              <div class="row row--between" style="font-size:.85rem">
+                <a href="${escape(SITE_BASE)}/projects/${escape(e.project_slug)}/" class="muted" style="border:0">${escape(e.project_slug)}</a>
+                ${e.contract_address ? `<a class="mono subtle" style="font-size:.75rem;border:0" href="https://basescan.org/token/${escape(e.contract_address)}?a=${escape(e.token_id)}" target="_blank" rel="noopener">basescan ↗</a>` : ""}
+              </div>
+            </article>`));
+        }
+      }
+    } catch (err) {
+      root.innerHTML = `<p class="error">Couldn't load this wallet's holdings: ${escape(err.message)}</p>`;
+    }
+  }
+</script>
