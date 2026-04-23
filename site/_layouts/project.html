@@ -1,6 +1,10 @@
 ---
 layout: genart
 ---
+{% assign minted = page.minted | default: 0 %}
+{% assign size = page.edition_size | default: 1 %}
+{% assign pct = minted | times: 100 | divided_by: size %}
+{% assign pstat = page.status | default: 'live' %}
 <article class="ga-container">
   <header class="ga-entity">
     <div class="ga-entity__media">
@@ -17,24 +21,52 @@ layout: genart
       {% endif %}
     </div>
     <div class="ga-entity__body">
-      <p class="ga-eyebrow">Project · by <a href="/artists/{{ page.artist_slug }}">{{ page.artist_name }}</a></p>
+      <p class="ga-eyebrow" style="margin:0">
+        {% if pstat == 'live' %}<span class="ga-dot" aria-hidden="true"></span>Live now{% elsif pstat == 'upcoming' %}Upcoming drop{% elsif pstat == 'sold-out' %}Sold out{% else %}Project{% endif %}
+        · by <a href="/artists/{{ page.artist_slug }}">{{ page.artist_name }}</a>
+      </p>
       <h1 class="ga-entity__title">{{ page.title }}</h1>
-      {% if page.tagline %}<p class="ga-lede">{{ page.tagline }}</p>{% endif %}
+      {% if page.tagline %}<p class="ga-lede" style="margin:0 0 1.5rem">{{ page.tagline }}</p>{% endif %}
+
+      <div class="ga-mint">
+        <div class="ga-mint__row">
+          <p class="ga-mint__price">{{ page.mint_price }} ETH<small>per edition</small></p>
+          <span class="ga-pill ga-pill--{{ pstat }}">
+            {% if pstat == 'live' %}<span class="ga-dot" aria-hidden="true" style="margin-right:0.35rem"></span>Live{% elsif pstat == 'upcoming' %}Upcoming{% elsif pstat == 'sold-out' %}Sold out{% else %}{{ pstat }}{% endif %}
+          </span>
+        </div>
+        <div>
+          <div class="ga-feature__count">
+            <span>{{ minted }}</span><span style="color:var(--fg-muted)">/ {{ size }} minted</span>
+          </div>
+          <span class="ga-progress" aria-hidden="true"><span class="ga-progress__bar" style="width:{{ pct }}%"></span></span>
+          <div class="ga-progress__meta">
+            <span>{{ pct }}% minted</span>
+            {% if page.starts_at and pstat == 'upcoming' %}<span data-ga-countdown="{{ page.starts_at }}">opens {{ page.starts_at }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="ga-mint__actions">
+          {% if pstat == 'live' %}
+          <a class="ga-feature__cta" href="{{ site.app_base_url }}/mint/{{ page.slug }}">Mint on app</a>
+          {% elsif pstat == 'upcoming' %}
+          <a class="ga-feature__cta" href="{{ site.app_base_url }}/mint/{{ page.slug }}">Notify me</a>
+          {% else %}
+          <a class="ga-feature__cta ga-feature__cta--ghost" href="{{ site.app_base_url }}/projects/{{ page.slug }}">View on secondary</a>
+          {% endif %}
+        </div>
+        <div class="ga-mint__sub">
+          {% if page.repo_url %}<a href="{{ page.repo_url }}" rel="noopener">Source</a>{% endif %}
+          {% if page.bundle_cid %}<a href="https://ipfs.generatedart.com/ipfs/{{ page.bundle_cid }}" rel="noopener">IPFS bundle</a>{% endif %}
+          {% if page.contract_address %}<a href="https://basescan.org/address/{{ page.contract_address }}" rel="noopener">Contract</a>{% endif %}
+        </div>
+      </div>
 
       <dl class="ga-entity__features">
-        <div><dt>Edition</dt><dd>{{ page.minted | default: 0 }} / {{ page.edition_size }}</dd></div>
-        <div><dt>Price</dt><dd>{{ page.mint_price }} ETH</dd></div>
         <div><dt>Chain</dt><dd>{{ page.chain | default: "Base" }}</dd></div>
         <div><dt>Royalty</dt><dd>{{ page.royalty_bps | default: 1000 | divided_by: 100 }}%</dd></div>
         {% if page.license %}<div><dt>License</dt><dd>{{ page.license }}</dd></div>{% endif %}
         {% if page.release_tag %}<div><dt>Release</dt><dd class="ga-mono">{{ page.release_tag }}</dd></div>{% endif %}
       </dl>
-
-      <p style="margin-top:2rem;display:flex;gap:1rem">
-        <a class="ga-nav__cta" href="{{ site.app_base_url }}/mint/{{ page.slug }}">Mint on app</a>
-        {% if page.repo_url %}<a href="{{ page.repo_url }}" rel="noopener">Source</a>{% endif %}
-        {% if page.bundle_cid %}<a href="https://ipfs.generatedart.com/ipfs/{{ page.bundle_cid }}" rel="noopener">IPFS bundle</a>{% endif %}
-      </p>
     </div>
   </header>
 
@@ -54,3 +86,21 @@ layout: genart
 
   {{ content }}
 </article>
+
+<script>
+  // Countdown for upcoming drops on this page.
+  document.querySelectorAll("[data-ga-countdown]").forEach(function (cd) {
+    var target = Date.parse(cd.dataset.gaCountdown);
+    if (!target) return;
+    function tick() {
+      var d = target - Date.now();
+      if (d <= 0) { cd.textContent = "opens now"; return; }
+      var days = Math.floor(d / 86400000);
+      var hrs  = Math.floor((d % 86400000) / 3600000);
+      var mins = Math.floor((d % 3600000) / 60000);
+      var secs = Math.floor((d % 60000) / 1000);
+      cd.textContent = (days ? days + "d " : "") + hrs + "h " + mins + "m " + secs + "s";
+    }
+    tick(); setInterval(tick, 1000);
+  });
+</script>
