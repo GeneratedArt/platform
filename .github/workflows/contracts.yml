@@ -1,0 +1,57 @@
+name: contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
+  pull_request:
+    paths:
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: contracts
+
+jobs:
+  test:
+    name: forge build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Show versions
+        run: |
+          forge --version
+          cast --version
+
+      - name: Install dependencies
+        run: |
+          if [ -f remappings.txt ] && [ ! -d lib/openzeppelin-contracts ]; then
+            forge install --no-commit \
+              OpenZeppelin/openzeppelin-contracts \
+              foundry-rs/forge-std || true
+          fi
+
+      - name: forge build
+        run: forge build --sizes
+
+      - name: forge test
+        run: forge test -vvv
+
+      - name: forge fmt --check
+        run: forge fmt --check
+        continue-on-error: true
+
+      - name: forge coverage (summary)
+        run: forge coverage --report summary || true
