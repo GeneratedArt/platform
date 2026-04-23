@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><!-- GeneratedArt editorial <head>. Loaded by every page using layout: genart -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f8f7f4" media="(prefers-color-scheme: light)" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+
+<title>Artists — GeneratedArt</title>
+<meta name="description" content="All artists currently publishing on GeneratedArt." />
+
+<!-- Open Graph + Twitter, all powered from page front matter. -->
+<meta property="og:site_name" content="GeneratedArt" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Artists" />
+<meta property="og:description" content="All artists currently publishing on GeneratedArt." />
+
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="canonical" href="https://generatedart.com/artists/" />
+<link rel="alternate" type="application/atom+xml" title="Blog" href="/blog/index.xml" />
+<link rel="icon" href="/assets/images/favicon.ico" sizes="any" />
+
+<link rel="stylesheet" href="/assets/css/genart.css" />
+
+<!-- Theme toggle: read preference *before* paint to avoid a light-flash. -->
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem("ga-theme");
+      var sys = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", saved || sys);
+    } catch (e) { /* private browsing — fall through to dark */ }
+  })();
+</script>
+</head>
+<body>
+  <nav class="ga-nav" aria-label="Primary">
+  <div class="ga-container ga-nav__row">
+    <a href="/" class="ga-nav__brand">Generated<em>Art</em></a>
+    <div class="ga-nav__links">
+      <a href="/projects" >Projects</a>
+      <a href="/artists" aria-current="page">Artists</a>
+      <a href="/galleries" >Galleries</a>
+      <a href="/blog" >Journal</a>
+      <a href="/manifesto" >Manifesto</a>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <button class="ga-theme-toggle" type="button" data-ga-theme-toggle aria-label="Toggle light/dark">◐</button>
+      <a class="ga-nav__cta" href="http://localhost:4321">Open app</a>
+    </div>
+  </div>
+</nav>
+
+  <main><section class="ga-section ga-container">
+  <p class="ga-eyebrow">All artists</p>
+  <h1 class="ga-display">2 artists</h1>
+  <p class="ga-lede" style="margin-top:1.5rem">
+    Approved artists publish their work as open-source repositories under the
+    <a href="https://github.com/GeneratedArt" rel="noopener">GeneratedArt</a> org.
+    Every project is reviewed by a curator before deploy.
+  </p>
+</section>
+
+<section class="ga-section ga-container">
+  <div class="ga-grid">
+    
+    
+      <article class="ga-card">
+        <a href="/artists/demo-artist/" class="ga-card__media">
+          <img src="https://avatars.githubusercontent.com/u/0?v=4" alt="Demo Artist" loading="lazy" />
+        </a>
+        <h3 class="ga-card__title"><a href="/artists/demo-artist/">Demo Artist</a></h3>
+        <div class="ga-card__meta">
+          <span>Berlin, DE</span>
+          <span class="ga-card__price">1 projects</span>
+        </div>
+      </article>
+    
+      <article class="ga-card">
+        <a href="/artists/oona-keller/" class="ga-card__media">
+          <img src="/assets/images/gallery/placeholder-square.jpg" alt="Oona Keller" loading="lazy" />
+        </a>
+        <h3 class="ga-card__title"><a href="/artists/oona-keller/">Oona Keller</a></h3>
+        <div class="ga-card__meta">
+          <span>Zürich, CH</span>
+          <span class="ga-card__price">1 projects</span>
+        </div>
+      </article>
+    
+  </div>
+</section>
+</main>
+  <footer class="ga-foot">
+  <div class="ga-container">
+    <div class="ga-foot__row">
+      <div>
+        <div class="ga-nav__brand" style="font-size:1.4rem;display:inline-block;margin-bottom:0.75rem">Generated<em>Art</em></div>
+        <p style="max-width:38ch;margin:0">
+          A community-run platform for code-based generative art. Smart contracts on Base,
+          a permanent home in Geneva, and a working physical-digital bridge.
+        </p>
+      </div>
+      <div>
+        <h4>Platform</h4>
+        <ul>
+          <li><a href="/projects">Projects</a></li>
+          <li><a href="/artists">Artists</a></li>
+          <li><a href="/galleries">Galleries</a></li>
+          <li><a href="http://localhost:4321/mint">Mint</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Read</h4>
+        <ul>
+          <li><a href="/manifesto">Manifesto</a></li>
+          <li><a href="/blog">Journal</a></li>
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="https://github.com/GeneratedArt" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Geneva</h4>
+        <ul>
+          <li>Rue François-Versonnex 17BIS, 1207 Geneva, Switzerland</li>
+          <li><a href="mailto:info@generatedart.com">info@generatedart.com</a></li>
+          <li><a href="https://t.me/+txAZ5fhougY4YjA0" rel="noopener">Telegram</a></li>
+          <li><a href="https://twitter.com/generatedart" rel="noopener">X / Twitter</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ga-foot__bot">
+      <span>Copyright © 2025 GeneratedArt. All rights reserved.</span>
+      <span><a href="https://github.com/GeneratedArt/website" rel="noopener">Source</a> · <a href="/docs">Open standards</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelector("[data-ga-theme-toggle]")?.addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+    var next = cur === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("ga-theme", next); } catch (e) {}
+  });
+</script>
+
+</body>
+</html>

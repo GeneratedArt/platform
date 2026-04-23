@@ -1,0 +1,23 @@
+What landed in this turn
+
+Live D1 schema applied — both migrations are now on the production database (6c83d3f6-…):
+
+0001_init.sql — the §5 spec schema (10 tables: users, artists, projects, editions, galleries, exhibitions, physical_editions, sessions, audit_log + indexes).
+New 0002_site_fields.sql — additive columns the public site needs that the spec didn't enumerate: users.location, users.avatar_url, projects.tagline, projects.starts_at, and galleries.{address, website, tagline, featured, active}. All nullable / defaulted, so it never breaks existing rows or future migrations.
+Seed loaded into live D1 (scripts/seed.sql):
+
+2 users (demo artist + steward), 1 approved artist row, 1 live project (random-walks, 256 editions, 0.001 ETH), 1 gallery (geneva, featured = 1).
+Self-consistent for fresh-from-scratch runs: the gallery INSERT is followed by the gallery UPDATE so column order doesn't matter, and the demo project status is live so it appears in the catalog query.
+Sync script fixed (scripts/sync-d1-to-jekyll.mjs):
+
+Was querying columns that don't exist on the spec schema (u.location, e.mint_price_wei, p.starts_at, etc.). Patched to use p.price_wei AS mint_price_wei, joined sales price through projects, and use the canonical status enum (sold_out, not sold-out).
+Removed the SQLite-incompatible NULLS LAST clause.
+End-to-end run now reports 1 artists, 1 projects, 1 galleries, 0 sales with zero SQL errors.
+Wrote the migrations to the live DB via the Cloudflare D1 REST API — no wrangler install needed, used the same token + account ID that the Pages workflow uses. The same code path runs in CI.
+
+What's now true that wasn't before
+
+curl https://api.generatedart.com/v1/projects (once the API worker deploys) will return the seeded random-walks row.
+The Pages workflow's D1-sync step will produce real _data/latest.json on every CI run, no longer falling back to seed-only mode.
+Anyone forking the repo can run wrangler d1 migrations apply generatedart then wrangler d1 execute generatedart --file scripts/seed.sql and end up at the same baseline state as production.
+Still open from §17 ship order: §11 (physical bridge — explicitly V1.1 per §20, deferred), §12 (governance charter + curator console), §13 (mainnet launch — needs the multisig set up off-platform first). The honest blockers for the rest are external: GitHub App private key, Pinata/web3.storage API keys, Steward multisig address. Say which one you want to tackle and I'll either build it or surface the missing input.

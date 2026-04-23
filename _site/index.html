@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><!-- GeneratedArt editorial <head>. Loaded by every page using layout: genart -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f8f7f4" media="(prefers-color-scheme: light)" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+
+<title> — GeneratedArt</title>
+<meta name="description" content="Code-based generative art on Base, with a permanent home in Geneva." />
+
+<!-- Open Graph + Twitter, all powered from page front matter. -->
+<meta property="og:site_name" content="GeneratedArt" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="GeneratedArt" />
+<meta property="og:description" content="Code-based generative art on Base, with a permanent home in Geneva." />
+
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="canonical" href="https://generatedart.com/" />
+<link rel="alternate" type="application/atom+xml" title="Blog" href="/blog/index.xml" />
+<link rel="icon" href="/assets/images/favicon.ico" sizes="any" />
+
+<link rel="stylesheet" href="/assets/css/genart.css" />
+
+<!-- Theme toggle: read preference *before* paint to avoid a light-flash. -->
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem("ga-theme");
+      var sys = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", saved || sys);
+    } catch (e) { /* private browsing — fall through to dark */ }
+  })();
+</script>
+</head>
+<body>
+  <nav class="ga-nav" aria-label="Primary">
+  <div class="ga-container ga-nav__row">
+    <a href="/" class="ga-nav__brand">Generated<em>Art</em></a>
+    <div class="ga-nav__links">
+      <a href="/projects" >Projects</a>
+      <a href="/artists" >Artists</a>
+      <a href="/galleries" >Galleries</a>
+      <a href="/blog" >Journal</a>
+      <a href="/manifesto" >Manifesto</a>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+      <button class="ga-theme-toggle" type="button" data-ga-theme-toggle aria-label="Toggle light/dark">◐</button>
+      <a class="ga-nav__cta" href="http://localhost:4321">Open app</a>
+    </div>
+  </div>
+</nav>
+
+  <main><section class="ga-hero ga-container">
+  <p class="ga-eyebrow">Generative art · Base · Geneva</p>
+  <h1 class="ga-display">
+    Art that is <em>written</em>,<br />
+    not painted.
+  </h1>
+  <p class="ga-lede" style="margin-top:2rem;font-size:1.25rem">
+    GeneratedArt is a community-run platform for code-based generative work.
+    Every piece is open-source, deterministic from a single hash, pinned to IPFS,
+    and minted on Base. Selected editions are exhibited in our Geneva gallery
+    and shipped as ePaper dongles.
+  </p>
+
+  <dl class="ga-hero__meta">
+    <div><dt>Projects live</dt><dd>1</dd></div>
+    <div><dt>Artists</dt><dd>1</dd></div>
+    <div><dt>Editions minted</dt><dd>0</dd></div>
+  </dl>
+</section>
+
+
+
+<section class="ga-section ga-container">
+  <div class="ga-section__head">
+    <h2 class="ga-h2">Featured artists</h2>
+    <a href="/artists">All artists →</a>
+  </div>
+  <div class="ga-grid">
+    
+    
+      
+      <article class="ga-card">
+        <a href="/artists/demo-artist" class="ga-card__media">
+          <img src="https://avatars.githubusercontent.com/u/0?v=4" alt="Demo Artist" loading="lazy" />
+        </a>
+        <h3 class="ga-card__title"><a href="/artists/demo-artist">Demo Artist</a></h3>
+        <div class="ga-card__meta">
+          <span>Berlin, DE</span>
+          <span class="ga-card__price">0 projects</span>
+        </div>
+      </article>
+    
+  </div>
+</section>
+
+<section class="ga-section ga-container">
+  <div class="ga-section__head">
+    <h2 class="ga-h2">Latest sales</h2>
+    <a href="/projects">All projects →</a>
+  </div>
+  
+  
+  <p style="color:var(--fg-muted)">No sales yet — be the first.</p>
+  
+</section>
+
+<script>
+  // Pretty-print the countdown to the next drop and the relative timestamps
+  // in the sales feed. All timestamps are ISO-8601 in UTC.
+  document.querySelectorAll("[data-ga-relative]").forEach(function (el) {
+    var t = Date.parse(el.dataset.gaRelative);
+    if (!t) return;
+    var diff = (t - Date.now()) / 1000;
+    var abs = Math.abs(diff);
+    var unit, n;
+    if (abs < 60) { unit = "s"; n = Math.round(abs); }
+    else if (abs < 3600) { unit = "m"; n = Math.round(abs / 60); }
+    else if (abs < 86400) { unit = "h"; n = Math.round(abs / 3600); }
+    else { unit = "d"; n = Math.round(abs / 86400); }
+    el.textContent = (diff < 0 ? "" : "in ") + n + unit + (diff < 0 ? " ago" : "");
+  });
+  var cd = document.querySelector("[data-ga-countdown]");
+  if (cd) {
+    var target = Date.parse(cd.dataset.gaCountdown);
+    function tick() {
+      var d = target - Date.now();
+      if (d <= 0) { cd.textContent = "opens now"; return; }
+      var days = Math.floor(d / 86400000);
+      var hrs  = Math.floor((d % 86400000) / 3600000);
+      var mins = Math.floor((d % 3600000) / 60000);
+      var secs = Math.floor((d % 60000) / 1000);
+      cd.textContent = (days ? days + "d " : "") + hrs + "h " + mins + "m " + secs + "s";
+    }
+    tick(); setInterval(tick, 1000);
+  }
+</script>
+</main>
+  <footer class="ga-foot">
+  <div class="ga-container">
+    <div class="ga-foot__row">
+      <div>
+        <div class="ga-nav__brand" style="font-size:1.4rem;display:inline-block;margin-bottom:0.75rem">Generated<em>Art</em></div>
+        <p style="max-width:38ch;margin:0">
+          A community-run platform for code-based generative art. Smart contracts on Base,
+          a permanent home in Geneva, and a working physical-digital bridge.
+        </p>
+      </div>
+      <div>
+        <h4>Platform</h4>
+        <ul>
+          <li><a href="/projects">Projects</a></li>
+          <li><a href="/artists">Artists</a></li>
+          <li><a href="/galleries">Galleries</a></li>
+          <li><a href="http://localhost:4321/mint">Mint</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Read</h4>
+        <ul>
+          <li><a href="/manifesto">Manifesto</a></li>
+          <li><a href="/blog">Journal</a></li>
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="https://github.com/GeneratedArt" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Geneva</h4>
+        <ul>
+          <li>Rue François-Versonnex 17BIS, 1207 Geneva, Switzerland</li>
+          <li><a href="mailto:info@generatedart.com">info@generatedart.com</a></li>
+          <li><a href="https://t.me/+txAZ5fhougY4YjA0" rel="noopener">Telegram</a></li>
+          <li><a href="https://twitter.com/generatedart" rel="noopener">X / Twitter</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ga-foot__bot">
+      <span>Copyright © 2025 GeneratedArt. All rights reserved.</span>
+      <span><a href="https://github.com/GeneratedArt/website" rel="noopener">Source</a> · <a href="/docs">Open standards</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelector("[data-ga-theme-toggle]")?.addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+    var next = cur === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("ga-theme", next); } catch (e) {}
+  });
+</script>
+
+</body>
+</html>
