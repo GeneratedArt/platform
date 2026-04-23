@@ -4,7 +4,12 @@ import { ulid } from "ulid";
 import type { Env, Variables } from "../lib/env";
 import { requireAuth, requireRole, requireInternal } from "../lib/middleware";
 import { audit } from "../lib/audit";
-import { createArtRepo, writeCodeowners, protectMainBranch } from "../lib/github-app";
+import {
+  createArtRepo,
+  writeCodeowners,
+  protectMainBranch,
+  protectReleaseTag,
+} from "../lib/github-app";
 
 export const projectRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -100,14 +105,19 @@ projectRoutes.post("/", requireRole("artist"), async (c) => {
   });
 });
 
+/** Public catalogue. Always restricted to live/sold_out so a curator's
+ *  draft pipeline can't be scraped by guessing artist IDs. To list your
+ *  own drafts use GET /me/projects (authenticated). */
 projectRoutes.get("/", async (c) => {
   const status = c.req.query("status");
-  const sql = status
+  const allowed = new Set(["live", "sold_out"]);
+  const filter = status && allowed.has(status) ? status : null;
+  const sql = filter
     ? `SELECT id, slug, title, description, edition_size, minted_count, status, contract_address, created_at
        FROM projects WHERE status = ? ORDER BY created_at DESC LIMIT 100`
     : `SELECT id, slug, title, description, edition_size, minted_count, status, contract_address, created_at
        FROM projects WHERE status IN ('live','sold_out') ORDER BY created_at DESC LIMIT 100`;
-  const stmt = status ? c.env.DB.prepare(sql).bind(status) : c.env.DB.prepare(sql);
+  const stmt = filter ? c.env.DB.prepare(sql).bind(filter) : c.env.DB.prepare(sql);
   const rows = await stmt.all();
   return c.json({ projects: rows.results ?? [] });
 });
@@ -198,6 +208,23 @@ projectRoutes.post("/:slug/publish", requireInternal, async (c) => {
   )
     .bind(parsed.bundle_cid, parsed.release_tag, project.id)
     .run();
+
+  // §8.3 — once a tag has been pinned + recorded against an edition, the
+  // bundle is immutable. Lock the tag so even an org admin cannot rewrite it.
+  // Failure here is logged but non-fatal; a curator can re-run protection.
+  try {
+    const repoRow = await c.env.DB.prepare(
+      `SELECT github_repo FROM projects WHERE id = ?`
+    )
+      .bind(project.id)
+      .first<{ github_repo: string }>();
+    if (repoRow?.github_repo) {
+      await protectReleaseTag(c.env, repoRow.github_repo, parsed.release_tag);
+    }
+  } catch (err) {
+    console.error("tag_protection_failed", (err as Error).message);
+  }
+
   await c.env.PIN_QUEUE.send({
     type: "project.publish",
     project_id: project.id,

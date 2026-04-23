@@ -1,0 +1,82 @@
+---
+layout: genart
+title: "Studio"
+permalink: /studio/
+---
+
+<section class="ga-container ga-section" data-ga-studio>
+  <header class="ga-page-head">
+    <p class="ga-eyebrow">Studio</p>
+    <h1 class="ga-display" data-ga-studio-greeting>Studio</h1>
+    <p class="ga-lede" data-ga-studio-sub>
+      Create a project repo, develop locally with the <code>$ga</code> SDK,
+      open a PR with the <code>ready-for-review</code> label, and let the
+      curators take it from there.
+    </p>
+  </header>
+
+  <!-- Logged-out -->
+  <div class="ga-studio__gate" data-state="signed-out" hidden>
+    <p>You'll need to sign in with GitHub first.</p>
+    <button type="button" class="ga-btn" data-ga-signin>Sign in with GitHub →</button>
+  </div>
+
+  <!-- Not yet an artist -->
+  <div class="ga-studio__gate" data-state="not-artist" hidden>
+    <p>The Studio is open to approved artists only.</p>
+    <a class="ga-btn" href="/apply/">Apply to be an artist →</a>
+  </div>
+
+  <!-- Approved artist dashboard -->
+  <div class="ga-studio__panel" data-state="artist" hidden>
+    <div class="ga-studio__row">
+      <h2>Your projects</h2>
+      <button type="button" class="ga-btn" data-ga-new-project>+ New project</button>
+    </div>
+
+    <ul class="ga-studio__projects" data-ga-projects>
+      <li class="ga-muted" data-ga-empty>No projects yet — create your first.</li>
+    </ul>
+
+    <details class="ga-studio__form" data-ga-new-form hidden>
+      <summary>New project</summary>
+      <form data-ga-project-form class="ga-form" novalidate>
+        <label class="ga-field">
+          <span>Title</span>
+          <input name="title" maxlength="120" required />
+        </label>
+        <label class="ga-field">
+          <span>Slug</span>
+          <input name="slug" pattern="[a-z0-9-]{3,40}" required />
+          <small>Becomes the repo name <code>art-&lt;slug&gt;</code> and the URL <code>/projects/&lt;slug&gt;</code>.</small>
+        </label>
+        <label class="ga-field">
+          <span>Description</span>
+          <textarea name="description" rows="3" maxlength="4000"></textarea>
+        </label>
+        <div class="ga-form__grid">
+          <label class="ga-field">
+            <span>Edition size</span>
+            <input name="edition_size" type="number" min="1" max="100000" value="100" required />
+          </label>
+          <label class="ga-field">
+            <span>Price (ETH)</span>
+            <input name="price_eth" type="number" min="0" step="0.001" value="0.05" required />
+          </label>
+          <label class="ga-field">
+            <span>Royalty (bps)</span>
+            <input name="royalty_bps" type="number" min="0" max="1000" value="750" required />
+            <small>750 = 7.5%. Max 10%.</small>
+          </label>
+        </div>
+        <div class="ga-form__actions">
+          <button type="submit" class="ga-btn">Create repo + draft</button>
+          <p class="ga-form__error" data-ga-error hidden></p>
+        </div>
+      </form>
+    </details>
+  </div>
+</section>
+
+<script src="{{ '/assets/js/ga-auth.js' | relative_url }}" defer></script>
+<script src="{{ '/assets/js/studio.js' | relative_url }}" defer></script>

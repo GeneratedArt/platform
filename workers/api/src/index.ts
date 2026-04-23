@@ -15,6 +15,8 @@ import { projectRoutes } from "./routes/projects";
 import { editionRoutes } from "./routes/editions";
 import { ownerRoutes } from "./routes/owners";
 import { galleryRoutes } from "./routes/galleries";
+import { applicationRoutes } from "./routes/applications";
+import { webhookRoutes } from "./routes/webhooks";
 
 export type { Env };
 
@@ -70,6 +72,8 @@ app.route("/projects", projectRoutes);
 app.route("/editions", editionRoutes);
 app.route("/owners", ownerRoutes);
 app.route("/galleries", galleryRoutes);
+app.route("/applications", applicationRoutes);
+app.route("/webhooks", webhookRoutes);
 
 app.notFound((c) => c.json({ error: "not_found", path: c.req.path }, 404));
 app.onError((err, c) => {

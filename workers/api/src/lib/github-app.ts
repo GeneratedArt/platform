@@ -203,6 +203,20 @@ export async function protectMainBranch(env: Env, fullName: string): Promise<voi
   });
 }
 
+/**
+ * Lock a release tag so the bundle that backs an on-chain edition cannot be
+ * rewritten (§8.3 immutability). Uses the tag-protection API. The tag pattern
+ * accepts the literal tag, so callers can pass `v1.0.0` for a single tag or
+ * `v*` to lock the whole namespace.
+ */
+export async function protectReleaseTag(
+  env: Env,
+  fullName: string,
+  pattern: string
+): Promise<void> {
+  await gh(env, "POST", `/repos/${fullName}/tags/protection`, { pattern });
+}
+
 export async function createApplicationIssue(
   env: Env,
   params: {

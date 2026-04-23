@@ -34,6 +34,9 @@ office_address: "Rue François-Versonnex 17BIS, 1207 Geneva, Switzerland"
 api_base_url: "http://localhost:8787"
 app_base_url: "http://localhost:4321"
 renderer_base_url: "http://localhost:8788"
+github_org: "GeneratedArt"
+# Public OAuth client ID (override per env). Empty = sign-in disabled at runtime.
+github_oauth_client_id: ""
 
 plugins:
   - jekyll-feed

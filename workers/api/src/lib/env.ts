@@ -22,6 +22,12 @@ export interface Env {
   /** Shared secret used by internal workers (github-bot, indexer) when calling
    *  privileged API endpoints. Sent as the `X-Internal-Token` header. */
   INTERNAL_BOT_TOKEN?: string;
+  /** HMAC secret configured on the GitHub App webhook; used to verify the
+   *  `X-Hub-Signature-256` header on every incoming webhook delivery. */
+  GITHUB_WEBHOOK_SECRET?: string;
+  /** Repo (within GITHUB_ORG) that hosts artist applications as Issues.
+   *  Defaults to "applications". */
+  APPLICATIONS_REPO?: string;
 }
 
 export type Variables = {

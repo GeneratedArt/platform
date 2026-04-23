@@ -1,0 +1,105 @@
+---
+layout: genart
+title: "Apply to be an artist"
+permalink: /apply/
+---
+
+<section class="ga-container ga-section">
+  <header class="ga-page-head">
+    <p class="ga-eyebrow">Onboarding · Step 1 of 3</p>
+    <h1 class="ga-display">Become a GeneratedArt artist.</h1>
+    <p class="ga-lede">
+      Sign in with GitHub, share a short bio and a few links to your work,
+      and a curator will review your application within a few days. Approved
+      artists can mint editions, propose physical pieces for the Geneva
+      gallery, and earn primary + secondary royalties on every sale.
+    </p>
+  </header>
+
+  <div class="ga-apply" data-ga-apply>
+    <!-- Step 1: GitHub sign-in -->
+    <div class="ga-apply__step" data-step="signin">
+      <h2>1 · Sign in with GitHub</h2>
+      <p class="ga-muted">
+        We host every project as a public repo under
+        <code>{{ site.github_org | default: 'GeneratedArt' }}</code>. Signing
+        in with GitHub lets us tag you as an owner of your project repo and
+        wire your handle into the on-chain royalty splitter.
+      </p>
+      <button type="button" class="ga-btn" data-ga-signin>
+        Continue with GitHub →
+      </button>
+    </div>
+
+    <!-- Step 2: existing application status (shown if any) -->
+    <div class="ga-apply__step" data-step="existing" hidden>
+      <h2>Your application</h2>
+      <p class="ga-muted">
+        Status: <strong data-ga-app-status>—</strong>.
+        The conversation lives on
+        <a data-ga-app-link href="#" target="_blank" rel="noopener">GitHub</a>.
+      </p>
+      <button type="button" class="ga-btn ga-btn--ghost" data-ga-withdraw hidden>
+        Withdraw application
+      </button>
+    </div>
+
+    <!-- Step 3: profile form -->
+    <div class="ga-apply__step" data-step="form" hidden>
+      <h2>2 · Tell us about your practice</h2>
+      <form data-ga-apply-form class="ga-form" novalidate>
+        <label class="ga-field">
+          <span>Artist slug</span>
+          <input name="artist_slug" pattern="[a-z0-9-]{3,40}" required
+                 placeholder="lowercase-with-dashes" />
+          <small>3–40 chars, lowercase letters, numbers and dashes. This becomes your URL: <code>generatedart.com/artists/&lt;slug&gt;</code>.</small>
+        </label>
+
+        <label class="ga-field">
+          <span>Short bio</span>
+          <textarea name="bio" rows="5" minlength="40" maxlength="2000" required
+                    placeholder="What you make, what tools you use, what you're trying to say."></textarea>
+          <small>Min. 40, max. 2000 characters.</small>
+        </label>
+
+        <label class="ga-field">
+          <span>Portfolio links</span>
+          <textarea name="portfolio_links" rows="4" required
+                    placeholder="One URL per line. Personal site, fxhash, ArtBlocks, ObjKt, GitHub, anywhere your work lives."></textarea>
+          <small>One URL per line. At least one, up to eight.</small>
+        </label>
+
+        <label class="ga-field">
+          <span>Wallet address <span class="ga-muted">(optional, can add later)</span></span>
+          <input name="wallet_address" pattern="0x[a-fA-F0-9]{40}"
+                 placeholder="0x…" />
+          <small>EVM address that will receive royalties. Base L2.</small>
+        </label>
+
+        <div class="ga-form__actions">
+          <button type="submit" class="ga-btn">Submit application</button>
+          <p class="ga-form__error" data-ga-error hidden></p>
+        </div>
+      </form>
+    </div>
+
+    <!-- Step 4: success -->
+    <div class="ga-apply__step" data-step="done" hidden>
+      <h2>3 · You're in the queue.</h2>
+      <p>
+        We've opened
+        <a data-ga-app-link href="#" target="_blank" rel="noopener">issue
+        #<span data-ga-app-issue>—</span></a>
+        in the curators' inbox. You'll get a GitHub notification on every
+        comment. We aim to respond within five working days.
+      </p>
+      <p>
+        While you wait, browse <a href="/manifesto/">our manifesto</a> and
+        the <a href="/projects/">live projects</a> to see the bar.
+      </p>
+    </div>
+  </div>
+</section>
+
+<script src="{{ '/assets/js/ga-auth.js' | relative_url }}" defer></script>
+<script src="{{ '/assets/js/apply.js' | relative_url }}" defer></script>

@@ -1,0 +1,25 @@
+---
+layout: genart
+title: "Signing in…"
+permalink: /auth/github/callback/
+sitemap: false
+---
+
+<section class="ga-container ga-section">
+  <h1 class="ga-display">Signing you in…</h1>
+  <p class="ga-muted" data-ga-cb-status>Exchanging your GitHub code for a session.</p>
+</section>
+
+<script src="{{ '/assets/js/ga-auth.js' | relative_url }}" defer></script>
+<script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const status = document.querySelector("[data-ga-cb-status]");
+    try {
+      const ret = await window.gaAuth.completeGitHubLogin();
+      if (ret) window.location.replace(ret);
+      else window.location.replace("/studio/");
+    } catch (err) {
+      status.textContent = "Sign-in failed: " + (err.message || "unknown error");
+    }
+  });
+</script>
