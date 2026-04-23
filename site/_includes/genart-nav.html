@@ -1,6 +1,19 @@
 <nav class="ga-nav" aria-label="Primary">
   <div class="ga-container ga-nav__row">
-    <a href="/" class="ga-nav__brand">Generated<em>Art</em></a>
+    <a href="/" class="ga-nav__brand" aria-label="GeneratedArt — home">
+      <svg class="ga-mark" viewBox="0 0 100 100" role="img" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="ga-mark-blur" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="0.4" />
+          </filter>
+        </defs>
+        <g filter="url(#ga-mark-blur)">
+          <path class="ga-mark__blob" d="M50,8 C70,8 88,22 90,42 C92,62 80,82 60,90 C40,98 18,88 10,68 C2,48 12,24 30,14 C36,10 42,8 50,8 Z" />
+        </g>
+        <text class="ga-mark__letters" x="50" y="50" text-anchor="middle" dominant-baseline="central">GA</text>
+      </svg>
+      <span class="ga-nav__wordmark">Generated<em>Art</em></span>
+    </a>
     <div class="ga-nav__links">
       <a href="/projects" {% if page.url contains '/projects' %}aria-current="page"{% endif %}>Projects</a>
       <a href="/artists" {% if page.url contains '/artists' %}aria-current="page"{% endif %}>Artists</a>
