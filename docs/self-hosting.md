@@ -32,7 +32,7 @@ The platform is community-runnable. Anyone can fork the org and run a parallel i
    ```
    Commit the resulting address to `contracts/deployments/base.json` and update the indexer's `FACTORY_ADDRESS`.
 6. `pnpm -r deploy` to ship all Workers.
-7. Deploy `site/` and `app/` to Cloudflare Pages.
+7. Deploy `site/` to GitHub Pages (Settings → Pages → Source: GitHub Actions; the `pages.yml` workflow handles build + publish). Deploy `app/` as a Cloudflare Worker via `pnpm --filter @generatedart/app deploy` (uses the `@astrojs/cloudflare` adapter).
 
 ## Customization
 

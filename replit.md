@@ -12,8 +12,8 @@ Community-run generative art platform and NFT marketplace for code-based generat
 ## Monorepo layout
 ```
 platform/
-├── site/         Jekyll public site → Cloudflare Pages (generatedart.com)
-├── app/          Astro islands app  → Cloudflare Pages (app.generatedart.com)
+├── site/         Jekyll public site → GitHub Pages (generatedart.com)
+├── app/          Astro islands app  → Cloudflare Workers (app.generatedart.com)
 ├── templates/
 │   └── art-template/  Repo seed for every art-<slug> project (force-pushed to GeneratedArt/art-template)
 ├── workers/
@@ -32,8 +32,8 @@ platform/
 ```
 
 ## Tech stack (non-negotiable per spec)
-- **Static site**: Jekyll 3.8.7 (Ruby 3.2.2, bundler) → Cloudflare Pages
-- **Dynamic app**: Astro + Preact islands → Cloudflare Pages
+- **Static site**: Jekyll 3.8.7 (Ruby 3.2.2, bundler) → GitHub Pages
+- **Dynamic app**: Astro + Preact islands → Cloudflare Workers (`@astrojs/cloudflare` adapter, `output: "server"`)
 - **API**: Hono on Cloudflare Workers (TypeScript)
 - **Relational**: Cloudflare D1 (SQLite, Drizzle types)
 - **KV**: Sessions, rate-limit, indexer state
@@ -65,7 +65,8 @@ Jekyll 3.8.x predates Ruby 3.x stdlib changes. `site/Gemfile` adds:
 - `--no-watch` flag avoids a `pathutil` bug in `Jekyll::Utils::Platforms.bash_on_windows?`
 
 ## Deployment
-- Site: Cloudflare Pages, build = `cd site && bundle exec jekyll build`, public dir = `site/_site` (current Replit deployment config still targets `_site` from old root layout — will need adjusting once we move to Cloudflare Pages).
+- Site: GitHub Pages via `.github/workflows/pages.yml` (configure-pages → jekyll build `site/` → upload-pages-artifact → deploy-pages). CNAME preserved at `site/CNAME`. Repo Settings → Pages → Source must be set to "GitHub Actions" (not "Deploy from a branch").
+- App: Cloudflare Workers via `@astrojs/cloudflare` adapter; `pnpm --filter @generatedart/app deploy` ships it. Custom route `app.generatedart.com/*` declared in `app/wrangler.toml`.
 - Workers: `pnpm --filter @generatedart/<name> deploy` (wrangler).
 - Contracts: `forge script script/Deploy.s.sol --rpc-url base --broadcast`.
 - All deploys are gated on GitHub Actions; see `.github/workflows/`.

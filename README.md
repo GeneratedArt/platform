@@ -2,14 +2,14 @@
 
 A community-run generative art platform and NFT marketplace for code-based generative art (hand-written p5.js / three.js / WebGL / GLSL). Spiritual successor to fxhash and Art Blocks, with a physical-digital bridge inherited from the existing GeneratedArt brand.
 
-> **Stack:** GitHub + Jekyll + Cloudflare (Pages, Workers, D1, KV, R2, Queues) + Base (L2). No traditional servers. No AWS, Vercel, Firebase, Supabase, Mongo, Stripe-as-primary-rails.
+> **Stack:** GitHub Pages (static) + Cloudflare (Workers, D1, KV, R2, Queues) + Base (L2). No traditional servers. No AWS, Vercel, Firebase, Supabase, Mongo, Stripe-as-primary-rails.
 
 ## Monorepo layout
 
 ```
 platform/
-├── site/         Jekyll public site → Cloudflare Pages (generatedart.com)
-├── app/          Astro app          → Cloudflare Pages (app.generatedart.com)
+├── site/         Jekyll public site → GitHub Pages (generatedart.com)
+├── app/          Astro app          → Cloudflare Workers (app.generatedart.com)
 ├── workers/
 │   ├── api/         REST API (Hono on Workers)
 │   ├── github-bot/  GitHub App webhook handler

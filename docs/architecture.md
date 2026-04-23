@@ -4,8 +4,8 @@
 
 | Layer | Tech | Domain |
 |------|------|--------|
-| Public site | Jekyll → Cloudflare Pages | `generatedart.com` |
-| Dynamic app | Astro islands → Cloudflare Pages | `app.generatedart.com` |
+| Public site | Jekyll → GitHub Pages | `generatedart.com` |
+| Dynamic app | Astro islands → Cloudflare Workers | `app.generatedart.com` |
 | API | Hono on Cloudflare Workers | `api.generatedart.com` |
 | GitHub bot | Worker | `bot.generatedart.com` |
 | Indexer | Cron Worker (every minute) | (no public route) |
