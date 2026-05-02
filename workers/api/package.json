@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "build:client": "esbuild client/auth.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-auth.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
     "build:dashboard": "esbuild client/dashboard.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-dashboard.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
-    "build:all": "npm run build:client && npm run build:dashboard",
+    "build:studio": "esbuild client/studio.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-studio.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
+    "build:all": "npm run build:client && npm run build:dashboard && npm run build:studio",
     "migrate:local": "wrangler d1 migrations apply DB --local",
     "migrate:prod": "wrangler d1 migrations apply DB --env production --remote"
   },
@@ -21,6 +22,12 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240925.0",
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@codemirror/view": "^6.41.1",
+    "codemirror": "^6.0.2",
     "esbuild": "^0.25.12",
     "typescript": "^5.6.2",
     "wrangler": "^3.78.6"

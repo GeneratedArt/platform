@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   SESSIONS: KVNamespace;
   RATE_LIMIT: KVNamespace;
+  CAPTURES?: R2Bucket;
   JWT_SECRET: string;
   COOKIE_DOMAIN: string;
   ALLOWED_ORIGINS: string;
@@ -9,6 +10,7 @@ export interface Env {
   GITHUB_ORG: string;
   GITHUB_TEMPLATE_REPO: string;
   GITHUB_MOCK: string;
+  CAPTURES_PUBLIC_BASE?: string;
 }
 
 export interface ProjectRow {

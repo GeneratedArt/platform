@@ -1,0 +1,155 @@
+---
+layout: null
+permalink: /studio/preview/
+sitemap: false
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'none'; font-src data:; media-src blob: data:;" />
+<title>Studio preview</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #f5f3ee; height: 100%; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; max-width: 100%; max-height: 100%; }
+  #err {
+    position: fixed; left: 8px; right: 8px; bottom: 8px;
+    background: rgba(255, 70, 70, 0.92); color: white; font: 12px/1.4 ui-monospace, monospace;
+    padding: 8px 10px; white-space: pre-wrap; max-height: 40vh; overflow: auto;
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <div id="err"></div>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <script>
+  (function () {
+    var p5Instance = null;
+    var lastCode = "";
+    var lastSeed = 1;
+    var GLOBAL_KEYS = ["setup","draw","preload","mousePressed","mouseReleased","mouseClicked","mouseMoved","mouseDragged","mouseWheel","keyPressed","keyReleased","keyTyped","touchStarted","touchMoved","touchEnded","windowResized"];
+
+    function showError(msg) {
+      var box = document.getElementById("err");
+      box.textContent = String(msg);
+      box.style.display = "block";
+      try { parent.postMessage({ type: "studio:error", message: String(msg) }, "*"); } catch (e) {}
+    }
+    function clearError() {
+      var box = document.getElementById("err");
+      box.textContent = "";
+      box.style.display = "none";
+    }
+
+    function teardown() {
+      if (p5Instance && typeof p5Instance.remove === "function") {
+        try { p5Instance.remove(); } catch (e) {}
+      }
+      p5Instance = null;
+      // p5 in global mode hangs window.draw etc — wipe so a new
+      // sketch without a draw() doesn't re-run the previous draw.
+      for (var i = 0; i < GLOBAL_KEYS.length; i++) {
+        try { delete window[GLOBAL_KEYS[i]]; } catch (e) { window[GLOBAL_KEYS[i]] = undefined; }
+      }
+      // Drop any stray canvas the old sketch left behind.
+      var stray = document.querySelectorAll("canvas");
+      for (var j = 0; j < stray.length; j++) stray[j].remove();
+    }
+
+    function runSketch(code, seed) {
+      clearError();
+      teardown();
+      lastCode = code;
+      lastSeed = (typeof seed === "number" && isFinite(seed)) ? seed : 1;
+      var userFn;
+      try {
+        // Run user code in a fresh function scope so its `var` and
+        // function decls land on `window` (p5 global mode reads from
+        // window). `with` keeps `width`, `height`, etc. resolving
+        // through the active p5 instance once it exists.
+        userFn = new Function(
+          "with(this){\n" + code + "\n}\nreturn { setup: window.setup, draw: window.draw, preload: window.preload };"
+        );
+        userFn.call(window);
+      } catch (e) {
+        showError("Compile error: " + (e && e.stack ? e.stack : e));
+        return;
+      }
+      // Wrap setup so randomSeed/noiseSeed land before any of the
+      // user's draw calls — this keeps the same code deterministic
+      // across reloads at the same seed.
+      var origSetup = window.setup;
+      window.setup = function () {
+        try {
+          if (typeof randomSeed === "function") randomSeed(lastSeed);
+          if (typeof noiseSeed === "function") noiseSeed(lastSeed);
+        } catch (e) {}
+        if (typeof origSetup === "function") {
+          try { origSetup.call(this); }
+          catch (e) { showError("setup() error: " + (e && e.stack ? e.stack : e)); }
+        }
+      };
+      var origDraw = window.draw;
+      if (typeof origDraw === "function") {
+        window.draw = function () {
+          try { origDraw.call(this); }
+          catch (e) {
+            showError("draw() error: " + (e && e.stack ? e.stack : e));
+            try { noLoop(); } catch (_) {}
+          }
+        };
+      }
+      try {
+        // Global mode: `new p5()` without a sketch fn picks up
+        // window.setup/draw automatically.
+        p5Instance = new p5();
+      } catch (e) {
+        showError("p5 init failed: " + (e && e.stack ? e.stack : e));
+      }
+    }
+
+    function exportPng(requestId) {
+      var canvas = document.querySelector("canvas");
+      if (!canvas) {
+        parent.postMessage({ type: "studio:png", requestId: requestId, error: "no_canvas" }, "*");
+        return;
+      }
+      try {
+        var dataUrl = canvas.toDataURL("image/png");
+        parent.postMessage({ type: "studio:png", requestId: requestId, data_url: dataUrl }, "*");
+      } catch (e) {
+        parent.postMessage({ type: "studio:png", requestId: requestId, error: String(e) }, "*");
+      }
+    }
+
+    window.addEventListener("error", function (e) {
+      showError("Runtime: " + (e.message || e));
+    });
+    window.addEventListener("unhandledrejection", function (e) {
+      showError("Unhandled promise: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+    });
+
+    window.addEventListener("message", function (ev) {
+      // Only accept commands from the embedding parent. We can't
+      // filter by origin here (the parent's origin varies between
+      // dev and prod) but we CAN ignore messages whose source isn't
+      // the immediate parent window — e.g. one injected from a
+      // sibling iframe or a popup that someone opens at our URL.
+      if (ev.source !== window.parent) return;
+      var d = ev.data || {};
+      if (d.type === "studio:setSrc") runSketch(d.code || "", d.seed);
+      else if (d.type === "studio:setSeed") {
+        if (typeof d.seed === "number") {
+          lastSeed = d.seed;
+          if (lastCode) runSketch(lastCode, lastSeed);
+        }
+      } else if (d.type === "studio:exportPng") exportPng(d.requestId);
+    });
+
+    parent.postMessage({ type: "studio:ready" }, "*");
+  })();
+  </script>
+</body>
+</html>

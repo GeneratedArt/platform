@@ -31,6 +31,15 @@ id      = "local-dev-sessions"
 binding = "RATE_LIMIT"
 id      = "local-dev-rate-limit"
 
+# Local R2 bucket for studio captures (Task #4). Miniflare materialises
+# this as ./.wrangler/state/v3/r2/, no real Cloudflare resource is
+# created. The production R2 binding lives commented under
+# [env.production] below — uncomment when Cloudflare provisions the
+# bucket and DNS for assets.generatedart.com.
+[[r2_buckets]]
+binding     = "CAPTURES"
+bucket_name = "generatedart-assets-dev"
+
 # ============================================================================
 # Production environment (api.generatedart.com)
 # ============================================================================

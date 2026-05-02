@@ -12,6 +12,12 @@ import {
   listMyProjects,
   listProjectsForHandle,
 } from "./projects/handlers";
+import {
+  getProjectFileHandler,
+  commitProjectFileHandler,
+  uploadCaptureHandler,
+  getCaptureHandler,
+} from "./projects/studio";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -40,6 +46,10 @@ v1.get("/projects/mine", requireAuth, listMyProjects);
 v1.get("/projects/:id{[0-9]+}", getProject);
 v1.patch("/projects/:id{[0-9]+}", requireAuth, patchProject);
 v1.post("/projects/:id{[0-9]+}/archive", requireAuth, archiveProject);
+v1.get("/projects/:id{[0-9]+}/file", requireAuth, getProjectFileHandler);
+v1.post("/projects/:id{[0-9]+}/commit", requireAuth, commitProjectFileHandler);
+v1.post("/projects/:id{[0-9]+}/captures", requireAuth, uploadCaptureHandler);
+v1.get("/captures/:rest{.+}", getCaptureHandler);
 v1.get("/users/:handle/projects", listProjectsForHandle);
 
 app.route("/v1", v1);
