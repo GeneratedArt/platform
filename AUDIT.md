@@ -1,0 +1,387 @@
+# GeneratedArt — Full Architectural, Security & Performance Audit
+
+**Scope.** Entire repo at HEAD on the main branch (Jekyll 4.3 site at root, Cloudflare Worker placeholder at `workers/api/`, Foundry placeholder at `contracts/`, Replit dev shell, claimed GitHub Actions CI).
+**Date.** 2 May 2026.
+**Stance.** Adversarial. Every claim in this audit is grounded in a file path, an HTTP probe, or a config line — no generic advice.
+**Verdict.** The site renders. The platform does not exist yet. The gap between **what `replit.md` describes** and **what is actually shipping** is the single most important finding in this document.
+
+---
+
+## A. EXECUTIVE SUMMARY — TOP 10
+
+| #  | Severity | Title                                                                                                              |
+| -- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1  | Critical | `.github/workflows/` directory does not exist — the three CI/CD workflows promised in `replit.md` are fictional   |
+| 2  | Critical | Two competing static-deploy paths configured (Replit Static Deployment vs. unconfigured GH Pages)                  |
+| 3  | High     | Cloudflare resource IDs (D1, KV ×3, R2, Zone) committed in plain text in `.replit` `[userenv.shared]`             |
+| 4  | High     | Homepage ships **925 KB of JS + 878 KB of CSS = ~1.8 MB** of legacy demo assets for a static landing page         |
+| 5  | High     | Production stack listed in `replit.md` (Worker auth, D1, KV, R2, viem, wagmi, contracts) is **0% implemented**    |
+| 6  | High     | Slider Revolution (Envato/ThemePunch commercial plugin, ~300 KB) ships with the site — likely license violation   |
+| 7  | High     | No security headers anywhere — no CSP, no X-Frame-Options, no Referrer-Policy, no HSTS plan                        |
+| 8  | Medium   | 21 MB stale `.git.broken/` directory left in workspace; 99 MB `_site/` build output sits beside source             |
+| 9  | Medium   | 28 demo `home-pages/index-*.html` + `elements/` + `features/` + `services/` template carcasses still routable      |
+| 10 | Medium   | `_site/` cache (and Jekyll fingerprinting) bypassed — WEBrick sends `Cache-Control: no-store` for everything       |
+
+Honourable mentions (M / L): vendored Bundler `vendor/bundle/` is gitignored but the gem set is unbounded; no analytics, no error monitoring, no health checks beyond `/health`; `disqus_thread` enabled site-wide loads third-party tracking with no consent gate; Nunito font ships **all 18 weights × 5 formats = ~10 MB** of font files; no SRI on third-party assets (none currently used, but the precedent isn't set).
+
+---
+
+## B. FULL FINDINGS
+
+### F-01 — Critical: CI/CD does not exist
+
+* **Description.** `replit.md` lines 31–35 and 57–60 describe three GitHub Actions workflows: `pages.yml`, `worker-api.yml`, `contracts.yml`. **None of these files exist.** `ls .github/workflows/` returns *No such file or directory*. There is no `.github/` directory at all.
+* **Impact.** The deploy story is fiction. Pushing to `main` deploys nothing. The GitHub Pages page isn't building because there's no workflow to build it. The Worker isn't deploying because there's no workflow to invoke `wrangler deploy`. Foundry contracts aren't being tested on PR.
+* **Root cause.** The April 23 hard-reset wiped the `.github/` tree and it was never re-created.
+* **Fix.**
+  1. Create `.github/workflows/pages.yml` — Jekyll build + `actions/deploy-pages@v4`. Repo Settings → Pages → Source = "GitHub Actions". Concurrency group `pages`, cancel-in-progress.
+  2. Create `.github/workflows/worker-api.yml` — `pnpm install`, `pnpm --filter @generatedart/api typecheck`, `wrangler deploy --env production` gated on `paths: workers/api/**`. Use `CLOUDFLARE_API_TOKEN` repo secret with token scoped to `Workers Scripts:Edit` + `Account:Read` for **this single Worker only**.
+  3. Create `.github/workflows/contracts.yml` — `foundry-rs/foundry-toolchain@v1`, `forge fmt --check`, `forge build --sizes`, `forge test -vvv`. Gated on `paths: contracts/**`.
+  4. Add a fourth `validate.yml` covering the whole repo on every PR: typecheck Worker, lint Solidity, smoke-build Jekyll. This is the pre-merge gate.
+
+### F-02 — Critical: Two competing static-deploy paths
+
+* **Description.** `.replit` declares:
+  ```toml
+  [deployment]
+  deploymentTarget = "static"
+  build = ["bundle", "exec", "jekyll", "build"]
+  publicDir = "_site"
+  ```
+  Meanwhile `replit.md` says deployment is **GitHub Pages only**, and there's also a `CNAME` file pointing at `generatedart.com`. These three paths fight each other:
+  * Replit Static Deployment → publishes to `*.replit.app` (unless a custom domain is bound to the Replit deployment).
+  * GitHub Pages (when F-01 is fixed) → publishes to `generatedart.com` via the `CNAME`.
+  * Cloudflare Workers Builds (per replit.md "Cloudflare auto-deploy (disable)" section) → still attached, still failing silently.
+* **Impact.** The same DNS record cannot point to two origins. Whichever deploy wins last sets the CNAME's IP target. Cache invalidation, TLS issuance, and 404 routing all become non-deterministic.
+* **Fix.** Pick **one**.
+  * **Recommended:** keep GH Pages for the static site; remove the `[deployment]` block from `.replit`; disconnect the Cloudflare Workers Builds project as `replit.md` already notes.
+  * Or **flip:** delete the GH Pages story from `replit.md`, drop the `CNAME`, deploy via Replit Static Deployment, and just publish on `*.replit.app` for the hackathon.
+  * Either way, decide and **delete the unused path's config files in the same commit**.
+
+### F-03 — High: Cloudflare resource IDs committed in repo
+
+* **Description.** `.replit` `[userenv.shared]` block contains:
+  ```
+  CLOUDFLARE_D1_DATABASE_ID = "6c83d3f6-..."
+  CLOUDFLARE_KV_SESSIONS_ID = "4c07b557..."
+  CLOUDFLARE_KV_RATE_LIMIT_ID = "071e1e83..."
+  CLOUDFLARE_KV_INDEXER_STATE_ID = "20884d2a..."
+  CLOUDFLARE_R2_BUCKET_NAME = "generatedart-assets"
+  CLOUDFLARE_ZONE_ID = "5f16e119..."
+  ```
+* **Impact.** These are not credentials in the OAuth-token sense, but they are **targeting information**. Any leaked write token scoped to "all KV namespaces in account X" can now find these IDs in 30 seconds via GitHub search and overwrite session/rate-limit/indexer state. The Zone ID enables targeted DNS-API exploitation if the API token is ever compromised. Defence in depth says: don't make the attacker's job easy.
+* **Fix.**
+  1. Move all six values to `wrangler.toml` (already the canonical location for resource bindings). Wrangler resolves bindings at deploy-time — no need for env-var indirection.
+  2. Delete `[userenv.shared]` from `.replit` entirely.
+  3. Rotate the `CLOUDFLARE_API_TOKEN` you'll use in CI; scope it to `Workers Scripts:Edit` for `generatedart-api` only — **not** account-wide.
+  4. Audit: `git log -p --all -- .replit | grep CLOUDFLARE` — if these IDs landed in a public commit, treat the underlying resources as known-targeted (rotation isn't strictly needed but heightened monitoring is).
+
+### F-04 — High: Homepage ships 1.8 MB of legacy demo assets
+
+* **Description.** Measured on the live homepage:
+
+  | Asset                                              | Bytes   | Notes                                  |
+  | -------------------------------------------------- | ------- | -------------------------------------- |
+  | `assets/js/jquery.min.js`                          | 94 KB   | Used by template only                  |
+  | `assets/js/popper.min.js`                          | 19 KB   | Bootstrap dropdowns                    |
+  | `assets/js/bootstrap.min.js`                       | 81 KB   | Bootstrap 4 JS                         |
+  | `assets/js/plugins.js`                             | **340 KB** | Smorgasbord — slick, isotope, owl, magnific, parallax… |
+  | `assets/js/scripts.js`                             | 33 KB   | Template glue                          |
+  | `assets/js/simple-jekyll-search.min.js`            | 4 KB    | Used by `search.json` (kept)           |
+  | Slider Revolution core + 9 extensions              | **335 KB** | The slider isn't even on the homepage anymore |
+  | Bootstrap CSS                                      | 233 KB  |                                        |
+  | `style.css` (template)                             | 184 KB  |                                        |
+  | `type.css`                                         | 136 KB  |                                        |
+  | Slider Revolution CSS (3 files)                    | 230 KB  |                                        |
+  | `plugins.css`                                      | 109 KB  |                                        |
+  | **Total**                                          | **~1.8 MB** | Just the framework shell                |
+
+* **Impact.** First Contentful Paint suffers, mobile data spend, Lighthouse score drops to ~25 on slow-3G. The new homepage uses **none** of Slider Revolution, owl, slick, isotope, magnific, parallax, or kenburns. Every byte of those is dead weight.
+* **Root cause.** The template loads everything globally from `_includes/core/scripts/scripts.html` and `_includes/core/styles/styles.html` — there's no per-page conditional gating.
+* **Fix.** Either:
+  * **Surgical.** In `_includes/core/scripts/scripts.html`, gate Slider Revolution loads behind `{% if page.uses_slider %}` and set that frontmatter only on pages that actually use it (none, post-brand-pass). Same for `plugins.js` (which is the swiss-army knife of the template's third-party JS).
+  * **Nuclear (recommended).** Replace the whole `core/scripts` and `core/styles` includes with two minimal includes — `bootstrap-grid.css` (you only use the grid) + `brand.css` + `simple-jekyll-search.min.js`. Drop Slider Revolution entirely. Drop jQuery/Popper/Bootstrap-JS unless an interactive component genuinely needs them.
+  * Acceptance: homepage payload drops from ~1.8 MB to **<150 KB** total.
+
+### F-05 — High: Stack described in `replit.md` is 0% implemented
+
+* **Description.** `replit.md` lists the tech stack including: Hono Worker with D1, KV, R2, Queues, viem + wagmi wallet, Foundry contracts on Base. Reality:
+  * `workers/api/src/index.ts` is **31 lines**: CORS + `GET /health` + 404/error handlers. Zero D1, zero KV, zero R2, zero Queues, zero auth.
+  * `contracts/src/` and `contracts/test/` contain only `.gitkeep`. **Zero Solidity files.**
+  * `package.json` for the front-end does not exist (this is a Jekyll site — fine), so there is **no viem, no wagmi, no WalletConnect** anywhere in the repo.
+* **Impact.** A new contributor reading `replit.md` will spend hours looking for code that doesn't exist. The hackathon roadmap on the new homepage (T1–T6) accurately reflects this; `replit.md` does not.
+* **Fix.** Update `replit.md`'s "Tech stack" section to be **status-tagged**: each line marked `[live]`, `[scaffold]`, or `[planned]`. Anything `[planned]` should link to its task file in `.local/tasks/`. Today, only `Jekyll 4.3` and `Hono /health placeholder` are `[live]`. Everything else is `[planned]`.
+
+### F-06 — High: Slider Revolution license
+
+* **Description.** `assets/revolution/` (11 MB) ships **ThemePunch's Slider Revolution** with copyright headers intact (`jquery.themepunch.revolution.min.js`, etc.). This is a commercial CodeCanyon plugin sold per-domain. It's only legally redistributable when bundled inside a CodeCanyon **theme** that paid for the extended license.
+* **Impact.** If GeneratedArt ships this on a public domain (`generatedart.com`), and the original Snowflake/Snowlake template's Envato license doesn't cover redistribution standalone, **this is a license violation** — exposure ranges from a takedown letter to a several-thousand-dollar settlement, depending on the original theme's terms.
+* **Fix.**
+  1. Confirm whether the Snowflake template was purchased with an Extended License that grants redistribution rights to the Slider Revolution bundled within it. (Probably not — Extended Licenses usually only cover use within the theme product, not standalone bundling.)
+  2. Since the new homepage does not use the slider, **delete `assets/revolution/` entirely** (deletes 11 MB and removes the licensing question).
+  3. Same review for `assets/js/plugins.js` — confirm each bundled plugin (slick, isotope, magnific-popup, owl-carousel, parallax) is MIT/Apache, not commercial.
+
+### F-07 — High: No security headers
+
+* **Description.** `curl -sI http://localhost:5000/` returns only `Content-Type`, `Cache-Control` (with `no-store`), `Etag`, `Last-Modified`, `Server: WEBrick/1.9.2 (Ruby/3.2.2/2023-03-30)` — that last one is leak of dev-server fingerprint, but acceptable in dev. The real problem is production.
+* **Impact.** GitHub Pages adds **none** of: `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`. When wallet UIs are layered on, this opens clickjacking + cross-origin script injection paths, both of which are platform-killers for a wallet-signing site.
+* **Fix.** Since GH Pages can't set headers natively, push the static site through Cloudflare in front of Pages and set headers in `_headers` (Pages-style) or via a Cloudflare Transform Rule:
+  ```
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
+  Content-Security-Policy:
+    default-src 'self';
+    script-src 'self' 'sha256-…' https://disqus.com https://*.disqusconnect.com;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https://*.ipfs.cf-ipfs.com https://*.disqus.com;
+    connect-src 'self' https://api.generatedart.com https://*.base.org wss://*.walletconnect.com;
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+  ```
+  CSP must be hand-tuned per surface (studio iframes, wallet popups). Use `report-only` first to find breakage.
+
+### F-08 — Medium: Stale `.git.broken/` and committed `_site/`
+
+* **Description.** Workspace contains `.git.broken/` (21 MB) — leftover from the April 23 reset; explicitly gitignored but still occupies disk and shows up in agent traversals. `_site/` is 99 MB and lives alongside source; gitignored but rebuilt on every `jekyll serve`.
+* **Impact.** Slows down search tools, inflates backups, confuses new contributors who run `du -sh *`.
+* **Fix.** `rm -rf .git.broken _site` once and add a `bin/clean.sh` that runs both as part of `clean`. Make sure `.gitignore` keeps both ignored (already true).
+
+### F-09 — Medium: 28 demo `home-pages/`, `elements/`, `features/`, `services/` carcasses
+
+* **Description.** Even after the brand sweep, the repo still ships 28 `home-pages/index-*.html` files (different homepage variants the template offered), plus `elements/` (accordion, alerts, blockquote, …), `features/` (28 header/footer combos), and `services/`. They pass the grep test but render Lorem-ipsum copy under the new GA brand.
+* **Impact.** Every one of these is publicly routable on `generatedart.com/home-pages/index-23.html`. Search engines will index them; users finding them will lose trust.
+* **Fix.** In `_config.yml` add to `exclude`:
+  ```yaml
+  exclude:
+    - home-pages
+    - elements
+    - features/footer*.html
+    - features/header*.html
+    - features/index.html
+    # keep features/faq.html if it's still useful
+    - services/index.html
+  ```
+  Or `git rm -r` them. The brand-pass task explicitly deferred this; create a follow-up.
+
+### F-10 — Medium: WEBrick sends `Cache-Control: no-store`
+
+* **Description.** Dev server response sets `Cache-Control: private, max-age=0, proxy-revalidate, no-store, no-cache, must-revalidate`. Reasonable in dev. But the production target (GH Pages) has its own caching defaults (`Cache-Control: max-age=600`) which are wrong for fingerprinted assets — they should be `max-age=31536000, immutable`.
+* **Impact.** Asset cache thrash on each page load. With a 1.8 MB payload (F-04), this is multi-second load time on second visits.
+* **Fix.** Once on Cloudflare in front of Pages (per F-07), set Cache Rules:
+  * `*.css`, `*.js`, `*.woff2`, `*.svg`, `*.webp` (under `/assets/`) → `cache-control: public, max-age=31536000, immutable` and add a build-time content hash to filenames (Jekyll plugin `jekyll-asset-pipeline` or similar).
+  * `.html` → `cache-control: public, max-age=300, must-revalidate`.
+
+### F-11 — Medium: Disqus loads on every page with comments
+
+* **Description.** `_includes/utilities/disqus-comments.html` references `disqus_thread`. Disqus loads ad-tech and tracker scripts; no consent gate present.
+* **Impact.** GDPR / ePrivacy concerns the moment a single EU visitor lands on a comment-enabled page. Also adds ~200 KB of third-party JS.
+* **Fix.** Either drop Disqus (the platform doesn't have a comment-driven UX), or wrap the include in a consent-banner gate.
+
+### F-12 — Medium: Massive font payload
+
+* **Description.** `assets/type/Nunito/` ships **all 18 weights × 5 formats (eot, ttf, woff, woff2, svg) = ~10 MB**. Same pattern in `assets/type/customhkgrotesk/`, `assets/type/iconfont/`. The `iconfont` SVG alone is **1.7 MB**.
+* **Impact.** Even on a fast network, a single uncached font request can take 200 ms+. Ship 18 weights and the browser has to *decide* which to load — if `type.css` `@font-face`s all of them, all 18 are eligible to download.
+* **Fix.**
+  1. Keep **woff2 only** for modern browsers — drop eot/ttf/woff/svg variants. This alone cuts ~70 % of the font payload.
+  2. Ship only the weights you actually use (probably 400, 600, 700). Delete the other 15.
+  3. Subset Nunito to the Latin-1 + extended-Latin glyph range (Unicode-range subsetting via `unicode-range` in `@font-face`).
+  4. Self-host or use a privacy-respecting font CDN; `font-display: swap` everywhere.
+
+### F-13 — Medium: Worker has no rate-limit, no auth, no observability hooks
+
+* **Description.** Worker is `/health` only — by design (foundation phase). But `wrangler.toml` has `[observability] enabled = true` and *no other config*. No D1, no KV, no Queue bindings; no Sentry/Logflare drain; no sourcemaps; no `workers_dev = false` so the Worker is *also* reachable on `*.workers.dev`.
+* **Fix when implementing Task #2 (worker-siwe-auth):**
+  * Add `workers_dev = false` so only the route on `api.generatedart.com` works.
+  * Wire KV `RATE_LIMIT` for per-IP (or per-address) sliding-window limits on `POST /siwe/verify` and `POST /projects`.
+  * Add Tail Workers (`[[tail_consumers]]`) → log drain to a Logflare/Datadog/Axiom sink.
+  * Upload sourcemaps with `wrangler deploy --upload-source-maps`.
+
+### F-14 — Medium: SIWE / wallet code path security up-front considerations
+
+This is **forward-looking** — not a defect today, but needs to be in scope before Task #2 ships:
+
+* SIWE **nonce** must be single-use, server-issued, KV-bound, with TTL ≤ 5 min.
+* SIWE **statement** must include the action being authorised (e.g. "Sign in to GeneratedArt as 0x…") so signatures can't be replayed cross-app.
+* Session cookie must be `Secure; HttpOnly; SameSite=Lax; Domain=.generatedart.com; Path=/` and rotated on every privilege escalation.
+* CORS in `workers/api/src/index.ts` allows `http://localhost:5000` with `credentials: true` — fine in dev, but the production CORS list must **not** include localhost when `env.production` is the target. Split the origin lists by env binding.
+* Project submission (Task #3) must **fetch the repo via HTTPS** server-side, not trust client-supplied content. Pin the commit SHA, hash the tarball, store the CID — never let a client claim "this CID is the canonical source."
+* Mint flow (Task #5) must validate the on-chain `tokenId` derivation against `(repoOwner, repoName, commitSha)` server-side, otherwise anyone can mint a token claiming to be a copy of a popular repo.
+
+### F-15 — Low: `[deployment]` `static` build conflicts with `_site` already cached
+
+* **Description.** `[deployment]` says `build = ["bundle", "exec", "jekyll", "build"]` but the workflow uses `jekyll serve --no-watch`. After running the workflow, `_site/` exists from the *server's* build. If the user clicks Deploy, the static deployer will re-build into `_site/` — but if it's already there from the dev run, *some Jekyll versions* will detect a stale `--incremental` cache and serve mixed content.
+* **Fix.** Add `bundle exec jekyll clean && ` to the `[deployment].build` array. Or remove `[deployment]` entirely per F-02.
+
+### F-16 — Low: `.replit` `expertMode = true` + `BEST_EFFORT_FALLBACK`
+
+* **Description.** Unusual settings — `BEST_EFFORT_FALLBACK` makes Replit's runtime detection looser. Combined with the multiple modules (`web`, `nodejs-20`, `ruby-3.2`, `python-3.11`), the workspace is heavier than needed.
+* **Fix.** Drop `python-3.11` (not used). Move to a stricter stack identifier once GH Pages is the canonical deploy and the Replit env is dev-only.
+
+### F-17 — Low: No analytics, no error monitoring
+
+* **Description.** No Plausible, Fathom, GA, Sentry, Logflare. After launch, you'll have no visibility into user behaviour or front-end errors.
+* **Fix.** Add Plausible (privacy-preserving, no consent banner needed) on the static site. Add Sentry browser SDK with sourcemaps on the studio + mint pages once they exist (those are the JS-heavy pages where errors will actually happen).
+
+### F-18 — Low: No SRI, no asset versioning
+
+* **Description.** All `<script>`/`<link>` refs are root-relative and unfingerprinted. Cache-busting relies on `Cache-Control: no-store` (F-10). When you switch to long-cache, asset filenames must include a content hash.
+* **Fix.** Use `jekyll-assets` or a hand-rolled rake task to fingerprint `assets/css/brand.css` → `assets/css/brand.<sha8>.css`. Wire `<link href="{{ 'css/brand.css' | asset_path }}">`.
+
+### F-19 — Low: `eventmachine` pinned to a Git URL
+
+* **Description.** `Gemfile`: `gem 'eventmachine', '1.2.7', git: 'https://github.com/eventmachine/eventmachine.git', tag: 'v1.2.7'`. Pulling from GitHub-not-RubyGems means CI is at the mercy of GitHub availability for every install.
+* **Fix.** Drop the Git source — `gem 'eventmachine', '1.2.7'` from RubyGems works for that version. If the RubyGems version is broken on Ruby 3.2 (which is why this hack exists), pin the upstream commit SHA (not just a tag) for tamper-resistance.
+
+### F-20 — Low: `expert/BEST_EFFORT` + `runButton = "Project"` parallel
+
+* **Description.** `.replit` defines a `Project` workflow that runs `Start application` in `parallel` mode but has only the one task. Parallel mode is useful when you have multiple tasks; here it's noise.
+* **Fix.** Set `mode = "sequential"` or remove the wrapper.
+
+---
+
+## C. ARCHITECTURE IMPROVEMENT PLAN
+
+### Current architecture (as built today)
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                       Replit container                     │
+│   bundle exec jekyll serve --host 0.0.0.0 --port 5000      │
+│                                                            │
+│   ─ Jekyll 4.3 source at repo root                         │
+│   ─ Worker placeholder (workers/api/src/index.ts → /health)│
+│   ─ Foundry placeholder (contracts/, no .sol files)        │
+│   ─ "CI" promised in replit.md but no .github/workflows/   │
+└────────────────────────────────────────────────────────────┘
+                              │
+                       (no real deploy path)
+                              ▼
+                    nothing is shipping yet
+```
+
+### Proposed architecture (post-Task #2)
+
+```
+                     ┌──────────────────────────┐
+                     │      generatedart.com    │
+                     │   (static site, Jekyll)  │
+                     └────────────┬─────────────┘
+                                  │
+            ┌─────────────────────┴─────────────────────┐
+            │                                            │
+            ▼                                            ▼
+    ┌───────────────┐                          ┌────────────────┐
+    │  GH Pages     │──────────CNAME───────────│ Cloudflare DNS │
+    │  (jekyll out) │                          │   + Proxy ON   │  ← sets headers (F-07), cache rules (F-10)
+    └───────────────┘                          └────────┬───────┘
+                                                        │
+                            ┌───────────────────────────┴───────────────────────────┐
+                            ▼                                                       ▼
+                   ┌──────────────────┐                                    ┌────────────────┐
+                   │ api.generatedart │                                    │ user's wallet  │
+                   │      .com        │                                    │  (WalletConnect│
+                   │  Cloudflare      │                                    │   v2 → viem)   │
+                   │   Worker (Hono)  │                                    └────────┬───────┘
+                   └──┬───────────────┘                                             │
+                      │                                                             │
+       ┌──────────────┼──────────────┬──────────────┬──────────────┐                │
+       ▼              ▼              ▼              ▼              ▼                ▼
+  ┌────────┐   ┌────────────┐  ┌──────────┐  ┌─────────┐   ┌────────────┐   ┌──────────────┐
+  │  D1    │   │   KV       │  │   R2     │  │ Queues  │   │ CF Web3 GW │   │ Base Sepolia │
+  │projects│   │sessions/RL │  │captures/ │  │render-  │   │ (RPC read) │   │ (mints)      │
+  │artists │   │indexer-st  │  │thumbs    │  │jobs/ipfs│   └────────────┘   └──────────────┘
+  └────────┘   └────────────┘  └──────────┘  └─────────┘
+                                                  │
+                                                  ▼
+                                       ┌─────────────────────┐
+                                       │ Pinata + web3.storage│
+                                       │   (IPFS pin failover)│
+                                       └─────────────────────┘
+```
+
+### Migration plan (ordered)
+
+1. **Stabilise the foundation.** F-01 + F-02 + F-03 + F-09 + F-08. Net effect: a real CI/CD path exists, deploy paths are unambiguous, secrets are out of `.replit`, and the demo carcasses are off the public site. Everything else assumes this is done.
+2. **Cut the front-end bloat.** F-04 + F-06 + F-12. Land at <150 KB initial payload before adding any new JS.
+3. **Front Cloudflare in front of Pages.** F-07 + F-10. CSP in report-only first; promote to enforce after one week of clean reports.
+4. **Worker auth (Task #2 in the existing project task list).** F-13 + F-14 considerations baked in.
+5. **Layer the platform features** (Tasks #3–#7). Each must add observability + tests + types in lockstep.
+6. **Polish + demo (Task #8).** Lighthouse ≥ 90 on mobile, no CSP report-only violations, all four `[live]` tags green.
+
+---
+
+## D. TASK BREAKDOWN
+
+| Pri | Task | Description | Complexity | Depends on |
+| --- | ---- | ----------- | ---------- | ---------- |
+| **P0** | **AUDIT-01** Create `.github/workflows/{pages,worker-api,contracts,validate}.yml` | Wire the four CI workflows that `replit.md` already promises. Pages workflow uses `actions/deploy-pages@v4`; Worker uses `wrangler deploy`; contracts uses Foundry toolchain; validate is the PR gate. | M | — |
+| **P0** | **AUDIT-02** Resolve deploy-path conflict | Pick GH Pages **or** Replit Static. Delete the loser's config in the same commit. Disconnect Cloudflare Workers Builds project. Update `replit.md`. | S | AUDIT-01 |
+| **P0** | **AUDIT-03** Move Cloudflare resource IDs out of `.replit` | All six IDs into `wrangler.toml` bindings. Delete `[userenv.shared]` block. Scope `CLOUDFLARE_API_TOKEN` to least-privilege. | S | — |
+| **P0** | **AUDIT-04** Front-end payload diet | Delete `assets/revolution/` (11 MB, F-06). Delete `assets/js/plugins.js` and replace with the small subset actually used. Drop unused font weights/formats (F-12). Acceptance: homepage <150 KB total. | L | — |
+| **P1** | **AUDIT-05** Cloudflare proxy + headers | Move `generatedart.com` DNS through Cloudflare; set the security header set in F-07 via Transform Rules; set cache rules from F-10. CSP starts in report-only. | M | AUDIT-02 |
+| **P1** | **AUDIT-06** Sweep demo carcasses | Either `git rm -r home-pages/ elements/ features/ services/` or add to `_config.yml` `exclude:`. Pick a single approach. | S | — |
+| **P1** | **AUDIT-07** Worker hardening (lands inside Task #2) | `workers_dev = false`, KV-backed rate limiter, Tail Workers log drain, sourcemap upload, dev-only CORS allowance. | M | Task #2 |
+| **P1** | **AUDIT-08** Sync `replit.md` to reality | Add `[live]` / `[scaffold]` / `[planned]` status tags to every line of "Tech stack". Link `[planned]` items to `.local/tasks/`. | S | — |
+| **P2** | **AUDIT-09** Drop Disqus or gate behind consent | Decide product call. Either remove `_includes/utilities/disqus-comments.html` references, or wrap in a consent gate. | S | — |
+| **P2** | **AUDIT-10** Asset fingerprinting | Add a content-hash plugin or rake task. Switch headers to `max-age=31536000, immutable` for hashed assets. | M | AUDIT-05 |
+| **P2** | **AUDIT-11** Analytics + error monitoring | Add Plausible to all pages; add Sentry to studio + mint pages once they exist. | S | Tasks #4 + #5 |
+| **P2** | **AUDIT-12** Pre-mint server-side validation spec | Document the validation contract for the mint endpoint (tokenId derivation check, repo HTTPS fetch, CID computation). Add to `.local/tasks/mint-flow-base-sepolia.md`. | M | Task #5 |
+
+---
+
+## E. QUICK WINS (≤ 1 hour each)
+
+1. **Delete `.git.broken/`** — `rm -rf .git.broken` recovers 21 MB.
+2. **Delete `assets/revolution/`** — recovers 11 MB and resolves the licensing question (F-06).
+3. **Delete unused Nunito weights** — keep 400/600/700 woff2 only; recover ~9 MB.
+4. **Add `_site/` to `.gitignore`** (already done, but `_site/` exists locally — `bundle exec jekyll clean` to recover 99 MB).
+5. **Add `home-pages/`, `elements/`, `features/`, `services/` to `_config.yml exclude:`** — site/SEO improvement in 4 lines of YAML.
+6. **Delete `[userenv.shared]` from `.replit`** and move to `wrangler.toml` — security improvement in 10 lines.
+7. **Delete `python-3.11` from `.replit` `modules`** — startup speed.
+8. **Add `<meta name="robots" content="noindex">`** to the demo carcasses while they exist (mass-add to layouts of `home-pages/`, `elements/`, `features/`, `services/` until they're deleted).
+
+---
+
+## F. LONG-TERM STRATEGY
+
+### Stack-level decisions to revisit before scale
+
+* **Jekyll vs. a faster static stack.** Jekyll Ruby builds get slow past ~1000 pages. Once the platform has thousands of project cards and artist profiles, you'll either need to (a) generate cards on-demand from the Worker (offload from build), or (b) migrate to Astro/Eleventy. Keep Jekyll until Task #3 lands and re-measure. Don't migrate prematurely.
+* **Card rendering on the Worker, not at build.** The natural Jekyll mental model says "every project gets a static page at build time." That doesn't scale to 10k+ projects. Long-term: project pages are Worker-rendered HTML pulled from D1, with edge cache. The Jekyll site becomes the marketing surface + studio/mint UI shell only.
+* **D1 for relational, KV for hot path, R2 for blobs, Queues for async.** Already the right call. The trap to avoid: putting any user-mutable data in `_data/*.yml` for "convenience." Those are build-time only.
+* **IPFS pin failover.** Pinata + web3.storage is correct. Don't sleep on the cost: free tiers will fall over the moment a piece goes viral. Build the cost model now; buy reserved capacity at the first sign of organic traction.
+* **No Node server, ever.** The current architecture forbids it and that constraint is correct — Workers + D1 + KV + R2 + Queues covers every async + persistence pattern you'll need without ops overhead. Adding Node would multiply your security perimeter.
+* **Wallet UX.** WalletConnect v2 is right. Add Coinbase Smart Wallet as a first-class option for Base — many of your target users are already in the Coinbase app. Avoid embedded wallets (Privy/Magic) because the platform's whole value prop is *user-owned code → user-owned tokens*. Embedded custody undermines that.
+* **Indexer.** Don't build your own. Goldsky or a pinned subgraph for Base is the right call. Mint events → subgraph → KV indexer-state → API endpoints. Plan this when Task #5 ships.
+
+### Operational disciplines to introduce now (cheap), not later (expensive)
+
+1. **Threat-model every new task.** Use the `threat_modeling` skill at the start of each task #2–#5. The mint and SIWE flows in particular have non-obvious attack surface.
+2. **CSP in report-only from week 1.** It's free; it pays back hugely the first time it catches a third-party script you didn't realise loaded.
+3. **Sourcemaps on the Worker** (`wrangler deploy --upload-source-maps`) and on the front-end (uploaded to Sentry). Without them, every production error is unreadable.
+4. **Per-task Lighthouse budget.** Each PR that touches the studio or mint pages must keep mobile Lighthouse Performance ≥ 80. CI gate this.
+5. **One canary user.** A single test wallet that runs a smoke-flow nightly against production (sign in → submit dummy repo → render → mint on Sepolia). Alert on any failure. Cheaper than synthetic monitoring SaaS.
+6. **`replit.md` as the single source of truth.** Every architectural decision recorded there with date + rationale. Already the pattern; keep it disciplined.
+
+---
+
+## Appendix A — Verification commands used in this audit
+
+```bash
+ls .github/workflows/                                        # F-01: ENOENT
+cat .replit | grep CLOUDFLARE                                # F-03: 6 IDs in plain text
+curl -s http://localhost:5000/ | grep -oE '<script[^>]*src=' # F-04: 17 script tags
+du -sh assets/revolution/                                    # F-06: 11M
+curl -sI http://localhost:5000/                              # F-07: no security headers
+du -sh .git.broken/ _site/                                   # F-08: 21M / 99M
+ls home-pages/ | wc -l                                       # F-09: 28 demo pages
+find assets/type/Nunito -type f | wc -l                      # F-12: 90+ font files
+wc -l workers/api/src/index.ts                               # F-05: 31 lines, /health only
+ls contracts/src/                                            # F-05: only .gitkeep
+```
+
+End of audit.

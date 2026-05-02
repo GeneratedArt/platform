@@ -1,0 +1,237 @@
+/* GA / GeneratedArt brand tokens — single source of truth.
+   Loaded last so it wins over the GeneratedArt template's color/font scheme files. */
+
+:root {
+  /* Type */
+  --ga-font-mono: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+  --ga-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+  /* Color — one ink, one paper, one accent */
+  --ga-paper:  #FAFAF7;
+  --ga-ink:    #0A0A0A;
+  --ga-accent: #E63946;
+  --ga-rule:   rgba(10, 10, 10, 0.12);
+  --ga-mute:   rgba(10, 10, 10, 0.55);
+
+  /* Spacing — 8pt grid */
+  --ga-1: 8px;  --ga-2: 16px; --ga-3: 24px; --ga-4: 32px;
+  --ga-6: 48px; --ga-8: 64px; --ga-12: 96px;
+
+  /* Type scale */
+  --ga-type-xs:  12px;
+  --ga-type-sm:  14px;
+  --ga-type-md:  16px;
+  --ga-type-lg:  20px;
+  --ga-type-xl:  28px;
+  --ga-type-2xl: 40px;
+  --ga-type-3xl: 64px;
+
+  /* Borders */
+  --ga-border: 1px solid var(--ga-rule);
+}
+
+/* Base surface + typography */
+html, body {
+  background-color: var(--ga-paper);
+  color: var(--ga-ink);
+  font-family: var(--ga-font-sans);
+  font-size: var(--ga-type-md);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6,
+.display-1, .display-2, .display-3, .display-4 {
+  font-family: var(--ga-font-sans);
+  color: var(--ga-ink);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+code, pre, kbd, samp, .ga-mono, [data-mono],
+.address, .hash, .token-id {
+  font-family: var(--ga-font-mono);
+}
+
+a, a:link {
+  color: var(--ga-ink);
+  text-decoration: none;
+}
+
+/* Generic link hover stays ink — accent is reserved for primary CTAs and active nav */
+a:hover, a:focus {
+  color: var(--ga-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--ga-rule);
+  text-underline-offset: 2px;
+}
+
+/* UI rules: no shadows, no rounded corners (except avatars + pills),
+   1px hairlines, single accent only on primary CTAs and active nav. */
+
+* {
+  box-shadow: none !important;
+}
+
+.btn, .card, .panel, .pricing, .widget, input, textarea, select, .form-control,
+table, .table, .post-content, .item, blockquote, figure, .alert, .badge, .tag {
+  border-radius: 0 !important;
+}
+
+.avatar, .rounded-circle, [class*="rounded-pill"], .pill, .badge.rounded-pill {
+  border-radius: 9999px !important;
+}
+
+.card, .panel, .widget, .pricing.panel, .alert {
+  background-color: transparent !important;
+  border: var(--ga-border) !important;
+}
+
+.table, .table th, .table td,
+hr, .border, .border-top, .border-bottom, .border-left, .border-right {
+  border-color: var(--ga-rule) !important;
+  border-width: 1px !important;
+}
+
+/* Accent reserved for primary CTAs and active nav, per brand rules */
+.btn-primary, .btn.btn-default, .btn.btn-strong-hover, .ga-cta {
+  background-color: var(--ga-ink) !important;
+  border: 1px solid var(--ga-ink) !important;
+  color: var(--ga-paper) !important;
+}
+
+.btn-primary:hover, .btn.btn-default:hover, .ga-cta:hover {
+  background-color: var(--ga-ink) !important;
+  border-color: var(--ga-ink) !important;
+  color: var(--ga-paper) !important;
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.btn-accent, .btn-accent:link {
+  background-color: var(--ga-accent) !important;
+  border: 1px solid var(--ga-accent) !important;
+  color: var(--ga-paper) !important;
+  text-decoration: none;
+}
+
+.btn-accent:hover, .btn-accent:focus {
+  background-color: var(--ga-accent) !important;
+  border-color: var(--ga-accent) !important;
+  color: var(--ga-paper) !important;
+  opacity: 0.9;
+  text-decoration: none;
+}
+
+.navbar-nav .nav-item.active > .nav-link,
+.nav-link.active {
+  color: var(--ga-accent) !important;
+}
+
+/* Neutralise the legacy template's color-default / bg-default chips so the
+   accent is not used as a generic flourish across pages — they fall back to
+   ink on transparent. */
+.color-default, .color-red, .color-purple {
+  color: var(--ga-ink) !important;
+}
+
+.bg-default, .bg-red, .bg-purple {
+  background-color: var(--ga-ink) !important;
+  color: var(--ga-paper) !important;
+}
+
+/* Wordmark — used in the header brand slot and anywhere else GA appears */
+.ga-mark {
+  font-family: var(--ga-font-mono);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ga-ink);
+  text-decoration: none;
+  font-size: var(--ga-type-lg);
+  display: inline-block;
+  line-height: 1;
+}
+
+.ga-mark img, .navbar-brand img {
+  height: 24px;
+  width: auto;
+  display: inline-block;
+}
+
+/* Hero — make the homepage immediately read as GA */
+.ga-hero {
+  background-color: var(--ga-paper);
+  color: var(--ga-ink);
+  padding: var(--ga-12) 0;
+  border-bottom: var(--ga-border);
+}
+
+.ga-hero h1 {
+  font-family: var(--ga-font-sans);
+  font-size: clamp(40px, 6vw, var(--ga-type-3xl));
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  max-width: 18ch;
+  margin: 0 auto var(--ga-3);
+}
+
+.ga-hero .ga-eyebrow {
+  font-family: var(--ga-font-mono);
+  font-size: var(--ga-type-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ga-mute);
+  margin-bottom: var(--ga-2);
+}
+
+.ga-hero .ga-sub {
+  font-size: var(--ga-type-lg);
+  color: var(--ga-mute);
+  max-width: 60ch;
+  margin: 0 auto var(--ga-4);
+  line-height: 1.5;
+}
+
+.ga-hero .ga-cta-row {
+  display: flex;
+  gap: var(--ga-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ga-hero .btn {
+  font-family: var(--ga-font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: var(--ga-type-sm);
+  padding: 14px 28px;
+}
+
+/* Footer attribution + copyright */
+.ga-footer-attribution {
+  font-family: var(--ga-font-mono);
+  font-size: var(--ga-type-xs);
+  color: var(--ga-mute);
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding-top: var(--ga-2);
+}
+
+/* Dark wrappers — keep ink/paper inverted */
+.dark-wrapper, .inverse-text {
+  background-color: var(--ga-ink);
+  color: var(--ga-paper);
+}
+
+.dark-wrapper h1, .dark-wrapper h2, .dark-wrapper h3,
+.dark-wrapper h4, .dark-wrapper h5, .dark-wrapper h6,
+.inverse-text, .inverse-text a {
+  color: var(--ga-paper);
+}
+
+.dark-wrapper a:hover, .inverse-text a:hover {
+  color: var(--ga-accent);
+}

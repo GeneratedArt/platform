@@ -10,7 +10,7 @@ badge_color: "bg-violet"
 slider_post: true
 meta_title: "My Love Affair with Cappadocia"
 meta_description: |
-  Snowlake Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
+  GeneratedArt Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
 permalink: "/posts/my-love-affair-with-cappadocia"
 ---
 

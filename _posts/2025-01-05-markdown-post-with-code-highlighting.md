@@ -9,7 +9,7 @@ post_image: "/assets/images/art/b16.webp"
 badge_color: "bg-meander"
 meta_title: "Kramdown post with code highlighting"
 meta_description: |
-  Snowlake Jekyll Theme has Kramdown post with code highlighting
+  GeneratedArt Jekyll Theme has Kramdown post with code highlighting
 permalink: "/posts/post-with-code-highlight"
 ---
 
@@ -21,7 +21,7 @@ First Level Header
 First Level Header - Create a code highlighting block in jekyll
 ==============================================================
 
-Its Super easy to create a Code Highlighting Block with Snowlake. Rouge Plugin is integrated with the theme.
+Its Super easy to create a Code Highlighting Block with GeneratedArt. Rouge Plugin is integrated with the theme.
 Following code is an example: close anything between {% raw %} {% highlight ruby %} your code here {% endhighlight %} {% endraw %}
 
 {% highlight ruby %}

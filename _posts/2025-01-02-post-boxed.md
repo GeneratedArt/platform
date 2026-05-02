@@ -10,7 +10,7 @@ badge_color: "bg-leaf"
 slider_post: true
 meta_title: "Boxed Post"
 meta_description: |
-  Snowlake Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
+  GeneratedArt Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
 permalink: "/posts/post-boxed"
 ---
 

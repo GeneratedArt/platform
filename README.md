@@ -2,14 +2,14 @@
 
 Community-run generative art platform and NFT marketplace for code-based generative art (hand-written p5.js / three.js / WebGL / GLSL). Spiritual successor to fxhash and Art Blocks, with a physical-digital bridge through the Geneva gallery.
 
-> **Stack.** Static site on **GitHub Pages** (Jekyll, Snowflake template foundation). Dynamic services on **Cloudflare** (Workers + D1 + KV + R2 + Queues). Smart contracts on **Base L2** (Foundry). No AWS, Vercel, Firebase, Supabase, Mongo, or Stripe-as-primary-rails.
+> **Stack.** Static site on **GitHub Pages** (Jekyll, derived from a GeneratedArt-template foundation — see `_includes/generatedart-attribution.html`). Dynamic services on **Cloudflare** (Workers + D1 + KV + R2 + Queues). Smart contracts on **Base L2** (Foundry). No AWS, Vercel, Firebase, Supabase, Mongo, or Stripe-as-primary-rails.
 
 ## Layout
 
 ```
 platform/
 ├── _config.yml, _layouts/, _includes/, _data/, _posts/, ...   Jekyll site (root)
-├── assets/, blogs/, portfolios/, services/, ...               Snowflake template content
+├── assets/, blogs/, portfolios/, services/, ...               Template content (to be replaced by GA features)
 ├── CNAME                                                       generatedart.com
 ├── workers/
 │   └── api/        Hono Worker — /health (foundation only)

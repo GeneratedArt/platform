@@ -11,7 +11,7 @@ post_format: "general"
 trending: true
 meta_title: "24 hours in the village of Toronto"
 meta_description: |
-  Snowlake Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
+  GeneratedArt Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
 permalink: "/posts/simple-post-with-no-sidebar"
 ---
 

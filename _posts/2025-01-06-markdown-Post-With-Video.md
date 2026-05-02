@@ -17,7 +17,7 @@ post_video:
     provider: "youtube"
 meta_title: "Kramdown Post With Video"
 meta_description: |
-  Snowlake Jekyll Theme post with video as header and video inside post
+  GeneratedArt Jekyll Theme post with video as header and video inside post
 permalink: "/posts/post-with-video"
 ---
 

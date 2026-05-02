@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "MD9nnoe-xmbT2ik2NTUyG"
+uri = "file://AUDIT.md"
+type = "text"
+title = "GeneratedArt — Full Architectural, Security & Performance Audit"

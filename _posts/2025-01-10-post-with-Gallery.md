@@ -10,7 +10,7 @@ badge_color: "bg-meander"
 trending: true
 meta_title: "Post with Gallery"
 meta_description: |
-  Snowlake Jekyll Theme post with gallery on top and in post
+  GeneratedArt Jekyll Theme post with gallery on top and in post
 
 # Image Galleries
 gallery:

@@ -14,7 +14,7 @@ gallery:
 badge_color: "bg-purple"
 meta_title: "Post with Carousel on main Image"
 meta_description: |
-  Snowlake Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
+  GeneratedArt Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
 permalink: "/posts/post-with-carousel"
 ---
 

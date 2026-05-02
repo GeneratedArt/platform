@@ -10,7 +10,7 @@ badge_color: "bg-green"
 trending: true
 meta_title: "24 hours in the village of Switzerland"
 meta_description: |
-  Snowlake Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
+  GeneratedArt Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
 permalink: "/posts/our-statement"
 ---
 

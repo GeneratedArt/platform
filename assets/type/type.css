@@ -170,12 +170,15 @@
   font-style: normal;
 }
 @font-face {
-    font-family: 'Snowlake';
-    src: url('snowlake/Snowlake.eot');
-    src: url('snowlake/Snowlake.eot?#iefix') format('embedded-opentype'),
-         url('snowlake/Snowlake.woff') format('woff'),
-         url('snowlake/Snowlake.ttf') format('truetype'),
-         url('snowlake/Snowlake.svg#Snowlake') format('svg');
+    /* Removed: legacy single-glyph icon-blob font (was the Snowlake-template
+       icon-shape decoration) — unreferenced in the GA homepage. The .jam-generatedart
+       selector below falls back to the regular Jam icon font. */
+    font-family: 'Jam';
+    src: url('jam/Jam.eot');
+    src: url('jam/Jam.eot?#iefix') format('embedded-opentype'),
+         url('jam/Jam.woff') format('woff'),
+         url('jam/Jam.ttf') format('truetype'),
+         url('jam/Jam.svg#Jam') format('svg');
     font-weight: normal;
     font-style: normal;
 }
@@ -413,7 +416,7 @@
 }
 [class^="icon-blob"], [class*=" icon-blob"] {
   /* use !important to prevent issues with browser extensions that change fonts */
-  font-family: 'Snowlake' !important;
+  font-family: 'GeneratedArt' !important;
   speak: none;
   font-style: normal;
   font-weight: normal;
@@ -2650,7 +2653,7 @@
 .jam-snowboard-f:before {
   content: "\ebe0";
 }
-.jam-snowflake:before {
+.jam-generatedart:before {
   content: "\ebe2";
 }
 .jam-soundcloud:before {

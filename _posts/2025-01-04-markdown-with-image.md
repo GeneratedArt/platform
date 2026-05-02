@@ -9,7 +9,7 @@ post_image: "/assets/images/art/bg17.webp"
 badge_color: "bg-leaf"
 meta_title: "The Natural Places in Brazil2"
 meta_description: |
-  Snowlake Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
+  GeneratedArt Jekyll Theme is a perfectly crafted fast loading and SEO-friendly static site generator theme
 permalink: "/posts/post-with-image"
 ---
 

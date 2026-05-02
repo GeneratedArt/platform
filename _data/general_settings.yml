@@ -6,30 +6,30 @@ description: >-
   Community-run generative art platform and NFT marketplace for code-based
   generative art. A spiritual successor to fxhash and Art Blocks, with a
   physical-digital bridge through the Geneva gallery.
-favicon: "/assets/images/favicon.webp"
+favicon: "/assets/img/ga-favicon.svg"
 
-# Seo Meta Settings
-meta_og_image: "/assets/images/meta-image.webp"
-meta_twitter_image: "/assets/images/meta-image.webp"
+# Seo Meta Settings — GA wordmark on ink, served as SVG (Twitter & OG accept SVG via og:image)
+meta_og_image: "/assets/img/ga-og.svg"
+meta_twitter_image: "/assets/img/ga-og.svg"
 
 # Site Wide Theme Color Setting
-color_scheme: red  #Aqua Blue Brown Cobalt Green Hibiscus Leaf Meander Orange Pink Purple Red Rose Sky Teal Violet Yellow
+color_scheme: red  # Brand red is enforced via assets/css/brand.css; this only loads the legacy red.css
 
 # Site Wide Theme Font Setting
-font_scheme:  # Jost, Nunito , DM Sans + Zilla Slab , HK Grotesk, Abhaya, Libre
+font_scheme:  # Brand fonts are enforced via assets/css/brand.css
 
-# Sitewide Logo
-black_logo_1x: "/assets/images/logo.webp"
-black_logo_2x: "/assets/images/logo@2x.webp"
-light_logo_1x: "/assets/images/logo-light.webp"
-light_logo_2x: "/assets/images/logo-light@2x.webp"
+# Sitewide Logo (GA mono wordmark, SVG, currentColor-style via two variants)
+black_logo_1x: "/assets/img/ga-mark.svg"
+black_logo_2x: "/assets/img/ga-mark.svg"
+light_logo_1x: "/assets/img/ga-mark-light.svg"
+light_logo_2x: "/assets/img/ga-mark-light.svg"
 
 # Site Wide Address and Phone Number
 address_01: 'Moonshine St. <br>14/05 Light City,<br /> London, United Kingdom'
 phone_number: "+00 (123) 456 78 90"
 
 # Site Wide Copyright
-copyright_text: "© 2026 GeneratedArt. Released under MIT (platform code) and CC-BY-NC-4.0 (artist bundles, default)."
+copyright_text: "© 2026 GeneratedArt — MIT (platform code), CC-BY-NC-4.0 (artist bundles, default)."
 
 # Site Wide Google Analytics
 google_analytics:
