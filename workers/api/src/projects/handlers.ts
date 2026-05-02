@@ -1,0 +1,222 @@
+import type { Context } from "hono";
+import type { Env } from "../types";
+import type { AuthVariables } from "../auth/middleware";
+import { getAuthUser } from "../auth/middleware";
+import { uniqueProjectSlug } from "../lib/slug";
+import {
+  archiveRepo,
+  generateRepoFromTemplate,
+  GitHubError,
+} from "../lib/github";
+import {
+  ENGINES,
+  STATUSES,
+  type ProjectEngine,
+  type ProjectStatus,
+  insertProject,
+  getProjectById,
+  listProjectsByHandle,
+  listProjectsByOwner,
+  updateProject,
+  publicProject,
+} from "../db/projects";
+import { getUserById } from "../db/users";
+import { checkRateLimit } from "../lib/rateLimit";
+
+const TITLE_MAX = 80;
+const DESCRIPTION_MAX = 500;
+
+interface CreateBody {
+  title?: unknown;
+  description?: unknown;
+  engine?: unknown;
+  license?: unknown;
+  private?: unknown;
+}
+
+function badRequest(c: Context, error: string, detail?: unknown) {
+  return c.json({ error, detail }, 400);
+}
+
+export async function createProject(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const session = getAuthUser(c);
+  const rl = await checkRateLimit(c.env.RATE_LIMIT, {
+    key: `projects:create:${session.uid}`,
+    limit: 20,
+    windowSeconds: 3600,
+  });
+  if (!rl.ok) return c.json({ error: "rate_limited", reset_at: rl.resetAt }, 429);
+
+  let body: CreateBody;
+  try {
+    body = await c.req.json<CreateBody>();
+  } catch {
+    return badRequest(c, "invalid_json");
+  }
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  if (!title || title.length > TITLE_MAX) {
+    return badRequest(c, "invalid_title");
+  }
+  const description =
+    typeof body.description === "string"
+      ? body.description.trim().slice(0, DESCRIPTION_MAX)
+      : null;
+  const engine = typeof body.engine === "string" ? body.engine : "p5";
+  if (!ENGINES.includes(engine as ProjectEngine)) {
+    return badRequest(c, "invalid_engine", { allowed: ENGINES });
+  }
+  const license =
+    typeof body.license === "string" ? body.license : "CC-BY-NC-4.0";
+  const isPrivate = body.private === true;
+
+  const user = await getUserById(c.env.DB, session.uid);
+  if (!user) return c.json({ error: "user_not_found" }, 404);
+
+  const baseSlug = `${user.handle}-${title}`;
+  const slug = await uniqueProjectSlug(c.env.DB, user.id, baseSlug);
+  const repoName = slug;
+
+  let repo;
+  try {
+    repo = await generateRepoFromTemplate(c.env, {
+      repoName,
+      description: description || `${title} — generative art on GeneratedArt`,
+      private: isPrivate,
+    });
+  } catch (err) {
+    if (err instanceof GitHubError) {
+      console.error("github_generate_failed", err.status, err.detail);
+      return c.json(
+        { error: err.message, detail: err.detail },
+        err.status >= 400 && err.status < 600 ? (err.status as 400 | 401 | 403 | 404 | 409 | 500 | 502 | 503) : 502,
+      );
+    }
+    throw err;
+  }
+
+  const project = await insertProject(c.env.DB, {
+    ownerId: user.id,
+    slug,
+    title,
+    description,
+    engine: engine as ProjectEngine,
+    license,
+    repoUrl: repo.html_url,
+    repoFull: repo.full_name,
+  });
+
+  return c.json({ project: publicProject(project) }, 201);
+}
+
+export async function getProject(c: Context<{ Bindings: Env }>) {
+  const id = parseInt(c.req.param("id") || "", 10);
+  if (!id || Number.isNaN(id)) return badRequest(c, "invalid_id");
+  const row = await getProjectById(c.env.DB, id);
+  if (!row) return c.json({ error: "not_found" }, 404);
+  return c.json({ project: publicProject(row) });
+}
+
+interface PatchBody {
+  title?: unknown;
+  description?: unknown;
+  status?: unknown;
+  cover_url?: unknown;
+}
+
+export async function patchProject(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const session = getAuthUser(c);
+  const id = parseInt(c.req.param("id") || "", 10);
+  if (!id || Number.isNaN(id)) return badRequest(c, "invalid_id");
+  const existing = await getProjectById(c.env.DB, id);
+  if (!existing) return c.json({ error: "not_found" }, 404);
+  if (existing.owner_id !== session.uid) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+
+  let body: PatchBody;
+  try {
+    body = await c.req.json<PatchBody>();
+  } catch {
+    return badRequest(c, "invalid_json");
+  }
+
+  const patch: Parameters<typeof updateProject>[2] = {};
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string" || !body.title.trim() || body.title.length > TITLE_MAX) {
+      return badRequest(c, "invalid_title");
+    }
+    patch.title = body.title.trim();
+  }
+  if (body.description !== undefined) {
+    if (body.description !== null && typeof body.description !== "string") {
+      return badRequest(c, "invalid_description");
+    }
+    patch.description = body.description == null ? null : String(body.description).slice(0, DESCRIPTION_MAX);
+  }
+  if (body.status !== undefined) {
+    if (typeof body.status !== "string" || !STATUSES.includes(body.status as ProjectStatus)) {
+      return badRequest(c, "invalid_status", { allowed: STATUSES });
+    }
+    patch.status = body.status as ProjectStatus;
+  }
+  if (body.cover_url !== undefined) {
+    if (body.cover_url !== null && typeof body.cover_url !== "string") {
+      return badRequest(c, "invalid_cover_url");
+    }
+    patch.cover_url = body.cover_url == null ? null : String(body.cover_url);
+  }
+
+  const updated = await updateProject(c.env.DB, id, patch);
+  if (!updated) return c.json({ error: "not_found" }, 404);
+  return c.json({ project: publicProject(updated) });
+}
+
+export async function archiveProject(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const session = getAuthUser(c);
+  const id = parseInt(c.req.param("id") || "", 10);
+  if (!id || Number.isNaN(id)) return badRequest(c, "invalid_id");
+  const existing = await getProjectById(c.env.DB, id);
+  if (!existing) return c.json({ error: "not_found" }, 404);
+  if (existing.owner_id !== session.uid) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+  if (existing.status === "archived") {
+    return c.json({ project: publicProject(existing) });
+  }
+
+  if (existing.repo_full) {
+    try {
+      await archiveRepo(c.env, existing.repo_full);
+    } catch (err) {
+      if (err instanceof GitHubError) {
+        console.error("github_archive_failed", err.status, err.detail);
+        return c.json({ error: err.message, detail: err.detail }, 502);
+      }
+      throw err;
+    }
+  }
+
+  const updated = await updateProject(c.env.DB, id, { status: "archived" });
+  return c.json({ project: publicProject(updated!) });
+}
+
+export async function listMyProjects(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const session = getAuthUser(c);
+  const rows = await listProjectsByOwner(c.env.DB, session.uid);
+  return c.json({ projects: rows.map(publicProject) });
+}
+
+export async function listProjectsForHandle(c: Context<{ Bindings: Env }>) {
+  const handle = c.req.param("handle");
+  if (!handle) return badRequest(c, "invalid_handle");
+  const rows = await listProjectsByHandle(c.env.DB, handle);
+  return c.json({ projects: rows.map(publicProject) });
+}

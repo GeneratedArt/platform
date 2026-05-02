@@ -9,6 +9,8 @@
     "deploy:prod": "wrangler deploy --env production",
     "typecheck": "tsc --noEmit",
     "build:client": "esbuild client/auth.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-auth.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
+    "build:dashboard": "esbuild client/dashboard.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-dashboard.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
+    "build:all": "npm run build:client && npm run build:dashboard",
     "migrate:local": "wrangler d1 migrations apply DB --local",
     "migrate:prod": "wrangler d1 migrations apply DB --env production --remote"
   },

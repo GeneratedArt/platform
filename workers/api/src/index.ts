@@ -4,6 +4,14 @@ import type { Env } from "./types";
 import { requireAuth, type AuthVariables } from "./auth/middleware";
 import { nonceHandler, verifyHandler } from "./auth/siwe";
 import { meHandler, logoutHandler } from "./auth/me";
+import {
+  createProject,
+  getProject,
+  patchProject,
+  archiveProject,
+  listMyProjects,
+  listProjectsForHandle,
+} from "./projects/handlers";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -13,7 +21,7 @@ app.use("*", async (c, next) => {
     origin: (origin) => (allowed.includes(origin) ? origin : null),
     credentials: true,
     allowHeaders: ["Content-Type"],
-    allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   })(c, next);
 });
 
@@ -26,6 +34,14 @@ v1.post("/auth/siwe/nonce", nonceHandler);
 v1.post("/auth/siwe/verify", verifyHandler);
 v1.post("/auth/logout", logoutHandler);
 v1.get("/me", requireAuth, meHandler);
+
+v1.post("/projects", requireAuth, createProject);
+v1.get("/projects/mine", requireAuth, listMyProjects);
+v1.get("/projects/:id{[0-9]+}", getProject);
+v1.patch("/projects/:id{[0-9]+}", requireAuth, patchProject);
+v1.post("/projects/:id{[0-9]+}/archive", requireAuth, archiveProject);
+v1.get("/users/:handle/projects", listProjectsForHandle);
+
 app.route("/v1", v1);
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));

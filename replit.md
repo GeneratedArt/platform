@@ -45,7 +45,7 @@ Each line is `[live]` (running today), `[scaffold]` (config exists, code does no
 - **D1 schema**: 8 tables (users, projects, follows, briefs, applications, galleries, gallery_projects, mints) + an FTS5 virtual table over user/project/brief text — migration at `workers/api/migrations/0001_init.sql`. Applied locally via `npm --prefix workers/api run migrate:local` (miniflare SQLite); production via `npm --prefix workers/api run migrate:prod`.
 - **SIWE auth**: `[live]` (Task #2). Server uses `siwe@^2.3.2` for message verification + `viem` for address validation; sessions are HS256 JWTs (Hono's built-in `hono/jwt`) with a `jti` revoke list in the SESSIONS KV; cookie is httpOnly, Secure, SameSite=Lax, scoped to `COOKIE_DOMAIN` (`.generatedart.com` in prod, `localhost` in dev). Per-IP rate limit on `/nonce` (30/min) and `/verify` (10/min) backed by RATE_LIMIT KV.
 - **Wallet client**: `assets/js/ga-auth.js` (148 KB minified, ESM) is bundled by `npm --prefix workers/api run build:client` from `workers/api/client/auth.ts` (esbuild). Source uses `viem` + injected `window.ethereum`; the SIWE message is constructed inline (no `siwe` lib in the browser bundle, which would have pulled in a Node `buffer` polyfill). Loaded only on `/connect/`, never on the homepage.
-- **Repo-as-Project + dashboard**: `[planned]` → `.local/tasks/project-creation-dashboard.md` (Task #3).
+- **Repo-as-Project + dashboard**: `[live]` (Task #3). Server endpoints `POST /v1/projects`, `GET /v1/projects/:id`, `PATCH /v1/projects/:id`, `POST /v1/projects/:id/archive`, `GET /v1/projects/mine`, `GET /v1/users/:handle/projects` at `workers/api/src/projects/handlers.ts`. Repo creation goes through GitHub's "create from template" API (`workers/api/src/lib/github.ts`); when `GITHUB_PAT` is unset OR `GITHUB_MOCK=1`, the Worker returns a stub repo response so local smoke runs without burning rate-limit. Dashboard at `/dashboard/projects/` with a "+ New project" modal (title + engine + license).
 - **Sketch Studio (p5.js)**: `[planned]` → `.local/tasks/studio-mvp.md` (Task #4).
 - **Mint flow on Base Sepolia**: `[planned]` → `.local/tasks/mint-flow-base-sepolia.md` (Task #5).
 - **Profile / portfolio / follow**: `[planned]` → `.local/tasks/profile-portfolio-follow.md` (Task #6).
@@ -136,3 +136,33 @@ End-to-end SIWE flow with a real wallet was NOT runnable from this Replit (no Me
 Out of scope (deliberately deferred):
 - WalletConnect v2 / wagmi: the brief mentions them but the lightweight requirement and the buffer-polyfill cost made the MetaMask-only injected-provider path the right hackathon shortcut. WalletConnect can be layered on later as a transport without touching the server.
 - Production Cloudflare provisioning: the resource IDs are wired but `wrangler deploy --env production` requires `CLOUDFLARE_API_TOKEN` which this Replit does not have.
+
+## May 2 2026 — Task #3: Repo-as-Project + dashboard complete
+Implemented the structural insight from §1 of the brief: every artist project is a real GitHub repo under `GeneratedArt-artists`, created from `template-sketch` via the GitHub API. The Worker holds the only PAT (server-side, fine-grained, org-scoped) and is the only thing that talks to GitHub.
+
+What landed:
+- **D1 migration** — `workers/api/migrations/0002_projects_extras.sql` adds `engine` (defaults to `p5`), `license` (defaults to `CC-BY-NC-4.0`), and `repo_full` (the canonical `owner/name`). Uniqueness on `repo_full` is enforced by `idx_projects_repo_full`, not a `UNIQUE` column constraint, because SQLite forbids `ALTER TABLE … ADD COLUMN … UNIQUE`.
+- **GitHub client** — `workers/api/src/lib/github.ts` calls `POST /repos/{template_owner}/{template_repo}/generate` and `PATCH /repos/{owner}/{repo}` with a small custom fetch wrapper (no Octokit — node-only deps would re-create the same buffer-polyfill problem we hit in Task #2). Mock mode (`GITHUB_MOCK=1` or empty `GITHUB_PAT`) skips the real call and returns a stub `{full_name, html_url, default_branch}` so local smoke is hermetic.
+- **Project endpoints** — `workers/api/src/projects/handlers.ts`:
+  - `POST /v1/projects` — auth + 20/hr/user rate limit. Slug = `slugify("{handle}-{title}")` with up to 50 numeric suffixes for collision (`workers/api/src/lib/slug.ts`); the same slug is used as both the D1 row's `slug` and the GitHub repo name. Validates engine ∈ {p5, three, shader, canvas}, title ≤ 80 chars, description ≤ 500.
+  - `GET /v1/projects/:id` — public, regex-pinned `:id{[0-9]+}`.
+  - `PATCH /v1/projects/:id` — auth + ownership check (returns 403 on cross-user). Allows `title`, `description`, `status`, `cover_url`. Validates status ∈ {draft, published, minted, archived}.
+  - `POST /v1/projects/:id/archive` — auth + ownership; calls GitHub PATCH `{archived: true}` then sets D1 `status = 'archived'`. Idempotent (returns the row unchanged if already archived).
+  - `GET /v1/projects/mine` — auth, lists the caller's projects sorted by `updated_at DESC`.
+  - `GET /v1/users/:handle/projects` — public listing for the portfolio surface that arrives in Task #6.
+- **DB layer** — `workers/api/src/db/projects.ts` exports the engine/status enums, `insertProject`, `getProjectById`, `listProjectsByOwner`, `listProjectsByHandle`, `updateProject`, and the `publicProject` projector that strips internal fields.
+- **Env additions** — `Env` in `workers/api/src/types.ts` gains `GITHUB_PAT`, `GITHUB_ORG`, `GITHUB_TEMPLATE_REPO`, `GITHUB_MOCK`. `.dev.vars.example` documents the prod-secret flow (`wrangler secret put GITHUB_PAT --env production`) and the fine-grained PAT permission set (Contents R/W, Administration R/W, Metadata R/O).
+- **Dashboard** — `dashboard/projects/index.html` is a Jekyll page at `/dashboard/projects/`. Calls `/v1/me` first (server-side auth check via cookie); if 401, hides the dashboard and prompts the user to `/connect/`. If signed in, fetches `/v1/projects/mine`, renders a card grid with engine + license sublabel, status badge (draft/published/minted/archived), repo link, and an Archive button. The "+ New project" Bootstrap modal posts back to `/v1/projects` and refreshes the list on success.
+- **Client bundle** — `workers/api/client/dashboard.ts` (vanilla TS, no framework) bundles via `npm --prefix workers/api run build:dashboard` to `assets/js/ga-dashboard.js`, 6.1 KB minified ESM. New combined script `build:all` builds both client bundles.
+
+Verified locally (against miniflare + a forged HS256 JWT signed with the same `JWT_SECRET` from `.dev.vars`):
+- `tsc --noEmit` clean across the whole Worker.
+- Migration `0002_projects_extras.sql` applies (5 commands).
+- Unauth probes: `POST /v1/projects` and `GET /v1/projects/mine` → 401 `unauthenticated`. `GET /v1/projects/9999` → 404. `OPTIONS /v1/projects` from `http://localhost:5000` → 204 with the right CORS headers including PATCH in `Allow-Methods`.
+- E2E lifecycle: created 3 projects (p5 / three / shader), each returned 201 with a unique slug `smoke-{title-slug}` and a mock `repo_full` `GeneratedArt-artists/smoke-{slug}`. `GET /v1/projects/mine` listed all 3 sorted by `updated_at DESC`. `PATCH` flipped #1 to `published`. `POST /v1/projects/1/archive` set it to `archived`. `PATCH` from a different `uid` → 403 `forbidden`. Invalid engine → 400 with `{"allowed":["p5","three","shader","canvas"]}`. Invalid status → 400 with the analogous list. Public `GET /v1/users/smoke/projects` returned all 3 rows including the archived one.
+- Jekyll `/dashboard/projects/` → 200; `/assets/js/ga-dashboard.js` → 200 (6.2 KB).
+
+Out of scope (deliberately deferred — operational dependencies, not code work):
+- The actual `GeneratedArt-artists/template-sketch` repo on GitHub does not exist yet. Step 1 of the task description ("Create the template repo") is an org-admin action: create the repo with a minimal p5.js boilerplate + `freeze.json` placeholder, enable "Use this template" in repo settings.
+- Issuing the fine-grained PAT and storing it as a wrangler secret (`wrangler secret put GITHUB_PAT --env production`) is also an org-admin action — it requires logging into a GitHub account that owns the org.
+- Until those two ops steps land, production must run with the placeholder `GITHUB_MOCK=1` (which would create rows in D1 with non-existent repo URLs — so DON'T do that in prod). The Worker raises a clean `503 github_template_unconfigured` if `GITHUB_PAT` is set but `GITHUB_TEMPLATE_REPO`/`GITHUB_ORG` are not.
