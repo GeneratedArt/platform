@@ -31,8 +31,16 @@ exclude:
   - Gemfile.lock
   - README.md
   - replit.md
+  - AUDIT.md
   - attached_assets
   - .verify-deploy
+  # Audit F-09 fix: exclude unbranded template demo carcasses from being routable
+  # on generatedart.com. They render Lorem-ipsum under the new GA brand and
+  # damage SEO + trust if indexed.
+  - home-pages
+  - elements
+  - features
+  - services
 
 collections:
   authors:

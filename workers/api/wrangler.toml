@@ -3,17 +3,70 @@ main = "src/index.ts"
 compatibility_date = "2026-04-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Bindings (D1, KV, R2, Queues) are intentionally omitted from the default
-# environment so the worker boots cleanly during the foundation phase.
-# They will be re-introduced as features are layered back on.
+# Audit F-13 fix: keep the worker off *.workers.dev so the only public surface
+# is the production route on api.generatedart.com.
+workers_dev = false
 
 [observability]
 enabled = true
 
-# ---- production ----
-# Attaches the Worker to api.generatedart.com once the zone DNS is configured.
+# ============================================================================
+# Production environment (api.generatedart.com)
+# ============================================================================
+#
+# Audit F-03 fix: the six Cloudflare resource IDs that previously lived in
+# [userenv.shared] in .replit are declared here as bindings under
+# [env.production]. They are commented out today and uncommented in the task
+# that wires the corresponding feature on (Worker SIWE auth, project storage,
+# captures, render queue, indexer state).
+#
+# `wrangler dev` for local Worker development uses .dev.vars (gitignored) for
+# any per-developer secrets. There is no .dev.vars committed to the repo.
+
 [env.production]
 name = "generatedart-api"
 routes = [
   { pattern = "api.generatedart.com/*", zone_name = "generatedart.com" }
 ]
+
+# --- Project + artist database (uncomment when Task #3 lands) ---------------
+# [[env.production.d1_databases]]
+# binding       = "DB"
+# database_name = "generatedart"
+# database_id   = "6c83d3f6-b3be-4e8d-9be2-a3274ad24e2a"
+
+# --- Sessions (SIWE) — uncomment with Task #2 -------------------------------
+# [[env.production.kv_namespaces]]
+# binding = "SESSIONS"
+# id      = "4c07b557b1b64e9dbe4b76427328c54a"
+
+# --- Per-IP and per-address rate limit — uncomment with Task #2 -------------
+# [[env.production.kv_namespaces]]
+# binding = "RATE_LIMIT"
+# id      = "071e1e836716455d9e30fd37389c03fa"
+
+# --- Indexer cursor + last-seen mint state — uncomment with Task #5 ---------
+# [[env.production.kv_namespaces]]
+# binding = "INDEXER_STATE"
+# id      = "20884d2a97504b82822f34b6dc725e02"
+
+# --- Captures + thumbnails — uncomment with Task #4 -------------------------
+# [[env.production.r2_buckets]]
+# binding     = "CAPTURES"
+# bucket_name = "generatedart-assets"
+
+# --- Async render + IPFS pin jobs — uncomment with Task #4 / Task #5 --------
+# [[env.production.queues.producers]]
+# binding    = "RENDER_QUEUE"
+# queue      = "render-jobs"
+#
+# [[env.production.queues.consumers]]
+# queue                = "render-jobs"
+# max_batch_size       = 10
+# max_batch_timeout    = 5
+# max_retries          = 3
+# dead_letter_queue    = "render-jobs-dlq"
+
+# Zone bound at the route level above (zone_name = "generatedart.com").
+# CLOUDFLARE_ZONE_ID = "5f16e1194f7d4b9f508b955e49c7c6ad" is implicit and lives
+# in the Cloudflare dashboard for this account; not needed in repo config.

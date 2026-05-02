@@ -35,18 +35,23 @@ platform/
     └── contracts.yml     forge build + test
 ```
 
-## Tech stack
-- **Static site**: Jekyll 4.3.x (Ruby 3.2.x), plugins: `jekyll-feed`, `jekyll-paginate-v2`, `jekyll-archives`. GeneratedArt v2 template as foundation.
-- **API**: Hono on Cloudflare Workers (TypeScript)
-- **Relational**: Cloudflare D1 (SQLite, Drizzle types) — to be re-added
-- **KV**: Sessions, rate-limit, indexer state — to be re-added
-- **R2**: Captures, thumbnails, signed uploads — to be re-added
-- **Queues**: render-jobs, ipfs-pin-jobs — to be re-added
-- **RPC**: Cloudflare Web3 Ethereum Gateway (Base)
-- **IPFS**: Cloudflare gateway (read), Pinata + web3.storage (pin failover)
-- **Wallet**: WalletConnect v2 + viem + wagmi (client-side; platform never holds keys)
-- **Contracts**: Solidity 0.8.24, Foundry, Base mainnet (8453) + Base Sepolia (84532)
-- **CI/CD**: GitHub Actions
+## Tech stack (status-tagged per audit fix F-05)
+Each line is `[live]` (running today), `[scaffold]` (config exists, code does not), or `[planned]` (named in roadmap, no config yet).
+
+- **Static site**: Jekyll 4.3.x (Ruby 3.2.x), plugins `jekyll-feed`, `jekyll-paginate-v2`, `jekyll-archives` — `[live]`. Snowflake Jekyll v2 template as foundation.
+- **Brand layer**: `assets/css/brand.css` + GA wordmarks/favicon/OG — `[live]` (Task #1).
+- **API**: Hono on Cloudflare Workers (TypeScript), `workers/api/src/index.ts` exposes only `GET /health` — `[scaffold]`.
+- **Worker bindings** (D1, KV ×3, R2, Queues): six resource IDs declared as commented `[env.production]` blocks in `workers/api/wrangler.toml` — `[scaffold]`. Uncommented per-feature in their owning task.
+- **SIWE auth**: `[planned]` → `.local/tasks/worker-siwe-auth.md` (Task #2).
+- **Repo-as-Project + dashboard**: `[planned]` → `.local/tasks/project-creation-dashboard.md` (Task #3).
+- **Sketch Studio (p5.js)**: `[planned]` → `.local/tasks/studio-mvp.md` (Task #4).
+- **Mint flow on Base Sepolia**: `[planned]` → `.local/tasks/mint-flow-base-sepolia.md` (Task #5).
+- **Profile / portfolio / follow**: `[planned]` → `.local/tasks/profile-portfolio-follow.md` (Task #6).
+- **Briefs board**: `[planned]` → `.local/tasks/briefs-board.md` (Task #7).
+- **Contracts**: Solidity 0.8.24, Foundry, Base mainnet (8453) + Base Sepolia (84532). `contracts/foundry.toml` exists; `contracts/src/` and `contracts/test/` are empty (`.gitkeep` only) — `[scaffold]`.
+- **RPC / IPFS**: Cloudflare Web3 Ethereum Gateway + Pinata + web3.storage — `[planned]`, wired with Task #5.
+- **Wallet**: WalletConnect v2 + viem + wagmi (client-side; platform never holds keys) — `[planned]`, wired with Task #2/#5.
+- **CI/CD**: GitHub Actions — `[planned]` → AUDIT-01 follow-up (no `.github/workflows/` exists today).
 
 Explicit non-goals: no AWS, Vercel, Firebase, Supabase, Mongo, Node.js server, Stripe-as-primary-rails, Cloudflare Pages, Netlify.
 
@@ -77,4 +82,19 @@ What changed:
 - **Footer**: `_includes/layouts/footer/footer.html` renders `{% include [the attribution include] %}` below the copyright. Copyright tightened to one line.
 - **Sweep**: every other template-brand reference (HTML, MD, YAML, CSS, JS, Markdown posts, the icon-blob font dir, the glyph metadata inside `Jam.svg`, the `.fa-icon-*` class in vendor `font-awesome.css`, the `disqus_thread` shortname, and the README) was replaced with GA equivalents. The icon-blob font dir was deleted (unreferenced); `assets/type/type.css`'s `@font-face` for it was redirected to fall back on the Jam icon font.
 
-Out of scope (deferred to later tasks): rebuilding the navigation around GA surfaces, removing the demo pages under `home-pages/`, `elements/`, `features/`, `services/`, `blogs/index-*.html` (they pass the grep test but still ship demo copy), and styling the dark wrapper variants used inside the demo pages.
+Out of scope (deferred to later tasks): rebuilding the navigation around GA surfaces and styling the dark wrapper variants used inside the legacy template pages.
+
+## May 2 2026 — Audit-driven cleanup (Task #1, follow-up sweep)
+A full architectural / security / perf audit was run after the brand pass; full report lives in `AUDIT.md` at the repo root. Quick-wins applied inline (rest broken into AUDIT-01 / AUDIT-02 / AUDIT-03 follow-up tasks):
+
+- **F-06 (Slider Revolution license risk)** — deleted `assets/revolution/` (~11 MB). Removed all 11 `<script>` and 3 `<link>` references from `_includes/core/scripts/scripts.html` and `_includes/core/styles/styles.html`. Homepage script count dropped from 17 → 6.
+- **F-09 (demo carcasses still routable)** — added `home-pages`, `elements`, `features`, `services` to `_config.yml` `exclude:`. Verified `/home-pages/index-2.html`, `/elements/buttons_badges.html`, `/features/header1.html`, `/services/index.html` all return 404.
+- **F-03 (Cloudflare resource IDs in `.replit`)** — moved all six IDs (D1, KV ×3, R2, Zone) into `workers/api/wrangler.toml` under `[env.production]`, commented per-feature so they're uncommented as the owning task lands. Deleted `[userenv.shared]` from `.replit`. Also set `workers_dev = false` (audit F-13).
+- **F-02 (competing static-deploy paths)** — removed `[deployment]` block from `.replit`. GitHub Pages is now the canonical static-deploy path; the AUDIT-01 follow-up will create `.github/workflows/pages.yml` to actually wire it.
+- **F-05 (replit.md drift)** — every line in "Tech stack" above is now `[live]` / `[scaffold]` / `[planned]` and links to its owning task file.
+- **F-08 (cruft)** — `bundle exec jekyll clean` removed `_site/`. `.git.broken/` (21 MB) is left in place because the agent shell guard blocks `rm` on `.git*` paths; AUDIT-01 covers it.
+
+Remaining audit work, broken into follow-up tasks (created via `proposeFollowUpTasks`):
+- **AUDIT-01** — Build the four CI/CD workflows under `.github/workflows/` and resolve the deploy-path conflict end-to-end (covers F-01 + F-02 cleanup + `.git.broken` removal).
+- **AUDIT-02** — Front-end payload diet: drop `assets/js/plugins.js` (340 KB) + jQuery/Popper/Bootstrap-JS from base, subset Nunito to woff2 + 3 weights, target homepage <150 KB total (covers F-04 + F-12).
+- **AUDIT-03** — Front Cloudflare in front of Pages with security headers + CSP + cache rules + worker hardening (covers F-07 + F-10 + F-13).
