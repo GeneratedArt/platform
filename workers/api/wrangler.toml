@@ -77,10 +77,15 @@ id      = "071e1e836716455d9e30fd37389c03fa"
 # binding = "INDEXER_STATE"
 # id      = "20884d2a97504b82822f34b6dc725e02"
 
-# --- Captures + thumbnails — uncomment with Task #4 -------------------------
-# [[env.production.r2_buckets]]
-# binding     = "CAPTURES"
-# bucket_name = "generatedart-assets"
+# --- Captures + thumbnails (Task #4) ----------------------------------------
+# Bucket must be created BEFORE the first prod deploy:
+#   wrangler r2 bucket create generatedart-assets
+# Without this binding the studio's "Export PNG" endpoint returns
+# 503 captures_unconfigured and the client falls back to a local
+# download — functional, but not the intended demo flow.
+[[env.production.r2_buckets]]
+binding     = "CAPTURES"
+bucket_name = "generatedart-assets"
 
 # --- Async render + IPFS pin jobs — uncomment with Task #4 / Task #5 --------
 # [[env.production.queues.producers]]
@@ -97,8 +102,13 @@ id      = "071e1e836716455d9e30fd37389c03fa"
 # --- Production env vars (non-secret). JWT_SECRET is set via:
 #       wrangler secret put JWT_SECRET --env production
 [env.production.vars]
-COOKIE_DOMAIN    = ".generatedart.com"
-ALLOWED_ORIGINS  = "https://generatedart.com,https://www.generatedart.com"
+COOKIE_DOMAIN        = ".generatedart.com"
+ALLOWED_ORIGINS      = "https://generatedart.com,https://www.generatedart.com"
+# Public origin captures are served from. Defaults to the request
+# origin when unset; pinned here so prod URLs stay stable across
+# Worker route changes and so a future CDN/custom-domain swap is a
+# one-line edit.
+CAPTURES_PUBLIC_BASE = "https://api.generatedart.com"
 
 # Zone bound at the route level above (zone_name = "generatedart.com").
 # CLOUDFLARE_ZONE_ID = "5f16e1194f7d4b9f508b955e49c7c6ad" lives in the
