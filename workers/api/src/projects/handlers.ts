@@ -8,6 +8,8 @@ import {
   generateRepoFromTemplate,
   GitHubError,
 } from "../lib/github";
+// archiveRepo is also used as the orphan-repo compensation when the D1
+// insert fails after a successful GitHub create.
 import {
   ENGINES,
   STATUSES,
@@ -96,16 +98,31 @@ export async function createProject(
     throw err;
   }
 
-  const project = await insertProject(c.env.DB, {
-    ownerId: user.id,
-    slug,
-    title,
-    description,
-    engine: engine as ProjectEngine,
-    license,
-    repoUrl: repo.html_url,
-    repoFull: repo.full_name,
-  });
+  let project;
+  try {
+    project = await insertProject(c.env.DB, {
+      ownerId: user.id,
+      slug,
+      title,
+      description,
+      engine: engine as ProjectEngine,
+      license,
+      repoUrl: repo.html_url,
+      repoFull: repo.full_name,
+    });
+  } catch (dbErr) {
+    // The GitHub repo was created but the D1 insert failed. Compensate
+    // by archiving the orphan repo so we don't leave the org cluttered
+    // with unreferenced projects. Best-effort: log + swallow archive
+    // errors so the user still sees the original DB failure.
+    console.error("project_insert_failed_after_repo_create", dbErr);
+    try {
+      await archiveRepo(c.env, repo.full_name);
+    } catch (archiveErr) {
+      console.error("orphan_repo_compensation_failed", repo.full_name, archiveErr);
+    }
+    throw dbErr;
+  }
 
   return c.json({ project: publicProject(project) }, 201);
 }

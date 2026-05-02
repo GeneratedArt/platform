@@ -17,9 +17,21 @@ interface MeResponse {
   user: { id: number; address: string; handle: string };
 }
 
+interface BootstrapModalInstance {
+  show(): void;
+  hide(): void;
+}
+interface BootstrapModalCtor {
+  getOrCreateInstance(el: Element): BootstrapModalInstance;
+}
+interface BootstrapNamespace {
+  Modal: BootstrapModalCtor;
+}
+
 declare global {
   interface Window {
     GADashboard?: typeof GADashboard;
+    bootstrap?: BootstrapNamespace;
   }
 }
 
@@ -218,8 +230,8 @@ function attachEvents(cfg: DashboardConfig) {
       titleEl.value = "";
       if (descEl) descEl.value = "";
       const modalEl = document.getElementById("ga-new-project-modal");
-      if (modalEl && (window as any).bootstrap?.Modal) {
-        (window as any).bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+      if (modalEl && window.bootstrap?.Modal) {
+        window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
       }
       await loadProjects(cfg);
     } catch (err) {

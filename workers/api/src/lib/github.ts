@@ -29,7 +29,12 @@ function ghHeaders(pat: string): HeadersInit {
 }
 
 function isMockMode(env: Env): boolean {
-  return env.GITHUB_MOCK === "1" || !env.GITHUB_PAT;
+  // Mock mode is OPT-IN only via GITHUB_MOCK=1. A missing PAT must NOT
+  // silently fall back to mock mode, otherwise a production
+  // misconfiguration would silently "succeed" project creation and
+  // write D1 rows pointing to non-existent repos. Missing PAT in
+  // non-mock mode raises a clean 503.
+  return env.GITHUB_MOCK === "1";
 }
 
 export async function generateRepoFromTemplate(
@@ -45,6 +50,13 @@ export async function generateRepoFromTemplate(
     };
   }
 
+  if (!env.GITHUB_PAT) {
+    throw new GitHubError(
+      "github_pat_unconfigured",
+      503,
+      "GITHUB_PAT secret must be set in production (use `wrangler secret put GITHUB_PAT --env production`).",
+    );
+  }
   if (!env.GITHUB_TEMPLATE_REPO || !env.GITHUB_ORG) {
     throw new GitHubError(
       "github_template_unconfigured",
@@ -86,6 +98,13 @@ export async function archiveRepo(
 ): Promise<void> {
   if (isMockMode(env)) {
     return;
+  }
+  if (!env.GITHUB_PAT) {
+    throw new GitHubError(
+      "github_pat_unconfigured",
+      503,
+      "GITHUB_PAT secret must be set",
+    );
   }
   const res = await fetch(`${GITHUB_API}/repos/${fullName}`, {
     method: "PATCH",
