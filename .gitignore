@@ -52,3 +52,4 @@ secrets/
 # Stale legacy git dir from April 2026 reset (do not commit)
 .git.broken/
 attached_assets/
+workers/api/node_modules/

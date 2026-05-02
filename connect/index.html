@@ -1,0 +1,110 @@
+---
+layout: default
+permalink: /connect/
+title: "Connect wallet — GeneratedArt"
+meta_title: "Connect wallet — GeneratedArt"
+meta_description: |
+  Sign in to GeneratedArt by signing a Sign-In-with-Ethereum (SIWE) message
+  with your wallet. No password, no email, no platform-held keys.
+sub_title: "Sign in with your wallet."
+header_image: "/assets/images/art/bg31.webp"
+---
+
+<section class="wrapper">
+  <div class="container py-14 py-md-16">
+    <div class="row gx-lg-8 gx-xl-12">
+      <div class="col-lg-7 mx-auto text-center">
+        <h1 class="display-4 mb-4">Sign in with your wallet</h1>
+        <p class="lead mb-8">
+          GeneratedArt uses Sign-In-with-Ethereum (SIWE). Your wallet signs a
+          message proving you control the address. We never see, hold, or
+          store a private key.
+        </p>
+
+        <div id="ga-connect-status" class="alert alert-info d-none" role="status"></div>
+
+        <div class="d-flex justify-content-center gap-3 mb-6">
+          <button id="ga-connect-btn" class="btn btn-accent rounded-0">
+            Connect wallet
+          </button>
+          <button id="ga-logout-btn" class="btn btn-outline-primary rounded-0 d-none">
+            Sign out
+          </button>
+        </div>
+
+        <pre id="ga-connect-result" class="text-start small bg-light p-4 d-none" style="border:1px solid var(--ga-rule);"></pre>
+
+        <p class="small text-muted mt-6">
+          API endpoint: <code id="ga-api-base"></code>. Override with
+          <code>?api=http://localhost:8787</code>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="{{ '/assets/js/ga-auth.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || "http://localhost:8787";
+  document.getElementById("ga-api-base").textContent = apiBase;
+
+  var statusEl = document.getElementById("ga-connect-status");
+  var resultEl = document.getElementById("ga-connect-result");
+  var connectBtn = document.getElementById("ga-connect-btn");
+  var logoutBtn = document.getElementById("ga-logout-btn");
+
+  function showStatus(kind, text) {
+    statusEl.className = "alert alert-" + kind;
+    statusEl.textContent = text;
+    statusEl.classList.remove("d-none");
+  }
+  function showResult(payload) {
+    resultEl.textContent = JSON.stringify(payload, null, 2);
+    resultEl.classList.remove("d-none");
+  }
+
+  function refreshSession() {
+    if (!window.GAAuth) {
+      setTimeout(refreshSession, 50);
+      return;
+    }
+    window.GAAuth.me(apiBase).then(function (me) {
+      if (me) {
+        showStatus("success", "Signed in as " + me.user.handle + " (" + me.user.address + ")");
+        showResult(me);
+        connectBtn.classList.add("d-none");
+        logoutBtn.classList.remove("d-none");
+      }
+    }).catch(function () { /* not signed in yet */ });
+  }
+
+  connectBtn.addEventListener("click", function () {
+    if (!window.GAAuth) {
+      showStatus("warning", "Auth bundle still loading — try again in a moment.");
+      return;
+    }
+    showStatus("info", "Requesting wallet signature…");
+    window.GAAuth.connect({ apiBase: apiBase }).then(function (res) {
+      showStatus("success", "Signed in as " + res.user.handle);
+      showResult(res);
+      connectBtn.classList.add("d-none");
+      logoutBtn.classList.remove("d-none");
+    }).catch(function (err) {
+      showStatus("danger", "Sign-in failed: " + (err && err.message ? err.message : err));
+    });
+  });
+
+  logoutBtn.addEventListener("click", function () {
+    window.GAAuth.logout(apiBase).then(function () {
+      showStatus("info", "Signed out.");
+      resultEl.classList.add("d-none");
+      logoutBtn.classList.add("d-none");
+      connectBtn.classList.remove("d-none");
+    });
+  });
+
+  refreshSession();
+})();
+</script>

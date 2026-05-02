@@ -1,2 +1,15 @@
-# Copy to .dev.vars for local `wrangler dev` runs. Never commit .dev.vars.
-# Secrets are populated as features are layered on; foundation needs none.
+# Copy this file to `.dev.vars` (gitignored) before running `npx wrangler dev`.
+# These three values are read as Worker bindings during local development.
+
+# Long random string used to sign session JWTs. Regenerate per developer:
+#   openssl rand -hex 32
+JWT_SECRET="replace-me-with-openssl-rand-hex-32"
+
+# Cookie domain for local dev. Use "localhost" when serving the Jekyll site
+# at http://localhost:5000. In production this is ".generatedart.com" so the
+# session cookie is shared between root and api subdomains.
+COOKIE_DOMAIN="localhost"
+
+# Comma-separated list of origins allowed to make credentialed requests to the
+# Worker AND allowed in the SIWE message `domain` field.
+ALLOWED_ORIGINS="http://localhost:5000,http://127.0.0.1:5000"
