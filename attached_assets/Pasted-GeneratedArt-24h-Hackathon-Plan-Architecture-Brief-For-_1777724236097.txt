@@ -2,7 +2,7 @@ GeneratedArt — 24h Hackathon Plan & Architecture Brief
 For: Replit Agent (and any human collaborator) Repo: https://github.com/GeneratedArt/platform Domain: generatedart.com (CNAME at repo root) Brand: GA / GeneratedArt — minimal, monospace-leaning, crisp, no decorative chrome. Author intent: Spiritual successor to fxhash + Art Blocks, with a collaboration layer for non-coders (textile, fashion, architecture, industrial design) and a gallery bridge (Geneva first).
 
 0. Source-of-truth context for the agent (read this first)
-You are working in GeneratedArt/platform, a monorepo that was hard-reset on April 23 2026 to a Snowflake Jekyll v2 template foundation. Do not reintroduce removed surfaces. Layer new features onto the Snowflake template's existing collections (_authors, _portfolio, _shop_items) and Cloudflare Worker — do not fork to Astro, Next.js, Vercel, Pages, or any other host.
+You are working in GeneratedArt/platform, a monorepo that was hard-reset on April 23 2026 to a upstream template Jekyll v2 template foundation. Do not reintroduce removed surfaces. Layer new features onto the upstream template template's existing collections (_authors, _portfolio, _shop_items) and Cloudflare Worker — do not fork to Astro, Next.js, Vercel, Pages, or any other host.
 Architectural commandments (non-negotiable):
 One static-site target: GitHub Pages (Jekyll, built by .github/workflows/pages.yml).
 One dynamic service: Hono Worker at workers/api/, deployed to api.generatedart.com.
@@ -29,7 +29,7 @@ flowchart TB
   end
 
   subgraph Static["GitHub Pages — generatedart.com"]
-    Jekyll["Jekyll site (Snowflake foundation)"]
+    Jekyll["Jekyll site (upstream template foundation)"]
     Studio["/studio — in-browser p5/three editor"]
     Mint["/mint/:project — mint UI"]
     Portfolio["/@:handle — portfolio"]
@@ -239,7 +239,7 @@ Flow. Studio → "New project" → name + engine + license → spinner → repo 
 Impact. Zero lock-in. Source code, history, issues, stars all live in GitHub forever.
 Risks. GitHub rate limits (mitigated: PAT is org-scoped, requests batched). PAT compromise (mitigated: fine-grained, rotated quarterly, never in client). Metric: repo creation success rate > 99%, p95 latency < 1.5s.
 F2 — Artist profile / portfolio (/@:handle)
-Impl. Snowflake's _authors/{handle}.md is the canonical profile front-matter (name, bio, avatar, socials). The portfolio page is a Jekyll layout that fetches /v1/users/:handle/projects at build (via jekyll-data plugin OR client-side JS — pick client-side so the site doesn't rebuild on every project change).
+Impl. upstream template's _authors/{handle}.md is the canonical profile front-matter (name, bio, avatar, socials). The portfolio page is a Jekyll layout that fetches /v1/users/:handle/projects at build (via jekyll-data plugin OR client-side JS — pick client-side so the site doesn't rebuild on every project change).
 Contracts. None.
 Flow. Visit /@dami → static shell renders → JS fetches projects + follow count → grid of cover images (R2-hosted) → click into project page.
 Impact. Free, fast, SEO-friendly portfolio every artist gets the day they sign up. The portfolio IS the platform's growth surface.
@@ -306,7 +306,7 @@ Impact. Discovery = retention. Without it, the platform is just a list of profil
 Risks. Gaming the leaderboards (mitigated: weight by unique-collector count, not raw volume). Metric: explore CTR, search-to-follow conversion.
 
 5. Branding pass — GA / GeneratedArt
-Replace Snowflake placeholders before any feature work. Single CSS variables file at assets/css/_brand.scss:
+Replace upstream template placeholders before any feature work. Single CSS variables file at assets/css/_brand.scss:
 :root {
   // Type
   --ga-font-mono: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, monospace;
@@ -352,8 +352,8 @@ Disable Cloudflare Workers Builds auto-deploy. Verify pages.yml deploys clean. C
 curl https://api.generatedart.com/healthreturns ok.
 02–05
 Branding pass[parallelizable]
-Drop in _brand.scss. Replace Snowflake logo, copyright, favicon, theme colors. Rewrite _config.yml title/description/email. Replace homepage hero copy.
-Site at localhost:5000 looks GA-branded, no Snowflake strings remain (grep -ri snowflake . returns 0).
+Drop in _brand.scss. Replace upstream template logo, copyright, favicon, theme colors. Rewrite _config.yml title/description/email. Replace homepage hero copy.
+Site at localhost:5000 looks GA-branded, no upstream template strings remain (grep -ri upstream template . returns 0).
 05–08
 Auth: SIWE
 Worker routes /v1/auth/siwe/{nonce,verify}. JWT issuance. KV nonce store. Client lib: WalletConnect v2 + viem createSiweMessage + signature post. Persistent session via httpOnlycookie scoped to .generatedart.com.
@@ -434,7 +434,7 @@ chore: disable Cloudflare Workers auto-deploy [infra] [blocker]
 chore: provision D1 schema + run migrations [infra]
 chore: provision R2 buckets (thumbs, captures, frozen) [infra]
 chore: provision KV namespaces (sessions, rate-limit, indexer) [infra]
-feat(brand): GA branding pass over Snowflake template [ui] [blocker]
+feat(brand): GA branding pass over upstream template template [ui] [blocker]
 feat(auth): SIWE nonce + verify endpoints [worker]
 feat(auth): wagmi + WC2 client integration on Jekyll site [ui]
 feat(projects): GitHub repo creation via template + D1 row [worker]
@@ -524,9 +524,9 @@ Dynamic service = single Hono Worker at workers/api/. Do not add a second worker
 Smart contracts = Foundry under contracts/, deployed to Base. Do not use Hardhat, Truffle, or any non-Foundry toolchain.
 The platform never holds private keys. All wallet ops are client-side (WalletConnect v2 + viem + wagmi). Worker only verifies signatures.
 Source code for artist projects lives in GitHub repos under the GeneratedArt-artists org. Do not store sketch source in D1 or R2. R2 is for thumbnails, captures, and frozen bundles only.
-Snowflake is the template foundation. Layer on top of _authors, _portfolio, _shop_items. Do not delete and rewrite the template.
+upstream template is the template foundation. Layer on top of _authors, _portfolio, _shop_items. Do not delete and rewrite the template.
 Cloudflare Workers Builds auto-deploy is currently active and broken. Disable it in the dashboard before any Worker work. If you cannot disable it, stop and surface the blocker.
-Branding pass first. No feature work until grep -ri snowflake . returns zero matches in everything except _includes/snowflake-attribution.html (keep one attribution line in the footer).
+Branding pass first. No feature work until grep -ri upstream template . returns zero matches in everything except _includes/upstream template-attribution.html (keep one attribution line in the footer).
 Per-task workflow:
 Open a GitHub issue with the task title from the §8 backlog.
 Open a branch feat/<short-slug> or chore/<short-slug>.
@@ -655,16 +655,16 @@ p:`Create assets/css/_brand.scss with the full CSS variable set from §5 of GENE
 d:`_brand.scss exists. jekyll serve compiles cleanly. Variables are available in browser devtools.`},
 {t:"Replace logo, favicon, and theme colour",
 p:`Create assets/img/ga-mark.svg: wordmark "GA" in ui-monospace, letter-spacing 0.04em, all caps, black on transparent. Replace favicon with a minimal square version. Set theme_color in _config.yml to #E63946. Do not change any other _config.yml keys.`,
-d:`localhost:4000 shows GA wordmark in nav. Favicon is the GA mark. No Snowflake logo visible.`},
+d:`localhost:4000 shows GA wordmark in nav. Favicon is the GA mark. No upstream template logo visible.`},
 {t:"Update _config.yml brand strings",
 p:`Edit _config.yml. Change only: title → "GeneratedArt", description → "Where your code is the artwork.", email → the project contact email. Do not change theme, plugins, baseurl, or any other key.`,
 d:`Page <title> and meta description show updated strings.`},
 {t:"Rewrite homepage hero copy",
-p:`In index.md (or the home layout), replace the Snowflake hero with: H1 "Where your code is the artwork." Subhead "Open-source generative art. Minted on Base. Owned by the artists who make it." Primary CTA "Start creating" → /studio. Use existing layout classes. Do not add new CSS.`,
+p:`In index.md (or the home layout), replace the upstream template hero with: H1 "Where your code is the artwork." Subhead "Open-source generative art. Minted on Base. Owned by the artists who make it." Primary CTA "Start creating" → /studio. Use existing layout classes. Do not add new CSS.`,
 d:`localhost:4000 shows the new hero copy and CTA button.`},
-{t:"Verify zero Snowflake strings remain",
-p:`Run: grep -ri snowflake . --include="*.html" --include="*.md" --include="*.scss" --include="*.yml" --include="*.js" --include="*.ts" and list every match. The only allowed match is a single attribution line in _includes/snowflake-attribution.html. Fix every other match. Report when the grep returns only that one file.`,
-d:`grep -ri snowflake . returns exactly one result: _includes/snowflake-attribution.html.`},
+{t:"Verify zero upstream template strings remain",
+p:`Run: grep -ri upstream template . --include="*.html" --include="*.md" --include="*.scss" --include="*.yml" --include="*.js" --include="*.ts" and list every match. The only allowed match is a single attribution line in _includes/upstream template-attribution.html. Fix every other match. Report when the grep returns only that one file.`,
+d:`grep -ri upstream template . returns exactly one result: _includes/upstream template-attribution.html.`},
 ]},
 {label:"05–08h Auth",short:"Auth",tasks:[
 {t:"SIWE nonce endpoint",
@@ -691,7 +691,7 @@ d:`POST /v1/projects with valid JWT creates a real GitHub repo and returns proje
 p:`Implement GET /v1/projects/:id (look up by id, return row, 404 if missing) and GET /v1/users/:handle/projects (look up user by handle, return all non-archived projects ordered by created_at DESC). Deploy both.`,
 d:`Both endpoints return correct JSON.`},
 {t:"/dashboard/projects Jekyll page",
-p:`Create a Jekyll page at /dashboard/projects. Client-side: check ga_session cookie — redirect to /login if absent. Fetch /v1/me then /v1/users/{handle}/projects. Render a grid of project cards (title, status badge, GitHub link). Include a "New project" button that opens a modal form (slug + title) and POSTs to /v1/projects. On success append the new card without full reload. Use existing Snowflake grid classes.`,
+p:`Create a Jekyll page at /dashboard/projects. Client-side: check ga_session cookie — redirect to /login if absent. Fetch /v1/me then /v1/users/{handle}/projects. Render a grid of project cards (title, status badge, GitHub link). Include a "New project" button that opens a modal form (slug + title) and POSTs to /v1/projects. On success append the new card without full reload. Use existing upstream template grid classes.`,
 d:`Signed-in user sees their projects. "New project" creates a repo and it appears in the grid.`},
 ]},
 {label:"11–14h Studio",short:"Studio",tasks:[
@@ -707,7 +707,7 @@ d:`Press ⌘S in studio → commit appears in the artist's GitHub repo within 3 
 ]},
 {label:"14–17h Profile",short:"Profile",tasks:[
 {t:"/@:handle portfolio layout",
-p:`Create a Jekyll layout and page that serves at /@:handle. Static shell on load; JS fetches /v1/users/{handle} and /v1/users/{handle}/projects then renders: avatar circle, display name, handle, bio, follower count, project cover grid, and a Follow button. If signed-in user is the profile owner, hide Follow and show "Edit profile" link. Use existing Snowflake grid classes.`,
+p:`Create a Jekyll layout and page that serves at /@:handle. Static shell on load; JS fetches /v1/users/{handle} and /v1/users/{handle}/projects then renders: avatar circle, display name, handle, bio, follower count, project cover grid, and a Follow button. If signed-in user is the profile owner, hide Follow and show "Edit profile" link. Use existing upstream template grid classes.`,
 d:`Visiting /@testuser renders that user's profile and project grid.`},
 {t:"Follow / unfollow Worker endpoints",
 p:`Implement POST /v1/users/:handle/follow (JWT required): insert row into D1 follows (follower, followee, created_at). DELETE /v1/users/:handle/follow: remove the row. Both return { following: bool, count: number }. Return 400 for self-follow. Deploy.`,
@@ -743,8 +743,8 @@ d:`Posting a brief from one account is visible at /briefs from another account o
 ]},
 {label:"22–24h Polish",short:"Polish",tasks:[
 {t:"Rewrite landing page hero",
-p:`In index.md or the home layout replace all Snowflake demo content with: H1 "Where your code is the artwork." Subhead "Open-source generative art. Minted on Base. Owned by the artists who make it." Three one-sentence bullets: "Your repo is your gallery." / "Forks are remixes. PRs are collaborations." / "Royalties split on-chain across every collaborator." Primary CTA "Start creating" → /studio. Secondary CTA "Browse projects" → /explore.`,
-d:`Homepage shows GA hero and no Snowflake demo content.`},
+p:`In index.md or the home layout replace all upstream template demo content with: H1 "Where your code is the artwork." Subhead "Open-source generative art. Minted on Base. Owned by the artists who make it." Three one-sentence bullets: "Your repo is your gallery." / "Forks are remixes. PRs are collaborations." / "Royalties split on-chain across every collaborator." Primary CTA "Start creating" → /studio. Secondary CTA "Browse projects" → /explore.`,
+d:`Homepage shows GA hero and no upstream template demo content.`},
 {t:"Seed two demo artist accounts",
 p:`Using locally generated test JWTs, create two D1 user rows: handle=dami and handle=kiri. For each call POST /v1/projects to create one project repo in GeneratedArt-artists. Confirm both repos exist and both profiles render at /@dami and /@kiri.`,
 d:`/@dami and /@kiri each show one project in their portfolio grid.`},

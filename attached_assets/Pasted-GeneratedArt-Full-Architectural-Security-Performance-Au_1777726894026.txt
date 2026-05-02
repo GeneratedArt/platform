@@ -91,9 +91,9 @@ Impact. A new contributor reading replit.md will spend hours looking for code th
 Fix. Update replit.md's "Tech stack" section to be status-tagged: each line marked [live], [scaffold], or [planned]. Anything [planned] should link to its task file in .local/tasks/. Today, only Jekyll 4.3 and Hono /health placeholder are [live]. Everything else is [planned].
 F-06 — High: Slider Revolution license
 Description. assets/revolution/ (11 MB) ships ThemePunch's Slider Revolution with copyright headers intact (jquery.themepunch.revolution.min.js, etc.). This is a commercial CodeCanyon plugin sold per-domain. It's only legally redistributable when bundled inside a CodeCanyon theme that paid for the extended license.
-Impact. If GeneratedArt ships this on a public domain (generatedart.com), and the original Snowflake/Snowlake template's Envato license doesn't cover redistribution standalone, this is a license violation — exposure ranges from a takedown letter to a several-thousand-dollar settlement, depending on the original theme's terms.
+Impact. If GeneratedArt ships this on a public domain (generatedart.com), and the original upstream template/upstream template template's Envato license doesn't cover redistribution standalone, this is a license violation — exposure ranges from a takedown letter to a several-thousand-dollar settlement, depending on the original theme's terms.
 Fix.
-Confirm whether the Snowflake template was purchased with an Extended License that grants redistribution rights to the Slider Revolution bundled within it. (Probably not — Extended Licenses usually only cover use within the theme product, not standalone bundling.)
+Confirm whether the upstream template template was purchased with an Extended License that grants redistribution rights to the Slider Revolution bundled within it. (Probably not — Extended Licenses usually only cover use within the theme product, not standalone bundling.)
 Since the new homepage does not use the slider, delete assets/revolution/ entirely (deletes 11 MB and removes the licensing question).
 Same review for assets/js/plugins.js — confirm each bundled plugin (slick, isotope, magnific-popup, owl-carousel, parallax) is MIT/Apache, not commercial.
 F-07 — High: No security headers

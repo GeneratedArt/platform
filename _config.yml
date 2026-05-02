@@ -56,6 +56,15 @@ exclude:
   - contact/contact-2.html
   - contact/contact-3.html
   - contact/contact-4.html
+  # Blog landing variants — only blogs/index.html is GA-rewritten and routable.
+  - blogs/index-boxed-classic.html
+  - blogs/index-boxed-classic-sidebar.html
+  - blogs/index-boxed-grid.html
+  - blogs/index-boxed-grid-sidebar.html
+  - blogs/index-classic.html
+  - blogs/index-classic-grid.html
+  - blogs/index-classic-grid-sidebar.html
+  - blogs/index-classic-sidebar.html
 
 collections:
   authors:

@@ -4,7 +4,7 @@ title:  "Maecenas sed diam eget risus varius blandit sit amet non"
 date:   2025-01-07 14:05:11 +0600
 categories: [jekyll]
 tags: [jekyll]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/f2.webp"
 badge_color: "bg-leaf"
 meta_title: "24 hours in the village of Belgium"

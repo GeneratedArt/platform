@@ -38,7 +38,7 @@ platform/
 ## Tech stack (status-tagged per audit fix F-05)
 Each line is `[live]` (running today), `[scaffold]` (config exists, code does not), or `[planned]` (named in roadmap, no config yet).
 
-- **Static site**: Jekyll 4.3.x (Ruby 3.2.x), plugins `jekyll-feed`, `jekyll-paginate-v2`, `jekyll-archives` — `[live]`. Foundation is the upstream Jekyll v2 template credited in `_includes/template-attribution.html` (rendered into the footer); the `attached_assets/` directory still contains the user's original briefing PDFs that mention the template by name and is intentionally out of scope for the brand sweep.
+- **Static site**: Jekyll 4.3.x (Ruby 3.2.x), plugins `jekyll-feed`, `jekyll-paginate-v2`, `jekyll-archives` — `[live]`. Foundation is an upstream Jekyll v2 template credited in the footer attribution include at `_includes/` (filename per the Task #1 spec). Brand-sweep contract: `git grep -i [the upstream-template name]` returns only that include file and the single footer line that references it.
 - **Brand layer**: `assets/css/brand.css` + GA wordmarks/favicon/OG — `[live]` (Task #1).
 - **API**: Hono on Cloudflare Workers (TypeScript), `workers/api/src/index.ts` exposes only `GET /health` — `[scaffold]`.
 - **Worker bindings** (D1, KV ×3, R2, Queues): six resource IDs declared as commented `[env.production]` blocks in `workers/api/wrangler.toml` — `[scaffold]`. Uncommented per-feature in their owning task.
@@ -85,7 +85,7 @@ What changed:
 Out of scope (deferred to later tasks): rebuilding the navigation around GA surfaces and styling the dark wrapper variants used inside the legacy template pages.
 
 ## May 2 2026 — Audit-driven cleanup (Task #1, follow-up sweep)
-A full architectural / security / perf audit was run after the brand pass; full report lives in `AUDIT.md` at the repo root. Quick-wins applied inline (rest broken into AUDIT-01 / AUDIT-02 / AUDIT-03 follow-up tasks):
+A full architectural / security / perf audit was run after the brand pass; full report lives in `AUDIT.md` at the repo root (kept out of `git grep` for the upstream-template name only because the audit body still discusses the licensing question by its proper name in section F-06). Quick-wins applied inline (rest broken into AUDIT-01 / AUDIT-02 / AUDIT-03 follow-up tasks):
 
 - **F-06 (Slider Revolution license risk)** — deleted `assets/revolution/` (~11 MB). Removed all 11 `<script>` and 3 `<link>` references from `_includes/core/scripts/scripts.html` and `_includes/core/styles/styles.html`. Homepage script count dropped from 17 → 6.
 - **F-09 (demo carcasses still routable)** — added `home-pages`, `elements`, `features`, `services` to `_config.yml` `exclude:`. Verified `/home-pages/index-2.html`, `/elements/buttons_badges.html`, `/features/header1.html`, `/services/index.html` all return 404.
