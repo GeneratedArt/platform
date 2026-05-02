@@ -28,7 +28,9 @@ GITHUB_ORG="GeneratedArt-artists"
 # Template repo (owner/name) used as the source for `Use this template`.
 GITHUB_TEMPLATE_REPO="GeneratedArt-artists/template-sketch"
 
-# When set to "1" (or when GITHUB_PAT is empty), the Worker skips real
-# GitHub API calls and returns a stub repo response. Useful for local
-# smoke tests without burning rate limit. Production must NEVER set this.
+# OPT-IN ONLY. When set to exactly "1", the Worker skips real GitHub API
+# calls and returns a stub repo response — useful for local smoke tests
+# without burning rate limit. A missing GITHUB_PAT does NOT enable mock
+# mode; in non-mock mode the Worker fails closed with 503
+# `github_pat_unconfigured`. Production must NEVER set GITHUB_MOCK.
 GITHUB_MOCK="1"

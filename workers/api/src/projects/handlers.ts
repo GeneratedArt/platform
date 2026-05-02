@@ -178,6 +178,15 @@ export async function patchProject(
     if (typeof body.status !== "string" || !STATUSES.includes(body.status as ProjectStatus)) {
       return badRequest(c, "invalid_status", { allowed: STATUSES });
     }
+    // Archival has GitHub side effects (the repo must be archived too)
+    // and is only safe through POST /v1/projects/:id/archive. Allowing
+    // PATCH status='archived' would let an external client put the row
+    // into archived state without touching GitHub, leaving state drift.
+    if (body.status === "archived") {
+      return badRequest(c, "use_archive_endpoint", {
+        endpoint: `/v1/projects/${id}/archive`,
+      });
+    }
     patch.status = body.status as ProjectStatus;
   }
   if (body.cover_url !== undefined) {
