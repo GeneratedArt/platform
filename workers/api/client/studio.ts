@@ -1,8 +1,84 @@
 import { EditorState, Compartment, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
-import { oneDark } from "@codemirror/theme-one-dark";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
 import { basicSetup } from "codemirror";
+
+const BRAND_PAPER = "#FAFAF7";
+const BRAND_INK = "#0A0A0A";
+const BRAND_ACCENT = "#E63946";
+const BRAND_RULE = "rgba(10, 10, 10, 0.12)";
+const BRAND_MUTE = "rgba(10, 10, 10, 0.55)";
+const BRAND_SELECT = "rgba(230, 57, 70, 0.18)";
+
+const brandEditorTheme = EditorView.theme(
+  {
+    "&": {
+      color: BRAND_INK,
+      backgroundColor: BRAND_PAPER,
+      height: "100%",
+    },
+    ".cm-content": {
+      caretColor: BRAND_ACCENT,
+      fontFamily:
+        'ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace',
+    },
+    ".cm-cursor, .cm-dropCursor": { borderLeftColor: BRAND_ACCENT },
+    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection":
+      { backgroundColor: BRAND_SELECT },
+    ".cm-gutters": {
+      backgroundColor: BRAND_PAPER,
+      color: BRAND_MUTE,
+      borderRight: `1px solid ${BRAND_RULE}`,
+    },
+    ".cm-activeLine": { backgroundColor: "rgba(10, 10, 10, 0.03)" },
+    ".cm-activeLineGutter": {
+      backgroundColor: "rgba(10, 10, 10, 0.04)",
+      color: BRAND_INK,
+    },
+    ".cm-selectionMatch": { backgroundColor: "rgba(230, 57, 70, 0.12)" },
+    ".cm-matchingBracket, .cm-nonmatchingBracket": {
+      backgroundColor: "rgba(230, 57, 70, 0.18)",
+      outline: "none",
+    },
+    ".cm-tooltip": {
+      backgroundColor: BRAND_PAPER,
+      color: BRAND_INK,
+      border: `1px solid ${BRAND_RULE}`,
+    },
+    ".cm-panels": {
+      backgroundColor: BRAND_PAPER,
+      color: BRAND_INK,
+      borderTop: `1px solid ${BRAND_RULE}`,
+    },
+  },
+  { dark: false },
+);
+
+const brandHighlightStyle = HighlightStyle.define([
+  { tag: t.keyword, color: BRAND_ACCENT, fontWeight: "600" },
+  { tag: [t.name, t.deleted, t.character, t.macroName], color: BRAND_INK },
+  { tag: [t.propertyName], color: BRAND_INK },
+  { tag: [t.function(t.variableName), t.labelName], color: BRAND_INK, fontWeight: "600" },
+  { tag: [t.color, t.constant(t.name), t.standard(t.name)], color: BRAND_ACCENT },
+  { tag: [t.definition(t.name), t.separator], color: BRAND_INK },
+  { tag: [t.typeName, t.className, t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace],
+    color: BRAND_ACCENT },
+  { tag: [t.operator, t.operatorKeyword, t.url, t.escape, t.regexp, t.link, t.special(t.string)],
+    color: BRAND_ACCENT },
+  { tag: [t.meta, t.comment], color: BRAND_MUTE, fontStyle: "italic" },
+  { tag: t.strong, fontWeight: "700" },
+  { tag: t.emphasis, fontStyle: "italic" },
+  { tag: t.strikethrough, textDecoration: "line-through" },
+  { tag: t.link, color: BRAND_ACCENT, textDecoration: "underline" },
+  { tag: t.heading, fontWeight: "700", color: BRAND_INK },
+  { tag: [t.atom, t.bool, t.special(t.variableName)], color: BRAND_ACCENT },
+  { tag: [t.processingInstruction, t.string, t.inserted], color: "#1f6feb" },
+  { tag: t.invalid, color: BRAND_ACCENT, textDecoration: "underline" },
+]);
+
+const brandTheme = [brandEditorTheme, syntaxHighlighting(brandHighlightStyle)];
 
 interface MeResponse {
   user: { id: number; address: string; handle: string };
@@ -287,7 +363,7 @@ class StudioController {
       extensions: [
         basicSetup,
         javascript(),
-        oneDark,
+        brandTheme,
         EditorView.lineWrapping,
         editableCompartment.of(EditorView.editable.of(true)),
         saveKey,
