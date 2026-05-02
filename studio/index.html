@@ -89,7 +89,17 @@ overflow: true
 <script>
 (function () {
   var params = new URLSearchParams(window.location.search);
-  var apiBase = params.get("api") || "http://localhost:8787";
+  function defaultApiBase() {
+    var h = window.location.hostname;
+    if (!h || h === "localhost" || h === "127.0.0.1" ||
+        /\.(replit\.dev|repl\.co|riker\.replit\.dev)$/.test(h)) {
+      return "http://localhost:8787";
+    }
+    var parts = h.split(".");
+    var root = parts.length >= 2 ? parts.slice(-2).join(".") : h;
+    return window.location.protocol + "//api." + root;
+  }
+  var apiBase = params.get("api") || defaultApiBase();
   var projectId = parseInt(params.get("project") || "0", 10);
   function tryMount() {
     if (!window.GAStudio) { setTimeout(tryMount, 50); return; }
