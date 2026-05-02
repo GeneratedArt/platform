@@ -4,7 +4,7 @@ title: "The Natural Places in Brazil"
 date: 2025-01-07 20:37:13 +0600
 categories: [wedding]
 tags: [travel]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/tb7.webp"
 badge_color: "bg-green"
 slider_post: true

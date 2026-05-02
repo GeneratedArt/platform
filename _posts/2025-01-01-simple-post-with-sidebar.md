@@ -4,7 +4,7 @@ title: "Simple Post With Sidebar"
 date: 2025-01-01 20:37:13 +0600
 categories: [places]
 tags: [travel]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/tb1.webp"
 badge_color: "bg-purple"
 slider_post: true

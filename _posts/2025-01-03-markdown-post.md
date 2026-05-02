@@ -4,7 +4,7 @@ title: "Markdown Post"
 date: 2025-01-03 20:37:13 +0600
 categories: [wedding]
 tags: [kramdown, wedding]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/bg18.webp"
 badge_color: "bg-violet"
 meta_title: "The Natural Places in Brazil"

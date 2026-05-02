@@ -8,6 +8,11 @@ url: "https://generatedart.com"
 baseurl: ""
 permalink: "/:title"
 
+# Brand contact + theme-color (per Task #1 brief)
+email: "hello@generatedart.com"
+theme_color: "#0A0A0A"
+github_url: "https://github.com/generatedart"
+
 plugins:
   - jekyll-feed
   - jekyll-paginate-v2
@@ -36,11 +41,21 @@ exclude:
   - .verify-deploy
   # Audit F-09 fix: exclude unbranded template demo carcasses from being routable
   # on generatedart.com. They render Lorem-ipsum under the new GA brand and
-  # damage SEO + trust if indexed.
+  # damage SEO + trust if indexed. Code-review follow-up: also exclude the
+  # about-N / contact-N variants — only about/index.html and contact/index.html
+  # are kept and rewritten in GA voice.
   - home-pages
   - elements
   - features
   - services
+  - about/about.html
+  - about/about-2.html
+  - about/about-3.html
+  - about/about-4.html
+  - contact/contact-1.html
+  - contact/contact-2.html
+  - contact/contact-3.html
+  - contact/contact-4.html
 
 collections:
   authors:

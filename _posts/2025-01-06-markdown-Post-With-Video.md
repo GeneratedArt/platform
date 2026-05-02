@@ -4,7 +4,7 @@ title: "Markdown Post With Video"
 date: 2025-01-06 20:37:13 +0600
 categories: [vlog]
 tags: [vlog]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/b15.webp"
 badge_color: "bg-purple"
 post_format: "video"

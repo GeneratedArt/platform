@@ -4,7 +4,7 @@ title: "Post with Gallery"
 date: 2025-01-10 20:37:13 +0600
 categories: [couples]
 tags: [technology, education]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/fs2.webp"
 badge_color: "bg-meander"
 trending: true

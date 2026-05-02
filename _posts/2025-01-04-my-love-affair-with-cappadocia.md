@@ -4,7 +4,7 @@ title: "My Love Affair with Cappadocia"
 date: 2025-01-04 20:37:13 +0600
 categories: [historic]
 tags: [history]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/tb4.webp"
 badge_color: "bg-violet"
 slider_post: true

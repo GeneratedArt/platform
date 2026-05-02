@@ -4,7 +4,7 @@ title: "The Biggest Train Station in Europe"
 date: 2025-01-06 20:37:13 +0600
 categories: [vlog]
 tags: [travel]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/tb6.webp"
 badge_color: "bg-pink"
 slider_post: true

@@ -232,6 +232,12 @@ hr, .border, .border-top, .border-bottom, .border-left, .border-right {
   color: var(--ga-paper);
 }
 
+/* Brand rule: accent is reserved for primary CTAs and active nav, never for
+   generic link hover. On dark wrappers we keep the link in paper and dim it
+   slightly on hover so the affordance is still visible. */
 .dark-wrapper a:hover, .inverse-text a:hover {
-  color: var(--ga-accent);
+  color: var(--ga-paper);
+  opacity: 0.7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

@@ -4,7 +4,7 @@ title: "Boxed Post"
 date: 2025-01-02 20:37:13 +0600
 categories: [architecture]
 tags: [architecture]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/tb2.webp"
 badge_color: "bg-leaf"
 slider_post: true

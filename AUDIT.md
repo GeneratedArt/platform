@@ -115,9 +115,9 @@ Honourable mentions (M / L): vendored Bundler `vendor/bundle/` is gitignored but
 ### F-06 — High: Slider Revolution license
 
 * **Description.** `assets/revolution/` (11 MB) ships **ThemePunch's Slider Revolution** with copyright headers intact (`jquery.themepunch.revolution.min.js`, etc.). This is a commercial CodeCanyon plugin sold per-domain. It's only legally redistributable when bundled inside a CodeCanyon **theme** that paid for the extended license.
-* **Impact.** If GeneratedArt ships this on a public domain (`generatedart.com`), and the original Snowflake/Snowlake template's Envato license doesn't cover redistribution standalone, **this is a license violation** — exposure ranges from a takedown letter to a several-thousand-dollar settlement, depending on the original theme's terms.
+* **Impact.** If GeneratedArt ships this on a public domain (`generatedart.com`), and the upstream template's Envato license doesn't cover redistribution standalone, **this is a license violation** — exposure ranges from a takedown letter to a several-thousand-dollar settlement, depending on the original theme's terms.
 * **Fix.**
-  1. Confirm whether the Snowflake template was purchased with an Extended License that grants redistribution rights to the Slider Revolution bundled within it. (Probably not — Extended Licenses usually only cover use within the theme product, not standalone bundling.)
+  1. Confirm whether the upstream template was purchased with an Extended License that grants redistribution rights to the Slider Revolution bundled within it. (Probably not — Extended Licenses usually only cover use within the theme product, not standalone bundling.)
   2. Since the new homepage does not use the slider, **delete `assets/revolution/` entirely** (deletes 11 MB and removes the licensing question).
   3. Same review for `assets/js/plugins.js` — confirm each bundled plugin (slick, isotope, magnific-popup, owl-carousel, parallax) is MIT/Apache, not commercial.
 

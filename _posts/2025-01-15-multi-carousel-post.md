@@ -2,7 +2,7 @@
 layout: posts/post
 title: "MultiCarousel Post"
 date: 2025-01-15 10:37:13 +0600
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 categories: travel
 tags: [travel, photography]
 post_image: "/assets/images/art/b15.webp"

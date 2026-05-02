@@ -4,7 +4,7 @@ title: "Ultricies fusce porta elit pharetra augue faucibus"
 date: 2025-01-07 20:37:13 +0600
 categories: [engagement]
 tags: [technology, education]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/fs3.webp"
 badge_color: "bg-green"
 trending: true

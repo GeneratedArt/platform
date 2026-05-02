@@ -4,7 +4,7 @@ title: "Simple Post With No Sidebar"
 date: 2025-01-08 20:37:13 +0600
 categories: [wedding]
 tags: [technology, education]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/fs1.webp"
 badge_color: "bg-meander"
 post_format: "general"

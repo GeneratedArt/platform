@@ -4,7 +4,7 @@ title: "Markdown post with code highlighting"
 date: 2025-01-05 20:37:13 +0600
 categories: [couples]
 tags: [kramdown]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/b16.webp"
 badge_color: "bg-meander"
 meta_title: "Kramdown post with code highlighting"

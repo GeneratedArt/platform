@@ -1,91 +1,75 @@
 ---
 layout: default
-title: "Contact 1"
-sub_title: "How can we help?"
+title: "Contact GeneratedArt"
+sub_title: "Find us on GitHub, in Discord, or by email. The gallery is in Geneva."
 header_image: "/assets/images/art/bg3.webp"
-
-contact_info:
-  enable: true
-  contact_data:
-    - icon: "/assets/images/icon/ui-gps.webp"
-      info: "Moon Street Light Avenue<br> 14/05 Jupiter, JP 80630"
-
-    - icon: "/assets/images/icon/co-telephone.webp"
-      info: "00 (123) 456 78 90<br/> 00 (987) 654 32 10"
-
-    - icon: "/assets/images/icon/co-email-5.webp"
-      info:
-      - "manager@email.com <br/>"
-      - "asistant@email.com"
-
-contact_form:
-  enable: true
-  title: "Get in Touch"
-  sub_title: "Have any questions? Reach out to us from our contact form and we will get back to you shortly."
-  action_email: "tortoizthemes@gmail.com"
-
-  lists:
-    - title: Address
-      info_01: "Moonshine St. 14/05 Light City,"
-      info_02: "London, United Kingdom"
-      icon: "icofont-location-pin"
-
-    - title: E-mail
-      info_01: "tortoizthemes@gmail.com"
-      info_02: "support@tortoizthemes.com"
-      icon: "icofont-mail-box"
-
-    - title: Phone
-      info_01: "+00 (123) 456 78 90"
-      info_02: "+00 (123) 456 78 90"
-      icon: "icofont-telephone"
-
-  forms_data:
-
-    - field_type: "input"
-      field_name: "first_name"
-      placeholder: "First Name"
-      error_message: "First Name Is required"
-
-    - field_type: "input"
-      field_name: "last_name"
-      placeholder: "Laast Name"
-      error_message: "Last Name Is required"
-
-    - field_type: "input"
-      field_name: "user_email"
-      placeholder: "Email"
-      error_message: "Email Is required"
-
-    - field_type: "input"
-      field_name: "user_phone"
-      placeholder: "Phone Number"
-      error_message: "Phone Number Is required"
-
-    - field_type: "textarea"
-      field_name: "user_message"
-      placeholder: "Message"
-      error_message: "Message Is required"
-google_maps:
-  enable: true
-  google_map: |
-    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3172.4564967931838!2d-122.03250858386237!3d37.33169997984258!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fb5b6e94ffe23%3A0x63bb79532baa6af4!2sApple+Campus!5e0!3m2!1sen!2str!4v1553850783971!5m2!1sen!2str" style="width:100%; height: 500px; border:0" allowfullscreen=""></iframe>
-
+description: >-
+  Get in touch with GeneratedArt — open-source repo, community Discord, and
+  the Geneva gallery.
 ---
-{% include layouts/nav/nav-1.html drop_search=true alignment_class="ms-auto" %} 
-{% include layouts/header/page-title.html %} 
-<div class="wrapper gray-wrapper">
-    <div class="container inner">
-        {% include components/contact/contact-info.html %}
-    </div>
-</div>
+{% include layouts/nav/nav-1.html drop_search=true alignment_class="ms-auto" %}
+{% include layouts/header/page-title.html %}
+
 <div class="wrapper light-wrapper">
-    <div class="container inner pb-0">
-        <!--contact form-->
-        {% include components/contact/contact-2.html %}
-        <!--/.contact form-->
+  <div class="container inner">
+    <div class="row gx-5">
+      <div class="col-lg-10 mx-auto">
+        <p class="lead larger mb-50">
+          GeneratedArt is built in the open. The fastest way to reach the team
+          is on GitHub or in the community Discord — both are public, both are
+          archived. Email is best for press, gallery proposals, and partnership
+          enquiries.
+        </p>
+
+        <div class="row gy-5">
+          <div class="col-md-6">
+            <h5 class="text-uppercase letter-spacing-1 mb-15">Code &amp; bugs</h5>
+            <p>
+              Open an issue on
+              <a href="https://github.com/generatedart"><strong>github.com/generatedart</strong></a>.
+              Pull requests welcome. The whole platform — site, Worker, contracts —
+              lives in one monorepo.
+            </p>
+          </div>
+
+          <div class="col-md-6">
+            <h5 class="text-uppercase letter-spacing-1 mb-15">Community</h5>
+            <p>
+              Day-to-day conversation lives in the GeneratedArt
+              <a href="https://discord.gg/generatedart"><strong>Discord</strong></a>.
+              Studio sessions, sketch reviews, mint announcements, and the
+              occasional argument about colour spaces.
+            </p>
+          </div>
+
+          <div class="col-md-6">
+            <h5 class="text-uppercase letter-spacing-1 mb-15">Email</h5>
+            <p>
+              For press, partnership, and gallery proposals:
+              <a href="mailto:hello@generatedart.com"><strong>hello@generatedart.com</strong></a>.
+              We reply within a few working days. Please don't email feature
+              requests — open a GitHub issue instead so the conversation is public.
+            </p>
+          </div>
+
+          <div class="col-md-6">
+            <h5 class="text-uppercase letter-spacing-1 mb-15">The gallery</h5>
+            <p>
+              GeneratedArt's physical room is in Geneva. Drop-in hours, mint
+              nights, and printed editions are announced on the homepage and in
+              Discord. Address shared on confirmation of attendance.
+            </p>
+          </div>
+        </div>
+
+        <div class="space60"></div>
+        <p class="text-center text-muted mb-0">
+          We don't run a contact form. Public channels keep replies accountable
+          and let the community help when we're slow.
+        </p>
+      </div>
     </div>
-    <div class="space40"></div>
-    {% include components/contact/gmap.html %}
+  </div>
 </div>
+
 {% include layouts/footer/footer-1.html %}

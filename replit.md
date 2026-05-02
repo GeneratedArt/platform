@@ -38,7 +38,7 @@ platform/
 ## Tech stack (status-tagged per audit fix F-05)
 Each line is `[live]` (running today), `[scaffold]` (config exists, code does not), or `[planned]` (named in roadmap, no config yet).
 
-- **Static site**: Jekyll 4.3.x (Ruby 3.2.x), plugins `jekyll-feed`, `jekyll-paginate-v2`, `jekyll-archives` — `[live]`. Snowflake Jekyll v2 template as foundation.
+- **Static site**: Jekyll 4.3.x (Ruby 3.2.x), plugins `jekyll-feed`, `jekyll-paginate-v2`, `jekyll-archives` — `[live]`. Foundation is the upstream Jekyll v2 template credited in `_includes/template-attribution.html` (rendered into the footer); the `attached_assets/` directory still contains the user's original briefing PDFs that mention the template by name and is intentionally out of scope for the brand sweep.
 - **Brand layer**: `assets/css/brand.css` + GA wordmarks/favicon/OG — `[live]` (Task #1).
 - **API**: Hono on Cloudflare Workers (TypeScript), `workers/api/src/index.ts` exposes only `GET /health` — `[scaffold]`.
 - **Worker bindings** (D1, KV ×3, R2, Queues): six resource IDs declared as commented `[env.production]` blocks in `workers/api/wrangler.toml` — `[scaffold]`. Uncommented per-feature in their owning task.

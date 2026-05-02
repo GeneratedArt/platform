@@ -4,7 +4,7 @@ title: "A Dreamy Roadtrip in Australia"
 date: 2025-01-03 20:37:13 +0600
 categories: [roadtrip]
 tags: [ecommerce]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/tb3.webp"
 badge_color: "bg-pink"
 slider_post: true

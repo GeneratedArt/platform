@@ -4,7 +4,7 @@ title: "Markdown Post with image"
 date: 2025-01-04 20:37:13 +0600
 categories: [engagement]
 tags: [technology, education]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/bg17.webp"
 badge_color: "bg-leaf"
 meta_title: "The Natural Places in Brazil2"

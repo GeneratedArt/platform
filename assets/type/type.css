@@ -170,19 +170,6 @@
   font-style: normal;
 }
 @font-face {
-    /* Removed: legacy single-glyph icon-blob font (was the Snowlake-template
-       icon-shape decoration) — unreferenced in the GA homepage. The .jam-generatedart
-       selector below falls back to the regular Jam icon font. */
-    font-family: 'Jam';
-    src: url('jam/Jam.eot');
-    src: url('jam/Jam.eot?#iefix') format('embedded-opentype'),
-         url('jam/Jam.woff') format('woff'),
-         url('jam/Jam.ttf') format('truetype'),
-         url('jam/Jam.svg#Jam') format('svg');
-    font-weight: normal;
-    font-style: normal;
-}
-@font-face {
   font-family: 'custom';
   src:  url('custom/custom.eot?gfza0');
   src:  url('custom/custom.eot?gfza0#iefix') format('embedded-opentype'),
@@ -416,7 +403,7 @@
 }
 [class^="icon-blob"], [class*=" icon-blob"] {
   /* use !important to prevent issues with browser extensions that change fonts */
-  font-family: 'GeneratedArt' !important;
+  font-family: 'Jam' !important;
   speak: none;
   font-style: normal;
   font-weight: normal;
@@ -2652,9 +2639,6 @@
 }
 .jam-snowboard-f:before {
   content: "\ebe0";
-}
-.jam-generatedart:before {
-  content: "\ebe2";
 }
 .jam-soundcloud:before {
   content: "\ebe3";

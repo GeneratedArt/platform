@@ -4,7 +4,7 @@ title: "24 Hours in the Village of Valencia"
 date: 2025-01-05 20:37:13 +0600
 categories: [travel]
 tags: [shopping]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/tb5.webp"
 badge_color: "bg-green"
 slider_post: true

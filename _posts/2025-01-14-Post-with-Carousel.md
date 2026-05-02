@@ -4,7 +4,7 @@ title: "Post with Carousel on main Image"
 date: 2025-01-14 10:37:13 +0600
 categories: [wedding]
 tags: [technology, education]
-author: "Tortoiz Themes"
+author: "GeneratedArt"
 post_image: "/assets/images/art/f1.webp"
 post_format: "carousel"
 gallery: 
