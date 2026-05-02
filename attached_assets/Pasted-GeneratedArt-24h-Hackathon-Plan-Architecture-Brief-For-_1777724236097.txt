@@ -1,0 +1,829 @@
+GeneratedArt — 24h Hackathon Plan & Architecture Brief
+For: Replit Agent (and any human collaborator) Repo: https://github.com/GeneratedArt/platform Domain: generatedart.com (CNAME at repo root) Brand: GA / GeneratedArt — minimal, monospace-leaning, crisp, no decorative chrome. Author intent: Spiritual successor to fxhash + Art Blocks, with a collaboration layer for non-coders (textile, fashion, architecture, industrial design) and a gallery bridge (Geneva first).
+
+0. Source-of-truth context for the agent (read this first)
+You are working in GeneratedArt/platform, a monorepo that was hard-reset on April 23 2026 to a Snowflake Jekyll v2 template foundation. Do not reintroduce removed surfaces. Layer new features onto the Snowflake template's existing collections (_authors, _portfolio, _shop_items) and Cloudflare Worker — do not fork to Astro, Next.js, Vercel, Pages, or any other host.
+Architectural commandments (non-negotiable):
+One static-site target: GitHub Pages (Jekyll, built by .github/workflows/pages.yml).
+One dynamic service: Hono Worker at workers/api/, deployed to api.generatedart.com.
+Smart contracts: Foundry suite under contracts/, deployed to Base mainnet (8453) + Base Sepolia (84532).
+No AWS, Vercel, Firebase, Supabase, Mongo, Node.js server, Stripe-as-primary, Cloudflare Pages, Netlify. Disable Cloudflare Workers Builds auto-deploy in the dashboard before touching the Worker — it currently tries to run npx bundle exec jekyll build and fails the deploy.
+The platform never holds private keys. All wallet operations are client-side via WalletConnect v2 + viem + wagmi. SIWE (Sign-In with Ethereum) for auth. The Worker only verifies signatures.
+Repos are first-class. Each artist project is a real GitHub repo under the GeneratedArt-artists org. The platform is a meta-layer over git. No private database of source code; source lives where source belongs.
+
+1. The architectural insight that defines this project
+Every artist project is a GitHub repo. Every collaboration is a fork or a PR. Every mint is a tagged commit pinned to IPFS.
+This is what makes GeneratedArt structurally different from fxhash/Art Blocks:
+Source code is public-by-default and lives in git, not in a proprietary DB.
+Forks = remixes with automatic on-chain royalty attribution to the original author.
+PRs = collaboration — non-coder briefs, coder responses, gallery curation all happen as issues/PRs.
+GitHub Pages = free preview hosting for every sketch, on every branch.
+GitHub Actions = free CI for thumbnail generation, frozen-artifact bundling, IPFS pinning.
+Stars/forks = native social graph the platform piggybacks on.
+The Worker becomes a thin authoritative index + signer, not a content store.
+
+2. System architecture
+flowchart TB
+  subgraph User["Artist / Collector / Curator"]
+    Browser["Browser + Wallet (WC2 + viem)"]
+  end
+
+  subgraph Static["GitHub Pages — generatedart.com"]
+    Jekyll["Jekyll site (Snowflake foundation)"]
+    Studio["/studio — in-browser p5/three editor"]
+    Mint["/mint/:project — mint UI"]
+    Portfolio["/@:handle — portfolio"]
+    Briefs["/briefs — collab + industry board"]
+  end
+
+  subgraph GH["GitHub — GeneratedArt-artists/* org"]
+    ArtistRepo["{handle}-{slug} repo"]
+    Template["template-sketch repo"]
+    Actions["GitHub Actions: thumb + freeze + pin"]
+  end
+
+  subgraph CF["Cloudflare — api.generatedart.com"]
+    Worker["Hono Worker"]
+    D1["D1: users, projects, follows, briefs, mints"]
+    KV["KV: sessions, rate-limit, indexer cursor"]
+    R2["R2: thumbs, captures, frozen bundles"]
+    Q["Queues: render-jobs, ipfs-pin-jobs, indexer"]
+    Gateway["CF Web3 Ethereum Gateway → Base"]
+  end
+
+  subgraph Web3["Base L2 (8453) — Foundry"]
+    Factory["GAProjectFactory"]
+    Project["GAProject (ERC-721 + 2981)"]
+    Splits["GASplits (royalty router)"]
+    Gallery["GAGalleryRegistry"]
+  end
+
+  subgraph IPFS["IPFS"]
+    Pinata["Pinata"]
+    W3S["web3.storage"]
+  end
+
+  Browser --> Jekyll
+  Browser --> Studio
+  Studio -->|SIWE + GH PAT proxy| Worker
+  Worker -->|create/commit| ArtistRepo
+  ArtistRepo --> Actions
+  Actions --> R2
+  Actions --> Pinata
+  Actions --> W3S
+  Browser -->|sign mint tx| Gateway
+  Gateway --> Project
+  Project --> Splits
+  Worker --> D1
+  Worker --> KV
+  Worker --> R2
+  Q --> Worker
+  Worker --> Gateway
+  Jekyll -.fetch JSON.-> Worker
+
+2.1 Repo & subdomain layout
+Surface
+Where
+Purpose
+generatedart.com
+GitHub Pages (this repo)
+Marketing + portfolios + studio + mint UI
+api.generatedart.com
+Cloudflare Worker
+Auth, indexer, GH proxy, signed uploads, mint preparation
+GeneratedArt-artists/*
+GitHub org
+One repo per artist project
+GeneratedArt-artists/template-sketch
+GitHub org
+Boilerplate template repo (Use this template)
+{handle}.generatedart-artists.dev(later)
+GH Pages of artist repo
+Live sketch preview
+
+2.2 Data model (Cloudflare D1)
+-- Authoritative index. Source of truth for code is GitHub.
+CREATE TABLE users (
+  address       TEXT PRIMARY KEY,        -- 0x… checksummed
+  handle        TEXT UNIQUE NOT NULL,    -- maps to _authors/{handle}.md
+  github_login  TEXT UNIQUE,             -- linked GitHub account
+  display_name  TEXT,
+  bio           TEXT,
+  avatar_r2_key TEXT,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE projects (
+  id            TEXT PRIMARY KEY,        -- ULID
+  owner         TEXT NOT NULL REFERENCES users(address),
+  slug          TEXT NOT NULL,           -- {handle}-{slug}
+  repo_full     TEXT NOT NULL,           -- GeneratedArt-artists/{handle}-{slug}
+  title         TEXT NOT NULL,
+  description   TEXT,
+  engine        TEXT NOT NULL,           -- p5 | three | glsl | wasm
+  license       TEXT NOT NULL DEFAULT 'CC-BY-NC-4.0',
+  cover_r2_key  TEXT,
+  status        TEXT NOT NULL DEFAULT 'draft',  -- draft|published|minted
+  contract_addr TEXT,                    -- set when minted
+  created_at    INTEGER NOT NULL,
+  UNIQUE(owner, slug)
+);
+
+CREATE TABLE follows (
+  follower      TEXT NOT NULL REFERENCES users(address),
+  followee      TEXT NOT NULL REFERENCES users(address),
+  created_at    INTEGER NOT NULL,
+  PRIMARY KEY (follower, followee)
+);
+
+CREATE TABLE briefs (
+  id            TEXT PRIMARY KEY,
+  poster        TEXT NOT NULL REFERENCES users(address),
+  industry      TEXT NOT NULL,           -- textile|fashion|architecture|product|gallery|other
+  title         TEXT NOT NULL,
+  body_md       TEXT NOT NULL,
+  budget_eth    TEXT,                    -- string, may be null
+  deadline      INTEGER,
+  status        TEXT NOT NULL DEFAULT 'open',  -- open|matched|closed
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE applications (
+  id            TEXT PRIMARY KEY,
+  brief_id      TEXT NOT NULL REFERENCES briefs(id),
+  applicant     TEXT NOT NULL REFERENCES users(address),
+  pitch_md      TEXT NOT NULL,
+  sample_project TEXT REFERENCES projects(id),
+  status        TEXT NOT NULL DEFAULT 'pending',
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE galleries (
+  id            TEXT PRIMARY KEY,
+  curator       TEXT NOT NULL REFERENCES users(address),
+  name          TEXT NOT NULL,
+  city          TEXT NOT NULL,
+  url           TEXT,
+  on_chain_addr TEXT,                    -- registered in GAGalleryRegistry
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE mints (
+  id            TEXT PRIMARY KEY,
+  project_id    TEXT NOT NULL REFERENCES projects(id),
+  token_id      INTEGER NOT NULL,
+  minter        TEXT NOT NULL,
+  seed          TEXT NOT NULL,           -- 0x… 32 bytes
+  tx_hash       TEXT NOT NULL,
+  block_number  INTEGER NOT NULL,
+  ipfs_cid      TEXT NOT NULL,           -- frozen bundle CID
+  created_at    INTEGER NOT NULL,
+  UNIQUE(project_id, token_id)
+);
+
+2.3 Worker route surface (Hono)
+GET  /health
+POST /v1/auth/siwe/nonce          → { nonce }                       — KV-stored, 5 min TTL
+POST /v1/auth/siwe/verify         → { token }                        — JWT, 7d, KV revoke list
+GET  /v1/me                                                          — JWT required
+PATCH /v1/me                                                         — update profile, write _authors/{handle}.md via GH PAT proxy
+GET  /v1/users/:handle
+POST /v1/users/:handle/follow     · DELETE same path
+GET  /v1/users/:handle/projects
+POST /v1/projects                  → creates GH repo from template, inserts D1 row
+GET  /v1/projects/:id
+PATCH /v1/projects/:id             → metadata only; code edits go via GH directly or studio commit endpoint
+POST /v1/projects/:id/commit       → studio passthrough: { path, content_b64, message } → GH contents API
+POST /v1/projects/:id/freeze       → enqueues freeze job (zip @ tag → R2 → pin → IPFS)
+POST /v1/projects/:id/mint/prepare → returns calldata (factory.deploy or project.mint)
+GET  /v1/briefs?industry=…
+POST /v1/briefs
+POST /v1/briefs/:id/apply
+GET  /v1/galleries
+POST /v1/galleries                 → curator-only
+GET  /v1/feed                      → activity feed for authed user
+GET  /v1/search?q=…                → handle/title/tag search (D1 FTS5)
+POST /v1/webhooks/github           → repo push → recompute project status
+POST /v1/webhooks/indexer          → cron: pull Base events into D1
+
+
+3. Smart contract design (Foundry, Solidity 0.8.24)
+Four contracts, all on Base. Keep them small, audited-shape, and upgradeable only via factory replacement (no proxies).
+3.1 GAProjectFactory
+Deploys one GAProject clone (EIP-1167 minimal proxy) per project.
+Records mapping(bytes32 projectId => address project).
+Emits ProjectCreated(bytes32 id, address project, address artist, address splits).
+3.2 GAProject (ERC-721 + ERC-2981)
+One contract per project. Edition size set at deploy (e.g. 100, or open).
+mint(bytes32 seed) payable: stores tokenIdToSeed[id] = seed. Seed is the only thing needed to deterministically reproduce the artwork given the frozen bundle CID.
+tokenURI(id): returns ipfs://{frozenCID}/?seed={seed} (HTML lives in the frozen bundle and reads ?seed=…).
+ERC-2981 royalty receiver = the project's GASplits instance.
+setBaseFrozenCID(string) callable once by artist after deploy, then locked.
+3.3 GASplits
+Pull-based payment splitter (à la 0xSplits / OpenZeppelin PaymentSplitter semantics, immutable shares).
+Default split for solo artist mint: 90% artist, 5% gallery (if any), 5% protocol treasury.
+Default split for collab mint: configurable on factory call, e.g. 60% coder / 25% non-coder collaborator / 5% gallery / 10% protocol — total must equal 10000 bps.
+Each shareholder pulls via release(token, account).
+3.4 GAGalleryRegistry
+register(string name, string city) — anyone can register, but a multisig-controlled verify(address) flag gates the ability to be selected as the gallery for a project's splits.
+Emits GalleryRegistered, GalleryVerified, GalleryRevoked.
+Why this shape: ERC-721-per-project is the Art Blocks pattern. On-chain seed + off-chain frozen bundle is the fxhash pattern. Splits-as-receiver is what makes collaboration & gallery splits trustless without us holding funds.
+
+4. Feature breakdown
+For each feature: (1) implementation, (2) contracts, (3) flow, (4) impact, (5) risks/metrics.
+Assumption flag: the feature list below is reverse-engineered from the request prose. Update §4 if your real list differs.
+F1 — Repo-as-Project (foundation)
+Impl. Worker calls GitHub POST /repos/{template_owner}/{template_repo}/generate using a fine-grained PAT (org-scoped, Contents+Workflows R/W). Repo is created under GeneratedArt-artists/{handle}-{slug}. D1 row inserted. Optional GitHub App later for per-user OAuth instead of central PAT.
+Contracts. None at this stage. Project address only minted at §F8.
+Flow. Studio → "New project" → name + engine + license → spinner → repo opens in studio iframe.
+Impact. Zero lock-in. Source code, history, issues, stars all live in GitHub forever.
+Risks. GitHub rate limits (mitigated: PAT is org-scoped, requests batched). PAT compromise (mitigated: fine-grained, rotated quarterly, never in client). Metric: repo creation success rate > 99%, p95 latency < 1.5s.
+F2 — Artist profile / portfolio (/@:handle)
+Impl. Snowflake's _authors/{handle}.md is the canonical profile front-matter (name, bio, avatar, socials). The portfolio page is a Jekyll layout that fetches /v1/users/:handle/projects at build (via jekyll-data plugin OR client-side JS — pick client-side so the site doesn't rebuild on every project change).
+Contracts. None.
+Flow. Visit /@dami → static shell renders → JS fetches projects + follow count → grid of cover images (R2-hosted) → click into project page.
+Impact. Free, fast, SEO-friendly portfolio every artist gets the day they sign up. The portfolio IS the platform's growth surface.
+Risks. Stale cache vs. fresh writes (mitigated: KV cache with Cache-Control: max-age=60, stale-while-revalidate=600). Metric: portfolio render < 200ms TTFB, > 90 Lighthouse.
+F3 — Sketch Studio (/studio)
+Impl. CodeMirror 6 editor + iframe sandbox. Engine adapters: p5.js, three.js, raw GLSL via a tiny WebGL shell. "Save" POSTs to /v1/projects/:id/commit which forwards to GitHub Contents API. Live preview re-runs on save. Hotkeys: ⌘S commit, ⌘E export PNG (R2 upload via signed URL).
+Contracts. None.
+Flow. Pick template → edit → ⌘S → commit lands in artist repo with auto-message "studio: {date}" → preview reloads.
+Impact. Lowers the entry barrier. Coders who don't want to set up local tooling can ship.
+Risks. Sandboxing (mitigated: iframe with strict CSP, no parent access). Lost work (mitigated: localStorage autosave every 5s, debounced commit on blur). Metric: commits/session, return rate D1/D7.
+F4 — Project management
+Impl. D1-backed CRUD on metadata only — title, description, license, cover, status. Code edits go through F3 or directly on GitHub (we surface the GitHub link prominently). "Delete" archives the repo (GitHub archive: true) and sets D1 status archived — never deletes git history.
+Contracts. None.
+Flow. Dashboard at /dashboard/projects lists all projects with status badges (draft / published / minted / archived).
+Impact. Artist control without us controlling their work.
+Risks. None significant. Metric: projects per active artist > 3 within 30 days.
+F5 — Follow graph + activity feed
+Impl. Insert/delete on follows table. Activity feed query: SELECT * FROM events WHERE actor IN (followees of :me) ORDER BY created_at DESC LIMIT 50. Events are written by webhooks (GH push), Worker actions (project create/mint), and indexer (Base events).
+Contracts. None — but mint events flow through indexer.
+Flow. /feed → infinite scroll of "X published Y", "X minted Y #3", "X applied to brief Z".
+Impact. Retention loop. Without a feed, the site is a directory; with a feed, it's a community.
+Risks. Spam (mitigated: rate limit creates per address, exclude unverified accounts from public feed). Metric:WAU/MAU, feed visits per session.
+F6 — Collaboration Lounge (artist ↔ artist)
+Impl. Briefs table with industry='collab'. PR-driven workflow: applicant forks the artist's repo, opens PR, the platform tracks pull_request webhook events. When merged, a GASplits deployment is suggested (artist + collaborator at agreed bps).
+Contracts. GASplits deployed at the moment the merged collab is published.
+Flow. Artist posts collab brief → coder/non-coder applies → DM unlocks → fork + PR → merge → deploy splits → mint ready.
+Impact. This is the wedge. fxhash and Art Blocks have no native collaboration primitive. We do, and it's trustless.
+Risks. Disputes over contribution (mitigated: PR diff is the canonical record, splits ratio is signed by both before merge). Metric: % of mints that are collabs, target > 20% by month 3.
+F7 — Industry briefs (textile / fashion / architecture / product)
+Impl. Same briefs table, different industry value. Brief poster doesn't need to be a coder — they sign in with a wallet (or email-based passkey for a v2 onboarding flow), describe the need, attach reference images (R2). Coders apply with a sample project + pitch.
+Contracts. Optional escrow: GAEscrow (v2) holds budget until milestone signed by both. Out of scope for 24h.
+Flow. /briefs filtered by industry → click brief → "Apply" → pitch + sample → notification to poster → off-platform agreement → on-platform mint with splits.
+Impact. Opens generative art to revenue streams beyond NFT speculation: pattern licensing for textile, parametric facades for architecture, motion identities for fashion brands.
+Risks. Off-platform deals leak (mitigated v2: optional escrow + reputation score). Metric: briefs posted per week, application rate, paid match rate.
+F8 — NFT minting
+Impl. Mint UI at /mint/:projectId. Connect wallet → fetch project → if not yet deployed, call factory.createProject(...) (artist signs, pays gas only). Frozen bundle is required before mint: F11 must complete first. Per-token mint calls project.mint(seed) with seed = keccak256(blockhash || msg.sender || tokenId).
+Contracts. GAProjectFactory.createProject → returns GAProject clone + GASplits clone.
+Flow. Artist clicks "Deploy" once → contract live → opens public mint page → collector connects wallet → mints → tokenURI resolves to IPFS frozen bundle with ?seed= param → artwork renders.
+Impact. This is the revenue moment. 5% protocol fee via splits, default 5% to gallery if attached.
+Risks. Gas spikes on Base (mitigated: factory uses minimal proxies, ~50k gas per project deploy). Failed mints (mitigated: simulation step in UI before signing). Metric: primary mint volume, secondary royalty volume, protocol revenue.
+F9 — Royalty splits
+Impl. GASplits deployed alongside GAProject. ERC-2981 royaltyInfo(_, salePrice) returns (splitsAddr, salePrice * 5%) — marketplaces honor this. Splits are pull-based; UI shows balance and a "Withdraw" button.
+Contracts. GASplits (above).
+Flow. Sale on OpenSea/Zora/Magic Eden → royalty flows to GASplits → each shareholder withdraws → tx visible on dashboard.
+Impact. Trustless multi-party royalties make collabs and gallery deals frictionless.
+Risks. Marketplaces ignoring royalties (industry-wide problem; document the on-chain enforcement we do support, accept the rest). Metric: royalty volume / total secondary volume.
+F10 — Gallery partnerships
+Impl. GAGalleryRegistry on-chain + galleries table off-chain (mirrored). Galleries register, get verified by multisig, and can be attached to a project at deploy time as a shareholder in GASplits. Geneva is gallery #1.
+Contracts. GAGalleryRegistry.
+Flow. Curator signs in → registers gallery → multisig verifies → curator can co-sign drops → drop appears on /galleries/:slug.
+Impact. Physical-digital bridge. Galleries get curation + a cut, artists get reach + IRL exhibition.
+Risks. Verification bottleneck (mitigated: weekly multisig review SLA). Metric: verified galleries per quarter, drops per gallery.
+F11 — Frozen artifact pipeline
+Impl. GitHub Action in each artist repo: on tag push (v*), it runs npm ci && npm run build (or just zips the static dir), uploads zip to R2 via Worker signed URL, calls Worker /v1/projects/:id/freeze which pins to Pinata + web3.storage, returns CID, writes CID into D1 and into the artist repo's freeze.json. Must succeed before mint.
+Contracts. GAProject.setBaseFrozenCID(cid) called once by artist post-freeze.
+Flow. Artist tags v1.0.0 → Action runs → freeze.json updated → mint enabled.
+Impact. This is what makes mints permanent even if GitHub or the artist disappears. It's also the legal/curatorial credibility layer.
+Risks. IPFS pin loss (mitigated: dual-pin Pinata + web3.storage, monthly health-check job re-pins missing CIDs). Metric: % of mints with verified dual-pin.
+F12 — Discovery, search, leaderboards
+Impl. D1 FTS5 index over users.handle, projects.title/description, briefs.title/body_md. Leaderboards are materialized views refreshed every 5 min: top artists by mint volume, by remix count, by collab count.
+Contracts. None.
+Flow. /explore → tabs (artists / projects / briefs / galleries) → search box + filters (engine, industry, has-mints).
+Impact. Discovery = retention. Without it, the platform is just a list of profiles you have to know to find.
+Risks. Gaming the leaderboards (mitigated: weight by unique-collector count, not raw volume). Metric: explore CTR, search-to-follow conversion.
+
+5. Branding pass — GA / GeneratedArt
+Replace Snowflake placeholders before any feature work. Single CSS variables file at assets/css/_brand.scss:
+:root {
+  // Type
+  --ga-font-mono: ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, monospace;
+  --ga-font-sans: "Inter", -apple-system, system-ui, sans-serif;
+
+  // Color (one ink, one paper, one accent)
+  --ga-paper:  #FAFAF7;   // off-white, never pure white
+  --ga-ink:    #0A0A0A;   // near-black
+  --ga-accent: #E63946;   // GA red — used sparingly, only on CTA + active state
+  --ga-rule:   rgba(10,10,10,0.12);
+
+  // Spacing — 8pt grid, no decimals
+  --ga-1: 8px;  --ga-2: 16px; --ga-3: 24px; --ga-4: 32px;
+  --ga-6: 48px; --ga-8: 64px; --ga-12: 96px;
+
+  // Type scale — modular, tight
+  --ga-type-xs:  12px;
+  --ga-type-sm:  14px;
+  --ga-type-md:  16px;
+  --ga-type-lg:  20px;
+  --ga-type-xl:  28px;
+  --ga-type-2xl: 40px;
+  --ga-type-3xl: 64px;
+
+  // Borders — 1px, never more
+  --ga-border: 1px solid var(--ga-rule);
+}
+
+UI rules. No box shadows. No rounded corners except on avatars (50%) and pills (9999px). One accent color, used only on primary CTAs and active nav. Tables and cards use 1px rules, never fills. Hover state = underline OR accent color, never both. Never use the brand red on body text. Sub-pixel borders (hairline) on dark mode only.
+Typography. Mono for: code, addresses, hashes, IDs, monospaced tabular data. Sans for: prose, navigation, headings. No serif anywhere.
+Logotype. Wordmark only at MVP: GA lockup in monospace, letterspaced 0.04em, all caps. SVG at assets/img/ga-mark.svg. No icon-only variant until we have brand recognition to support it.
+Imagery. All artwork covers are square 1:1, max 1080px, AVIF first then WebP fallback. No stock photography, ever. Cover thumbnails are auto-generated from the sketch's first frame at freeze time.
+
+6. The 24-hour hackathon plan
+Realistic for one developer + Replit Agent. If you have 2–3 people, parallelize the swimlanes labeled [parallelizable].
+Hour
+Phase
+Tasks
+Done when
+00–02
+Pre-flight
+Disable Cloudflare Workers Builds auto-deploy. Verify pages.yml deploys clean. Create GeneratedArt-artists org. Mint fine-grained PAT. Provision Cloudflare D1, KV, R2 buckets, Queues. Add Wrangler secrets.
+curl https://api.generatedart.com/healthreturns ok.
+02–05
+Branding pass[parallelizable]
+Drop in _brand.scss. Replace Snowflake logo, copyright, favicon, theme colors. Rewrite _config.yml title/description/email. Replace homepage hero copy.
+Site at localhost:5000 looks GA-branded, no Snowflake strings remain (grep -ri snowflake . returns 0).
+05–08
+Auth: SIWE
+Worker routes /v1/auth/siwe/{nonce,verify}. JWT issuance. KV nonce store. Client lib: WalletConnect v2 + viem createSiweMessage + signature post. Persistent session via httpOnlycookie scoped to .generatedart.com.
+Connect wallet → sign → /v1/me returns user.
+08–11
+Repo-as-project + dashboard[parallelizable]
+template-sketch repo created with p5 boilerplate. Worker /v1/projects POST calls GitHub generate API, inserts D1 row. Jekyll page /dashboard/projects (auth-gated, JS-fetched).
+"New project" creates real GitHub repo + appears in dashboard.
+11–14
+Studio MVP
+CodeMirror 6 in iframe. p5 engine adapter only (skip three/glsl for MVP). ⌘S commits via Worker proxy. Live preview in side iframe. localStorage autosave.
+Edit → save → commit visible in artist repo within 3s.
+14–17
+Profile + portfolio + follow[parallelizable]
+Jekyll layout /@:handle. Client-side fetch of /v1/users/:handle/projects. Follow button → POST /v1/users/:handle/follow. Project detail page /p/:id with cover + repo link + status.
+Two test accounts can follow each other and see each other's projects.
+17–20
+Mint flow on Base Sepolia
+Foundry: GAProject.sol + GAProjectFactory.sol (skip Splits and GalleryRegistry for 24h — use plain ERC-2981 with single receiver). Deploy to Base Sepolia. Mint UI at /mint/:id. Wagmi connector. Hardcoded frozen CID for one demo project.
+Connect wallet on Sepolia → mint → token #1 visible on Basescan.
+20–22
+Briefs board (read + post, no apply)
+D1 briefs table. Worker /v1/briefs GET + POST. Jekyll page /briefs lists open briefs. Industry filter as URL param.
+Post brief from one account, see it on /briefs from another.
+22–24
+Polish + demo
+Landing page hero rewrite. README update with architecture diagram. Loom-record a 90-second demo: signup → studio → publish → mint. Tag v0.1.0-hackathon.
+Tag pushed, demo link in repo description.
+
+Things explicitly cut from 24h (these go into post-hackathon roadmap, §7):
+Three.js / GLSL engine adapters
+Frozen artifact pipeline (use a hardcoded CID for the demo project)
+GASplits and GAGalleryRegistry contracts
+Industry-brief application flow
+Activity feed
+Search + leaderboards
+Gallery partnership UI
+
+7. Post-hackathon phased roadmap
+Phase
+Timeline
+Goal
+Ships
+P0 — Hackathon MVP
+Day 0–1
+Demo loop works
+F1, F2 (lite), F3 (p5 only), F4, F8 (Sepolia)
+P1 — Foundation
+Week 1–2
+Production-grade core
+Frozen pipeline (F11), three.js + GLSL engines, mainnet Base deploy, real custom domain DNS
+P2 — Community
+Week 3–4
+Make it sticky
+Follow graph + activity feed (F5), discovery + search (F12), profile customization
+P3 — Collaboration
+Month 2
+Open the wedge
+Collab Lounge (F6), GASplits contract, PR-driven collab workflow
+P4 — Industry & galleries
+Month 3
+Revenue diversification
+Industry briefs (F7), GAGalleryRegistry (F10), Geneva gallery launch drop
+P5 — Reputation & quality
+Month 4
+Defensibility
+Leaderboards, reputation score, dispute resolution for collabs, optional escrow (GAEscrow)
+P6 — Native onboarding
+Month 5
+Lower the floor
+Email/passkey onboarding for non-coders, fiat onramp via partner (not custodial), GitHub App OAuth replacing the central PAT
+
+
+8. Prioritized backlog (issue-ready)
+Drop these straight into GitHub Issues. Labels in brackets.
+Now (this hackathon):
+chore: disable Cloudflare Workers auto-deploy [infra] [blocker]
+chore: provision D1 schema + run migrations [infra]
+chore: provision R2 buckets (thumbs, captures, frozen) [infra]
+chore: provision KV namespaces (sessions, rate-limit, indexer) [infra]
+feat(brand): GA branding pass over Snowflake template [ui] [blocker]
+feat(auth): SIWE nonce + verify endpoints [worker]
+feat(auth): wagmi + WC2 client integration on Jekyll site [ui]
+feat(projects): GitHub repo creation via template + D1 row [worker]
+feat(studio): CodeMirror 6 + p5 iframe + commit endpoint [ui] [worker]
+feat(profile): /@:handle layout + projects fetch [ui]
+feat(follow): follow/unfollow endpoints + button [worker] [ui]
+feat(mint): GAProject + GAProjectFactory on Base Sepolia [contracts]
+feat(mint): /mint/:id UI with wagmi + tx simulation [ui]
+feat(briefs): D1 table + GET/POST + /briefs page (read-only apply) [worker] [ui]
+chore(demo): hardcode demo project + record Loom [demo]
+Next (P1, week 1–2):
+feat(freeze): GitHub Action for tag-push freeze + dual-pin [ci]
+feat(freeze): Worker /freeze endpoint + Queues consumer [worker]
+feat(studio): three.js engine adapter [ui]
+feat(studio): GLSL engine adapter [ui]
+chore(contracts): mainnet Base deploy + verification [contracts]
+feat(seo): per-project Open Graph images at freeze time [ui]
+Later (P2+, prioritized):
+feat(feed): events table + GH/Base webhooks → activity feed [worker] [ui]
+feat(search): D1 FTS5 index over users/projects/briefs [worker]
+feat(collab): PR-driven collab flow + GASplits deploy [contracts] [ui]
+feat(galleries): GAGalleryRegistry + verification multisig [contracts]
+feat(briefs): application flow + DM unlock [worker] [ui]
+feat(leaderboards): materialized views + /explore tabs [worker] [ui]
+feat(reputation): score weighted by unique collectors [worker]
+feat(onboarding): email/passkey path for non-coders [ui] [worker]
+feat(escrow): GAEscrow contract + milestone UI [contracts] [ui]
+
+9. Risks & mitigations (top of stack)
+Risk
+Likelihood
+Impact
+Mitigation
+Central PAT leaks
+Low
+High
+Fine-grained, org-scoped, quarterly rotation, never client-side. Move to GitHub App OAuth in P6.
+Cloudflare auto-deploy keeps interfering
+Medium
+Medium
+Disable in dashboard before any Worker work. Document in replit.md.
+Marketplaces strip royalties
+High
+Medium
+Document our on-chain enforcement; do not rely on royalties for treasury. Treasury comes from primary mint fees.
+Artist deletes repo post-mint
+Medium
+High
+Frozen pipeline (F11) + dual-pin makes this irrelevant — the mint is already permanent.
+GitHub rate-limits us
+Low
+Medium
+Worker batches, caches, uses If-None-Match etag headers. Move to GitHub App per-user OAuth in P6.
+Disputes on collab splits
+Medium
+Medium
+PR diff is canonical record. Splits ratio signed by both before merge. Optional escrow in P5.
+
+
+10. Success metrics (north stars by phase)
+P0 (hackathon). Demo works end-to-end: signup → studio → publish → mint on Sepolia. One real artist not on the team uses it the next day.
+P1. 10 artists onboarded. 25 published projects. 5 mainnet mints.
+P2. WAU/MAU > 0.4. Mean follows-per-active-user > 5.
+P3. 20% of new mints are collabs (artist + collaborator). 5+ deployed GASplits.
+P4. Geneva gallery has run 1 verified drop. 3 industry briefs paid out.
+P5. Reputation score live. < 2 disputed collabs / month.
+P6. 30% of new signups are non-coders (industry/curator/collector).
+
+11. Promotional pitch — for artists & creators
+GeneratedArt. Where your code is the artwork, your repo is the gallery, and your collaborators get paid on-chain.
+Code-first generative art deserves a home built like the work itself: open by default, version-controlled forever, mintable in one click, splittable across every collaborator who shaped the piece.
+No prompts. No black boxes. No platform that owns your source code. Your sketches live in your GitHub repo. Your mint lives on Base. Your royalties flow through a contract neither we nor anyone else can intercept. Forks are remixes. PRs are collaborations. Tags are editions.
+If you're a textile designer who needs a generative pattern for a 2027 collection, post a brief. If you're an architect who needs a parametric facade, post a brief. If you're a coder who wants to translate code into fabric, concrete, or runway, apply.
+If you're a gallery, register. The Geneva room is the first; yours can be next.
+Built on GitHub Pages, Cloudflare Workers, and Base L2. No AWS. No Vercel. No Stripe. No middlemen.
+Successor to fxhash and Art Blocks. Owned by the artists who use it.
+Channels. X/Twitter (creative-coding scene), Are.na (textile/design/architecture overlap), Farcaster (Base-native crypto), Lenster (web3), GitHub trending (organic dev pull), Geneva gallery IRL launch.
+Launch hook. First 50 verified artists get a free GAProject deploy (we cover gas) and inclusion in the launch group exhibition at Geneva.
+
+12. Replit Agent — execution prompt (paste this)
+Copy from here ⬇️ to the end of this section into a Replit message to start work.
+
+You are working on GeneratedArt/platform, branch main. Your job: execute the 24-hour hackathon plan documented in GENERATEDART_HACKATHON_PLAN.md (this file). Read the entire file before writing any code, then proceed phase by phase.
+Hard rules (do not break, do not "improve"):
+Static site = Jekyll on GitHub Pages only. Do not introduce Astro, Next.js, Vite, Vercel, Pages, or Netlify.
+Dynamic service = single Hono Worker at workers/api/. Do not add a second worker, a Node server, or any backend host.
+Smart contracts = Foundry under contracts/, deployed to Base. Do not use Hardhat, Truffle, or any non-Foundry toolchain.
+The platform never holds private keys. All wallet ops are client-side (WalletConnect v2 + viem + wagmi). Worker only verifies signatures.
+Source code for artist projects lives in GitHub repos under the GeneratedArt-artists org. Do not store sketch source in D1 or R2. R2 is for thumbnails, captures, and frozen bundles only.
+Snowflake is the template foundation. Layer on top of _authors, _portfolio, _shop_items. Do not delete and rewrite the template.
+Cloudflare Workers Builds auto-deploy is currently active and broken. Disable it in the dashboard before any Worker work. If you cannot disable it, stop and surface the blocker.
+Branding pass first. No feature work until grep -ri snowflake . returns zero matches in everything except _includes/snowflake-attribution.html (keep one attribution line in the footer).
+Per-task workflow:
+Open a GitHub issue with the task title from the §8 backlog.
+Open a branch feat/<short-slug> or chore/<short-slug>.
+Make the change. Keep diffs small — one feature per PR.
+Open a draft PR linking the issue.
+CI must pass (pages.yml for site changes, worker-api.yml for worker, contracts.yml for contracts).
+Self-review, then mark ready, then merge to main.
+Phase order, in hours, from §6 of the plan:
+00–02 Pre-flight infra
+02–05 Branding
+05–08 SIWE auth
+08–11 Repo-as-project + dashboard
+11–14 Studio MVP (p5 only)
+14–17 Profile + portfolio + follow
+17–20 Mint flow on Base Sepolia
+20–22 Briefs board (read + post)
+22–24 Polish + demo
+Stop and ask before:
+Adding any dependency not already in Gemfile, workers/api/package.json, or contracts/foundry.toml.
+Deviating from the data model in §2.2 or the route surface in §2.3.
+Changing any contract interface in §3.
+Touching _config.yml outside the branding pass list (title, description, email, theme color, logo path).
+At the end of each phase, push, deploy, smoke-test the "done when" criterion from §6, and report status before moving to the next phase. Do not start phase N+1 if phase N's "done when" is not met.
+Demo deliverable for hour 24:
+Tag v0.1.0-hackathon pushed to main.
+README updated with architecture diagram + demo Loom link.
+Two seeded artist accounts with one project each.
+One project minted on Base Sepolia, visible at https://sepolia.basescan.org/....
+Loom recording (90 seconds): signup → studio → publish → mint.
+Begin.
+
+13. Open questions for the human (resolve before hour 0)
+Where is the actual feature list the prompt referenced ([PASTE THE ENTIRE FEATURE LIST ABOVE])? §4 is reverse-engineered from the prose and may diverge from your intent.
+GitHub org for artist repos. Confirm name. Plan assumes GeneratedArt-artists. Alternatives: ga-artists, generatedart-art.
+Protocol fee bps. Plan assumes 5% (500 bps). Adjust in GASplits defaults.
+Default artist license. README says CC-BY-NC-4.0. Confirm or list alternatives in studio dropdown.
+Treasury multisig address for GAGalleryRegistry.verify and protocol fee receiver.
+Geneva gallery wallet address for the launch drop.
+Pinata + web3.storage API keys as Wrangler secrets — provision before P1.
+Base mainnet deploy budget. Estimate ~0.05 ETH for factory + first project + verification. Confirm allocation.
+
+End of plan. v1, written for the GeneratedArt platform hackathon. Update this document as decisions land — it is the canonical brief for any agent or human working on the repo.
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeneratedArt — Replit Agent Task List</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,system-ui,sans-serif;background:#FAFAF7;color:#0A0A0A;font-size:14px;line-height:1.6;padding:2rem}
+h1{font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.04em;margin-bottom:.25rem}
+.sub{color:#555;font-size:13px;margin-bottom:2rem}
+.progress-wrap{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem}
+.bar-bg{flex:1;height:4px;background:#e0e0d8;border-radius:9999px;overflow:hidden}
+.bar-fill{height:100%;background:#E63946;border-radius:9999px;transition:width .3s}
+.prog-txt{font-family:ui-monospace,monospace;font-size:12px;color:#666;min-width:50px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem}
+.tab{padding:5px 12px;border-radius:9999px;border:1px solid rgba(10,10,10,.15);background:transparent;font-size:12px;cursor:pointer;color:#555}
+.tab.active{background:#0A0A0A;color:#FAFAF7;border-color:#0A0A0A}
+.task-list{display:flex;flex-direction:column;gap:8px}
+.task-card{background:#fff;border:1px solid rgba(10,10,10,.1);border-radius:8px;overflow:hidden}
+.task-card.done{opacity:.5}
+.task-head{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none}
+.task-num{font-family:ui-monospace,monospace;font-size:11px;color:#888;min-width:24px}
+.task-title{flex:1;font-size:13px;font-weight:500}
+.task-cb{width:15px;height:15px;accent-color:#E63946;cursor:pointer;flex-shrink:0}
+.task-body{display:none;border-top:1px solid rgba(10,10,10,.08);padding:12px 14px;background:#f9f9f6}
+.task-body.open{display:block}
+.prompt-label{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.prompt-box{background:#fff;border:1px solid rgba(10,10,10,.1);border-radius:6px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:12px;line-height:1.65;white-space:pre-wrap;word-break:break-word;margin-bottom:10px}
+.copy-btn{display:inline-block;padding:5px 14px;border:1px solid rgba(10,10,10,.2);border-radius:6px;background:transparent;font-size:12px;cursor:pointer}
+.copy-btn:hover{background:#f0f0ea}
+.done-when{font-size:12px;color:#555;margin-top:10px;padding-top:10px;border-top:1px solid rgba(10,10,10,.08)}
+.done-when strong{color:#2a7a2a}
+</style>
+</head>
+<body>
+
+<h1>GENERATEDART</h1>
+<div class="sub">Replit Agent task list — one prompt per task, copy and paste sequentially</div>
+
+<div class="progress-wrap">
+  <div class="bar-bg"><div class="bar-fill" id="bar" style="width:0%"></div></div>
+  <div class="prog-txt" id="prog">0 / 0</div>
+</div>
+<div class="tabs" id="tabs"></div>
+<div class="task-list" id="list"></div>
+
+<script>
+const phases=[
+{label:"00–02h Pre-flight",short:"Pre-flight",tasks:[
+{t:"Disable Cloudflare Workers auto-deploy",
+p:`Open the Cloudflare dashboard → Workers & Pages → the api.generatedart.com Worker → Settings → Builds & Deployments → disable auto-deploy. Do not touch any code. Confirm it is disabled and report back.`,
+d:`Auto-deploy toggle is off. No Worker build fires when you push to main.`},
+{t:"Verify GitHub Pages workflow",
+p:`Check .github/workflows/pages.yml. It must build with Jekyll and deploy to GitHub Pages only — do not modify it. Trigger it manually from the Actions tab. Confirm it completes green and report the run URL.`,
+d:`pages.yml run shows green in GitHub Actions.`},
+{t:"Create GeneratedArt-artists GitHub org",
+p:`Create a new GitHub organization named GeneratedArt-artists (or confirm it already exists). Do not create any repos inside it yet. Report the org URL.`,
+d:`github.com/GeneratedArt-artists exists and is accessible.`},
+{t:"Mint fine-grained PAT and store as secret",
+p:`Create a fine-grained GitHub PAT scoped to GeneratedArt-artists org with Contents: Read+Write and Workflows: Read+Write, expiry 90 days. Store as Wrangler secret GITHUB_PAT. Do not log the value. Report that the secret is set.`,
+d:`wrangler secret list shows GITHUB_PAT for the api worker.`},
+{t:"Provision Cloudflare D1 + run schema migrations",
+p:`Create a Cloudflare D1 database named ga-db. Apply the full schema from §2.2 of GENERATEDART_HACKATHON_PLAN.md (tables: users, projects, follows, briefs, applications, galleries, mints). Bind it in wrangler.toml as DB. Run migrations. Report the database ID.`,
+d:`wrangler d1 execute ga-db --command "SELECT name FROM sqlite_master WHERE type='table'" lists all 7 tables.`},
+{t:"Provision Cloudflare KV namespaces",
+p:`Create three KV namespaces: ga-sessions, ga-ratelimit, ga-indexer. Bind in wrangler.toml as SESSIONS, RATELIMIT, INDEXER. Report namespace IDs.`,
+d:`wrangler.toml shows all three KV bindings.`},
+{t:"Provision Cloudflare R2 buckets",
+p:`Create three R2 buckets: ga-thumbs, ga-captures, ga-frozen. Bind in wrangler.toml as THUMBS, CAPTURES, FROZEN. Report bucket names.`,
+d:`wrangler.toml shows all three R2 bindings.`},
+{t:"Provision Cloudflare Queues",
+p:`Create two Queues: ga-render-jobs and ga-pin-jobs. Bind as producer + consumer in wrangler.toml. Report queue IDs.`,
+d:`wrangler.toml shows producer and consumer bindings for both queues.`},
+{t:"Smoke-test: GET /health returns ok",
+p:`In workers/api/src/index.ts add a Hono route: GET /health → JSON { status: "ok", ts: Date.now() }. Deploy with wrangler deploy. Verify: curl https://api.generatedart.com/health. Do not add any other routes yet.`,
+d:`curl returns {"status":"ok","ts":...} with HTTP 200.`},
+]},
+{label:"02–05h Branding",short:"Branding",tasks:[
+{t:"Add GA brand CSS variables",
+p:`Create assets/css/_brand.scss with the full CSS variable set from §5 of GENERATEDART_HACKATHON_PLAN.md: --ga-font-mono, --ga-font-sans, --ga-paper (#FAFAF7), --ga-ink (#0A0A0A), --ga-accent (#E63946), --ga-rule, spacing tokens --ga-1 through --ga-12, type scale --ga-type-xs through --ga-type-3xl, --ga-border. Import at the top of the main stylesheet. Run jekyll serve and confirm no build errors.`,
+d:`_brand.scss exists. jekyll serve compiles cleanly. Variables are available in browser devtools.`},
+{t:"Replace logo, favicon, and theme colour",
+p:`Create assets/img/ga-mark.svg: wordmark "GA" in ui-monospace, letter-spacing 0.04em, all caps, black on transparent. Replace favicon with a minimal square version. Set theme_color in _config.yml to #E63946. Do not change any other _config.yml keys.`,
+d:`localhost:4000 shows GA wordmark in nav. Favicon is the GA mark. No Snowflake logo visible.`},
+{t:"Update _config.yml brand strings",
+p:`Edit _config.yml. Change only: title → "GeneratedArt", description → "Where your code is the artwork.", email → the project contact email. Do not change theme, plugins, baseurl, or any other key.`,
+d:`Page <title> and meta description show updated strings.`},
+{t:"Rewrite homepage hero copy",
+p:`In index.md (or the home layout), replace the Snowflake hero with: H1 "Where your code is the artwork." Subhead "Open-source generative art. Minted on Base. Owned by the artists who make it." Primary CTA "Start creating" → /studio. Use existing layout classes. Do not add new CSS.`,
+d:`localhost:4000 shows the new hero copy and CTA button.`},
+{t:"Verify zero Snowflake strings remain",
+p:`Run: grep -ri snowflake . --include="*.html" --include="*.md" --include="*.scss" --include="*.yml" --include="*.js" --include="*.ts" and list every match. The only allowed match is a single attribution line in _includes/snowflake-attribution.html. Fix every other match. Report when the grep returns only that one file.`,
+d:`grep -ri snowflake . returns exactly one result: _includes/snowflake-attribution.html.`},
+]},
+{label:"05–08h Auth",short:"Auth",tasks:[
+{t:"SIWE nonce endpoint",
+p:`In workers/api/src/routes/auth.ts implement POST /v1/auth/siwe/nonce. Generate a cryptographically random 16-byte hex nonce. Store in KV SESSIONS at key nonce:{nonce} with value = requesting IP, TTL 300s. Return JSON { nonce }. Register in the Hono app. Deploy.`,
+d:`curl -X POST https://api.generatedart.com/v1/auth/siwe/nonce returns {"nonce":"<hex>"}.`},
+{t:"SIWE verify endpoint and JWT issuance",
+p:`Implement POST /v1/auth/siwe/verify. Accept { message, signature }. Verify SIWE message using viem verifyMessage. Check nonce exists in KV and delete it after use. Upsert user row in D1 (address, created_at). Issue HS256 JWT signed with Wrangler secret JWT_SECRET, 7-day expiry. Set as httpOnly cookie ga_session scoped to .generatedart.com. Return JSON { address }. Deploy.`,
+d:`POST with a valid SIWE message returns {"address":"0x..."} and sets the cookie.`},
+{t:"GET /v1/me route",
+p:`Implement GET /v1/me. Read ga_session cookie, verify JWT, look up user in D1 by address. Return JSON { address, handle, display_name, bio, avatar_r2_key, created_at }. Return 401 if missing or invalid. Deploy.`,
+d:`curl with valid cookie returns user object. curl without cookie returns 401.`},
+{t:"WalletConnect v2 client integration",
+p:`In assets/js/auth.js integrate WalletConnect v2 (via CDN) + viem. Implement connectAndSign(): open WC modal → get address → fetch nonce → create SIWE message → request signature → POST to /v1/auth/siwe/verify → on success reload. Attach to "Connect wallet" button in _includes/nav.html. Do not add nav UI chrome beyond what already exists.`,
+d:`Click "Connect wallet" → WC modal → sign → page reloads → nav shows truncated address.`},
+]},
+{label:"08–11h Projects",short:"Projects",tasks:[
+{t:"Create template-sketch repo in GeneratedArt-artists",
+p:`Under the GeneratedArt-artists org create a public repo named template-sketch. Add: index.html (loads p5.js from CDN, calls setup and draw), sketch.js (minimal p5 boilerplate stubs), README.md. Mark it as a Template Repository in GitHub settings. No other files.`,
+d:`github.com/GeneratedArt-artists/template-sketch exists, is marked as template.`},
+{t:"POST /v1/projects — create repo and D1 row",
+p:`Implement POST /v1/projects (JWT required). Body: { slug, title, description, engine, license }. Validate slug is lowercase alphanumeric + hyphens. Call GitHub POST /repos/GeneratedArt-artists/template-sketch/generate via GITHUB_PAT to create GeneratedArt-artists/{handle}-{slug}. Insert D1 projects row (id=ULID, owner=address, slug, repo_full, title, description, engine, license, status='draft', created_at). Return new project JSON. Return 409 if slug already taken. Deploy.`,
+d:`POST /v1/projects with valid JWT creates a real GitHub repo and returns project JSON.`},
+{t:"GET /v1/projects/:id and GET /v1/users/:handle/projects",
+p:`Implement GET /v1/projects/:id (look up by id, return row, 404 if missing) and GET /v1/users/:handle/projects (look up user by handle, return all non-archived projects ordered by created_at DESC). Deploy both.`,
+d:`Both endpoints return correct JSON.`},
+{t:"/dashboard/projects Jekyll page",
+p:`Create a Jekyll page at /dashboard/projects. Client-side: check ga_session cookie — redirect to /login if absent. Fetch /v1/me then /v1/users/{handle}/projects. Render a grid of project cards (title, status badge, GitHub link). Include a "New project" button that opens a modal form (slug + title) and POSTs to /v1/projects. On success append the new card without full reload. Use existing Snowflake grid classes.`,
+d:`Signed-in user sees their projects. "New project" creates a repo and it appears in the grid.`},
+]},
+{label:"11–14h Studio",short:"Studio",tasks:[
+{t:"CodeMirror 6 editor at /studio",
+p:`Create _pages/studio.html at /studio. Load CodeMirror 6 from CDN. Render a full-height editor panel on the left. Seed with a minimal p5.js sketch. Save editor content to localStorage key ga_studio_draft every 5 seconds (debounced). Restore on page load.`,
+d:`/studio shows a CodeMirror editor. Refreshing restores the draft.`},
+{t:"p5 live preview iframe",
+p:`Add a right-hand iframe panel to /studio. On each edit (debounced 800ms) generate a blob URL from: <!DOCTYPE html><html><head><script src="https://cdn.jsdelivr.net/npm/p5"><\/script></head><body><script>{editorContent}<\/script></body></html> and assign to iframe.src. Sandbox attribute must be exactly: sandbox="allow-scripts".`,
+d:`Editing the sketch updates the p5 preview in the right panel within 1 second.`},
+{t:"Commit endpoint and ⌘S hotkey",
+p:`Implement POST /v1/projects/:id/commit (JWT required). Body: { path, content_b64, message }. Fetch current file SHA from GitHub Contents API, then PUT the new content. Return { sha, html_url }. Deploy. In studio JS, bind ⌘S / Ctrl+S: base64-encode editor content, POST to commit endpoint with path="sketch.js" and message="studio: {ISO date}", show a brief "Saved" toast.`,
+d:`Press ⌘S in studio → commit appears in the artist's GitHub repo within 3 seconds.`},
+]},
+{label:"14–17h Profile",short:"Profile",tasks:[
+{t:"/@:handle portfolio layout",
+p:`Create a Jekyll layout and page that serves at /@:handle. Static shell on load; JS fetches /v1/users/{handle} and /v1/users/{handle}/projects then renders: avatar circle, display name, handle, bio, follower count, project cover grid, and a Follow button. If signed-in user is the profile owner, hide Follow and show "Edit profile" link. Use existing Snowflake grid classes.`,
+d:`Visiting /@testuser renders that user's profile and project grid.`},
+{t:"Follow / unfollow Worker endpoints",
+p:`Implement POST /v1/users/:handle/follow (JWT required): insert row into D1 follows (follower, followee, created_at). DELETE /v1/users/:handle/follow: remove the row. Both return { following: bool, count: number }. Return 400 for self-follow. Deploy.`,
+d:`POST then DELETE to /v1/users/{handle}/follow toggles the follow row in D1.`},
+{t:"Wire follow button on profile page",
+p:`Connect the Follow button on /@:handle to POST /v1/users/{handle}/follow. Toggle label to "Following" on success. Second click sends DELETE. Disable while in-flight. On 401 redirect to /login.`,
+d:`Two test accounts can follow and unfollow each other from their profile pages.`},
+{t:"/p/:id project detail page",
+p:`Create a Jekyll page at /p/:id. On load fetch /v1/projects/{id} and render: title, description, engine badge, license, status badge, cover image (or placeholder), GitHub repo link. If status is published or minted show a link to /mint/{id}. If signed-in user is the owner show "Open in Studio".`,
+d:`/p/{id} renders correct project data.`},
+]},
+{label:"17–20h Mint",short:"Mint",tasks:[
+{t:"Write GAProject.sol and Foundry tests",
+p:`In contracts/src/GAProject.sol write Solidity 0.8.24 ERC-721 + ERC-2981. Constructor: name, symbol, editionSize (0=open), royaltyReceiver, royaltyBps. State: tokenIdToSeed mapping, totalSupply, baseFrozenCID string, cidLocked bool. Functions: mint(bytes32 seed) payable — stores seed, increments totalSupply. tokenURI(id) returns "ipfs://{baseFrozenCID}/?seed={seed hex}". setBaseFrozenCID(string) callable once by owner then locked. ERC-2981 royaltyInfo returns (royaltyReceiver, price*bps/10000). Use OpenZeppelin 5.x. Write contracts/test/GAProject.t.sol covering mint, tokenURI, and CID lock.`,
+d:`forge test --match-contract GAProject passes all tests.`},
+{t:"Write GAProjectFactory.sol and Foundry tests",
+p:`In contracts/src/GAProjectFactory.sol write an EIP-1167 minimal proxy factory (use OZ Clones.sol). Refactor GAProject to support initialise() instead of constructor. Factory state: implementation address, mapping(bytes32 => address) projects. Function createProject(bytes32 projectId, string name, string symbol, uint256 editionSize, address royaltyReceiver, uint96 royaltyBps) → clones implementation, calls initialise, stores in mapping, emits ProjectCreated(projectId, clone, msg.sender). Write contracts/test/GAProjectFactory.t.sol.`,
+d:`forge test --match-contract GAProjectFactory passes all tests.`},
+{t:"Deploy to Base Sepolia and verify",
+p:`Write contracts/script/Deploy.s.sol: deploy GAProject implementation, deploy GAProjectFactory pointing at it, log addresses. Run: forge script contracts/script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC --broadcast --verify. Store factory address as Wrangler secret FACTORY_ADDRESS. Commit addresses to contracts/deployments/84532.json.`,
+d:`contracts/deployments/84532.json exists. Both contracts verified on Basescan Sepolia.`},
+{t:"Mint UI at /mint/:id",
+p:`Create _pages/mint.html at /mint/:id. On load fetch /v1/projects/{id}. If contract_addr is null show "Deploy contract" button — clicking it calls factory.createProject via wagmi (user signs + pays gas) then PATCHes /v1/projects/{id} with contract_addr. Show "Mint" button: calls project.mint(seed) where seed = keccak256(abi.encode(latestBlockhash, userAddress, totalSupply+1)) computed client-side via viem. Show tx hash and Basescan link. Use wagmi + WalletConnect v2 already wired in auth.js.`,
+d:`Connect wallet on Sepolia → deploy → mint → token visible at sepolia.basescan.org.`},
+]},
+{label:"20–22h Briefs",short:"Briefs",tasks:[
+{t:"Briefs Worker routes",
+p:`Implement in workers/api/src/routes/briefs.ts: GET /v1/briefs?industry= — returns open briefs filtered by industry (or all), ordered by created_at DESC, limit 50. POST /v1/briefs (JWT required) — body { industry, title, body_md, budget_eth, deadline }. Validate industry is one of: textile, fashion, architecture, product, gallery, other. Insert D1 row (ULID id, status='open'). Return new brief JSON. Deploy.`,
+d:`GET /v1/briefs returns []. POST from a signed-in account returns new brief JSON.`},
+{t:"/briefs Jekyll page",
+p:`Create _pages/briefs.html at /briefs. On load read ?industry= from URL and fetch /v1/briefs?industry={value}. Render brief cards (title, industry badge, poster handle, budget if set, date). Add industry filter buttons (All, Textile, Fashion, Architecture, Product, Gallery, Other) that update the URL param and re-fetch. Add "Post a brief" button (signed-in only) that opens a modal form and POSTs to /v1/briefs. On success prepend the new card.`,
+d:`Posting a brief from one account is visible at /briefs from another account or incognito.`},
+]},
+{label:"22–24h Polish",short:"Polish",tasks:[
+{t:"Rewrite landing page hero",
+p:`In index.md or the home layout replace all Snowflake demo content with: H1 "Where your code is the artwork." Subhead "Open-source generative art. Minted on Base. Owned by the artists who make it." Three one-sentence bullets: "Your repo is your gallery." / "Forks are remixes. PRs are collaborations." / "Royalties split on-chain across every collaborator." Primary CTA "Start creating" → /studio. Secondary CTA "Browse projects" → /explore.`,
+d:`Homepage shows GA hero and no Snowflake demo content.`},
+{t:"Seed two demo artist accounts",
+p:`Using locally generated test JWTs, create two D1 user rows: handle=dami and handle=kiri. For each call POST /v1/projects to create one project repo in GeneratedArt-artists. Confirm both repos exist and both profiles render at /@dami and /@kiri.`,
+d:`/@dami and /@kiri each show one project in their portfolio grid.`},
+{t:"Update README with architecture diagram",
+p:`Rewrite root README.md to include: one-paragraph project description, the Mermaid architecture diagram from §2 of GENERATEDART_HACKATHON_PLAN.md, a table of the four key surfaces (GitHub Pages / Cloudflare Worker / GeneratedArt-artists org / Base L2) with URLs, local setup instructions, and a placeholder [LOOM LINK]. Keep it under 200 lines.`,
+d:`README renders on github.com/GeneratedArt/platform with the Mermaid diagram displayed.`},
+{t:"Tag v0.1.0-hackathon and publish release",
+p:`Confirm all phase smoke-tests above have passed. Run bundle exec jekyll build and verify no errors. Run wrangler deploy. Then: git tag v0.1.0-hackathon && git push origin v0.1.0-hackathon. Create a GitHub Release titled "Hackathon MVP" listing what is included. Report the release URL.`,
+d:`github.com/GeneratedArt/platform/releases/tag/v0.1.0-hackathon exists with release notes.`},
+]},
+];
+
+const KEY='ga-replit-v1';
+let state=JSON.parse(localStorage.getItem(KEY)||'{}');
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+let cur=0;
+
+function id(pi,ti){return 'p'+pi+'t'+ti}
+
+function progress(){
+  let done=0,tot=0;
+  phases.forEach((p,pi)=>p.tasks.forEach((_,ti)=>{tot++;if(state[id(pi,ti)])done++;}));
+  document.getElementById('prog').textContent=done+' / '+tot;
+  document.getElementById('bar').style.width=tot?Math.round(done/tot*100)+'%':'0%';
+}
+
+function tabs(){
+  const el=document.getElementById('tabs');
+  el.innerHTML='';
+  phases.forEach((p,pi)=>{
+    const b=document.createElement('button');
+    b.className='tab'+(pi===cur?' active':'');
+    const d=p.tasks.filter((_,ti)=>state[id(pi,ti)]).length;
+    b.textContent=p.short+' '+d+'/'+p.tasks.length;
+    b.onclick=()=>{cur=pi;tabs();list()};
+    el.appendChild(b);
+  });
+}
+
+function list(){
+  const el=document.getElementById('list');
+  el.innerHTML='';
+  phases[cur].tasks.forEach((t,ti)=>{
+    const sid=id(cur,ti);
+    const done=!!state[sid];
+    const card=document.createElement('div');
+    card.className='task-card'+(done?' done':'');
+
+    const head=document.createElement('div');
+    head.className='task-head';
+    head.innerHTML='<span class="task-num">'+String(ti+1).padStart(2,'0')+'</span><span class="task-title">'+t.t+'</span><input type="checkbox" class="task-cb"'+(done?' checked':'')+' />';
+
+    const body=document.createElement('div');
+    body.className='task-body';
+    body.innerHTML='<div class="prompt-label">Replit prompt</div><div class="prompt-box">'+t.p+'</div><button class="copy-btn">Copy prompt</button><div class="done-when"><strong>Done when:</strong> '+t.d+'</div>';
+
+    head.querySelector('input').addEventListener('change',function(e){
+      e.stopPropagation();
+      state[sid]=this.checked;
+      save();
+      card.classList.toggle('done',this.checked);
+      progress();tabs();
+    });
+    head.addEventListener('click',function(e){
+      if(e.target.type==='checkbox')return;
+      body.classList.toggle('open');
+    });
+    body.querySelector('.copy-btn').addEventListener('click',function(){
+      navigator.clipboard.writeText(t.p).then(()=>{
+        this.textContent='Copied!';
+        setTimeout(()=>this.textContent='Copy prompt',1500);
+      });
+    });
+    card.appendChild(head);card.appendChild(body);el.appendChild(card);
+  });
+}
+
+tabs();list();progress();
+</script>
+</body>
+</html>
+
