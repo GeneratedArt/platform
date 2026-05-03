@@ -1,0 +1,173 @@
+import type { Context } from "hono";
+import type { Env } from "../types";
+import type { AuthVariables } from "../auth/middleware";
+import { getAuthUser } from "../auth/middleware";
+import { getProjectById } from "../db/projects";
+import {
+  insertFrozenVersion,
+  listFrozenForProject,
+  getActiveFrozenForProject,
+  getFrozenById,
+  activateFrozenVersion,
+  publicFrozen,
+} from "../db/frozen";
+import { buildBundle } from "../lib/freeze";
+import { pinBundle } from "../lib/pinning";
+
+/**
+ * POST /v1/projects/:id/freeze
+ *
+ * Owner-only. Builds a deterministic bundle for the project's repo at
+ * the requested commit (or "latest"), pins it to web3.storage and
+ * Pinata in parallel, and writes a `frozen_versions` row. The new row
+ * is NOT activated automatically — the owner picks which version is
+ * live via the activate endpoint, so a bad freeze doesn't silently
+ * change what mints would lock.
+ *
+ * Behaviour when pinning is partially or fully unconfigured:
+ *   - Both providers unconfigured AND PINNING_MOCK!=1 → 503
+ *     `pinning_unconfigured`. We refuse to write a row whose CID is
+ *     only the local fallback in production, because a CID nobody
+ *     can resolve is worse than no CID at all.
+ *   - One provider unconfigured / failed → row stored with
+ *     pinning_partial=1 and pin_errors populated.
+ *   - PINNING_MOCK=1 → both providers reported as pinned for dev /
+ *     determinism tests. Honest about being a mock via the env flag.
+ */
+export async function freezeProject(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const id = parseInt(c.req.param("id") || "", 10);
+  if (!id || Number.isNaN(id)) return c.json({ error: "invalid_id" }, 400);
+
+  const session = getAuthUser(c);
+  const project = await getProjectById(c.env.DB, id);
+  if (!project) return c.json({ error: "not_found" }, 404);
+  if (session.uid !== project.owner_id) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+
+  type Body = { commit?: unknown };
+  const body = (await c.req.json().catch(() => ({}))) as Body;
+  const commitInput =
+    typeof body.commit === "string" && body.commit.trim().length > 0
+      ? body.commit.trim()
+      : "latest";
+
+  // Refuse to freeze in prod when both providers are absent and the
+  // mock flag isn't set — see header comment.
+  const noProviders = !c.env.W3S_TOKEN && !c.env.PINATA_JWT;
+  const isMock = c.env.PINNING_MOCK === "1";
+  if (noProviders && !isMock) {
+    return c.json({ error: "pinning_unconfigured" }, 503);
+  }
+
+  let bundle;
+  try {
+    bundle = await buildBundle(c.env, {
+      repoFull: project.repo_full,
+      engine: project.engine,
+      title: project.title,
+      commit: commitInput,
+      projectId: project.id,
+    });
+  } catch (err) {
+    console.error("freeze_bundle_failed", err);
+    return c.json(
+      { error: "bundle_failed", detail: String(err) },
+      502,
+    );
+  }
+
+  const pin = await pinBundle(c.env, {
+    bytes: bundle.bytes,
+    filename: `project-${project.id}-${bundle.bundle_hash.slice(0, 8)}.html`,
+    fallbackCid: bundle.local_cid,
+  });
+
+  const row = await insertFrozenVersion(c.env.DB, {
+    project_id: project.id,
+    commit_sha: bundle.commit_sha,
+    cid: pin.cid,
+    bundle_hash: bundle.bundle_hash,
+    bytes: bundle.bytes.length,
+    pinned_w3s: pin.pinned_w3s,
+    pinned_pinata: pin.pinned_pinata,
+    pinning_partial: pin.partial,
+    pin_errors: Object.keys(pin.errors).length > 0 ? pin.errors : null,
+  });
+
+  return c.json({ frozen: publicFrozen(row) }, 201);
+}
+
+/**
+ * GET /v1/projects/:id/frozen
+ *
+ * Lists all frozen versions for a project, newest first. Public —
+ * the bundle CID and hash are already on-chain (or about to be), so
+ * there's no value in hiding them.
+ */
+export async function listFrozen(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const id = parseInt(c.req.param("id") || "", 10);
+  if (!id || Number.isNaN(id)) return c.json({ error: "invalid_id" }, 400);
+
+  const project = await getProjectById(c.env.DB, id);
+  if (!project) return c.json({ error: "not_found" }, 404);
+
+  const rows = await listFrozenForProject(c.env.DB, project.id);
+  const active = rows.find((r) => r.is_active === 1) ?? null;
+  return c.json({
+    versions: rows.map(publicFrozen),
+    active: active ? publicFrozen(active) : null,
+  });
+}
+
+/**
+ * POST /v1/projects/:id/frozen/:fid/activate
+ *
+ * Owner-only. Sets the chosen frozen version as the active one and
+ * mirrors its CID into projects.frozen_cid so the existing
+ * `lock_cid` mint phase keeps working without changes.
+ */
+export async function activateFrozen(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const id = parseInt(c.req.param("id") || "", 10);
+  const fid = parseInt(c.req.param("fid") || "", 10);
+  if (!id || Number.isNaN(id)) return c.json({ error: "invalid_id" }, 400);
+  if (!fid || Number.isNaN(fid)) return c.json({ error: "invalid_fid" }, 400);
+
+  const session = getAuthUser(c);
+  const project = await getProjectById(c.env.DB, id);
+  if (!project) return c.json({ error: "not_found" }, 404);
+  if (session.uid !== project.owner_id) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+
+  const target = await getFrozenById(c.env.DB, fid);
+  if (!target || target.project_id !== project.id) {
+    return c.json({ error: "frozen_not_found" }, 404);
+  }
+  // Refuse to activate a fully-unpinned row — minting a CID that
+  // resolves nowhere is the exact failure mode this whole feature
+  // exists to prevent.
+  if (!target.pinned_w3s && !target.pinned_pinata) {
+    return c.json({ error: "frozen_not_pinned" }, 409);
+  }
+
+  const activated = await activateFrozenVersion(c.env.DB, project.id, fid);
+  if (!activated) return c.json({ error: "activate_failed" }, 500);
+  return c.json({ frozen: publicFrozen(activated) });
+}
+
+/// Helper exposed for the mint guard: returns the active frozen
+/// version's CID, or null if the project has no active version.
+export async function activeFrozenCid(
+  env: Env,
+  projectId: number,
+): Promise<string | null> {
+  const row = await getActiveFrozenForProject(env.DB, projectId);
+  return row ? row.cid : null;
+}

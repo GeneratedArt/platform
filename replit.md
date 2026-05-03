@@ -46,6 +46,49 @@ The architecture is deliberately minimal, focusing on:
 - **Capture Functionality**: Allows capturing canvas outputs and storing them in Cloudflare R2.
 - **Dashboard**: Provides a user interface for managing personal projects.
 
+## Frozen artifact + provenance pipeline (Task #15, May 2026)
+
+Every mintable project must resolve to an immutable, content-addressed bundle.
+The freeze pipeline:
+
+1. **Bundler** (`workers/api/src/lib/freeze.ts`) — fetches `sketch.js` from the
+   project's GitHub repo, wraps it in a canonical HTML template with
+   SRI-pinned p5/three runtime references, normalises line endings, and
+   computes a SHA-256 of the bundle bytes. Determinism is asserted by
+   `workers/api/test/freeze.determinism.test.mjs` (identical input → identical
+   bytes/hash/CID; one-byte change → different bytes/hash/CID).
+2. **Dual pinning** (`workers/api/src/lib/pinning.ts`) — fans out to
+   web3.storage and Pinata in parallel via `Promise.allSettled`, returns the
+   first successful provider's CID, flags `pinning_partial=true` when only one
+   succeeds. When BOTH `W3S_TOKEN` and `PINATA_JWT` are unset and
+   `PINNING_MOCK!=1`, freeze returns 503 `pinning_unconfigured` rather than
+   silently writing a row with a CID nobody can resolve.
+3. **Schema** (`migrations/0007_frozen_versions.sql`) — `frozen_versions` table
+   with a partial unique index enforcing one active version per project. Active
+   version's CID is mirrored into `projects.frozen_cid` so the existing
+   `lock_cid` mint phase keeps working unchanged.
+4. **Endpoints** (`workers/api/src/projects/freeze.ts`):
+   - `POST /v1/projects/:id/freeze` — owner-only, builds + pins, returns the
+     new (inactive) frozen version row.
+   - `GET /v1/projects/:id/frozen` — public list of all frozen versions.
+   - `POST /v1/projects/:id/frozen/:fid/activate` — owner-only, swaps the
+     active flag and mirrors the CID into `projects.frozen_cid`.
+5. **Mint guard** (`workers/api/src/projects/mint.ts`) — every phase of
+   `prepare` (deploy, lock_cid, mint) returns 422 `frozen_version_required`
+   when no active frozen version exists.
+6. **Nightly cron** (`workers/api/src/jobs/frozenAudit.ts`, scheduled handler
+   in `index.ts`) — re-checks pin health for the oldest-checked rows daily
+   (4:00 UTC), updates `pinned_w3s` / `pinned_pinata` / `last_checked_at`.
+   Re-pin from drifted state is follow-up scope (would need to re-fetch the
+   bundle from R2 or rebuild from the same commit).
+7. **UI** — Freeze panel rendered into `/p/?id=N` for all viewers; "Freeze
+   current commit" + per-row "Activate" buttons render only for the owner
+   (probed via `/v1/me`).
+
+Configuration: `wrangler secret put W3S_TOKEN --env production` and
+`wrangler secret put PINATA_JWT --env production`. Local dev opts into
+`PINNING_MOCK=1` via `.dev.vars` to short-circuit the network calls.
+
 ## External Dependencies
 - **GitHub**: Source code management, project templating, and direct interaction via the GitHub API for project creation and `_authors/{handle}.md` updates. (Static-site hosting moved to Cloudflare Pages — GitHub is no longer the deploy target.)
 - **Cloudflare Pages**: Static-site hosting for the Jekyll site at `generatedart.com`. Auto-builds on push to `main`.

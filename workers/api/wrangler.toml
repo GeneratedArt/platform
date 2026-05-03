@@ -126,6 +126,24 @@ GA_CHAIN_ID          = "84532"
 GA_RPC_URL           = "https://sepolia.base.org"
 # GA_FACTORY_ADDRESS = "0x0000000000000000000000000000000000000000"
 
+# --- Task #15: frozen artifact + provenance pipeline -----------------------
+# Pinning provider tokens. BOTH must be set in production via:
+#   wrangler secret put W3S_TOKEN  --env production
+#   wrangler secret put PINATA_JWT --env production
+# When both are unset, POST /v1/projects/:id/freeze returns 503
+# `pinning_unconfigured`. When only one is set, freezes succeed with
+# `pinning_partial=true` flagged on the row.
+#
+# Nightly cron audits pin health and marks drifted rows for re-pin.
+[[env.production.triggers.crons]]
+cron = "0 4 * * *"
+
+# Local-dev cron trigger (matches the production schedule). Wrangler
+# dev with --test-scheduled lets you trigger this manually for
+# integration testing.
+[triggers]
+crons = ["0 4 * * *"]
+
 # Zone bound at the route level above (zone_name = "generatedart.com").
 # CLOUDFLARE_ZONE_ID = "5f16e1194f7d4b9f508b955e49c7c6ad" lives in the
 # Cloudflare dashboard for this account; not needed in repo config.

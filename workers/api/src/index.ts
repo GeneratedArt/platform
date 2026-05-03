@@ -20,6 +20,12 @@ import {
   mintStateHandler,
 } from "./projects/mint";
 import {
+  freezeProject,
+  listFrozen,
+  activateFrozen,
+} from "./projects/freeze";
+import { runFrozenAudit } from "./jobs/frozenAudit";
+import {
   getProjectFileHandler,
   commitProjectFileHandler,
   uploadCaptureHandler,
@@ -81,6 +87,17 @@ v1.post("/projects/:id{[0-9]+}/mint/prepare", prepareMint);
 v1.post("/projects/:id{[0-9]+}/mint/confirm-deploy", requireAuth, confirmDeploy);
 v1.post("/projects/:id{[0-9]+}/mint/confirm-mint", confirmMint);
 
+// Task #15: frozen artifact + provenance pipeline. POST /freeze and
+// activate are owner-only; GET /frozen is public (the bundle CID and
+// hash will be on-chain anyway).
+v1.post("/projects/:id{[0-9]+}/freeze", requireAuth, freezeProject);
+v1.get("/projects/:id{[0-9]+}/frozen", listFrozen);
+v1.post(
+  "/projects/:id{[0-9]+}/frozen/:fid{[0-9]+}/activate",
+  requireAuth,
+  activateFrozen,
+);
+
 // User profile + social graph
 v1.get("/users/:handle", getUserByHandleHandler);
 v1.get("/users/:handle/projects", listProjectsForHandle);
@@ -103,4 +120,17 @@ app.onError((err, c) => {
   return c.json({ error: "internal_error" }, 500);
 });
 
-export default app;
+// Task #15: Cloudflare scheduled handler. The cron trigger in
+// wrangler.toml fires this nightly to re-check pin health and mark
+// drifted versions for re-pin in a follow-up job. Defined alongside
+// `fetch` so wrangler can route both into the same Worker.
+export default {
+  fetch: app.fetch,
+  async scheduled(
+    _event: ScheduledEvent,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(runFrozenAudit(env));
+  },
+};

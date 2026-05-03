@@ -21,6 +21,26 @@ interface ProjectOwner {
   avatar_url: string | null;
 }
 
+interface FrozenVersion {
+  id: number;
+  commit_sha: string;
+  cid: string;
+  bundle_hash: string;
+  bytes: number;
+  pinned_w3s: boolean;
+  pinned_pinata: boolean;
+  pinning_partial: boolean;
+  pin_errors: unknown;
+  is_active: boolean;
+  last_checked_at: number | null;
+  created_at: number;
+  gateways: { w3s: string; pinata: string };
+}
+
+interface MeResp {
+  user: { id: number; handle: string };
+}
+
 interface ProjectDetailConfig {
   apiBase: string;
   rootEl: HTMLElement;
@@ -154,8 +174,170 @@ const GAProjectDetail = {
       return;
     }
     await render(cfg, result.project, result.owner ?? null);
+    await mountFreezePanel(cfg, result.project);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Task #15: freeze panel.
+// ---------------------------------------------------------------------------
+// Visible to all viewers (the CIDs and hashes are public anyway), but
+// the "Freeze current commit" + "Activate" buttons only render for the
+// project owner. We do a lightweight `/v1/me` probe to decide; the
+// endpoint 401s for anonymous viewers, which we treat as "not owner".
+
+async function mountFreezePanel(
+  cfg: ProjectDetailConfig,
+  project: ProjectDetail,
+) {
+  const host = cfg.rootEl.querySelector(".ga-project-detail");
+  if (!host) return;
+
+  const panel = document.createElement("section");
+  panel.className = "ga-freeze-panel mt-8 pt-6";
+  panel.style.borderTop = "1px solid var(--ga-rule)";
+  panel.innerHTML = `
+    <h2 class="h5 mb-1">Frozen versions</h2>
+    <p class="small text-muted mb-3">
+      Each frozen version is a deterministic, content-addressed bundle
+      pinned to web3.storage and Pinata. The active version's CID is
+      what gets locked into the project contract at mint time.
+    </p>
+    <div class="ga-freeze-actions mb-3 d-none">
+      <button type="button" class="btn btn-accent btn-sm rounded-0" data-action="freeze">
+        Freeze current commit
+      </button>
+      <span class="ga-freeze-status small text-muted ms-2"></span>
+    </div>
+    <div class="ga-freeze-list small">Loading…</div>
+  `;
+  host.appendChild(panel);
+
+  const listEl = panel.querySelector(".ga-freeze-list") as HTMLElement;
+  const actionsEl = panel.querySelector(".ga-freeze-actions") as HTMLElement;
+  const statusEl = panel.querySelector(".ga-freeze-status") as HTMLElement;
+  const freezeBtn = panel.querySelector(
+    "[data-action='freeze']",
+  ) as HTMLButtonElement;
+
+  // Probe ownership.
+  let isOwner = false;
+  try {
+    const me = await fetchJson<MeResp>(`${cfg.apiBase}/v1/me`);
+    if (!isErr(me)) isOwner = me.user.id === project.owner_id;
+  } catch {
+    isOwner = false;
+  }
+  if (isOwner) actionsEl.classList.remove("d-none");
+
+  async function refresh() {
+    const r = await fetchJson<{
+      versions: FrozenVersion[];
+      active: FrozenVersion | null;
+    }>(`${cfg.apiBase}/v1/projects/${project.id}/frozen`);
+    if (isErr(r)) {
+      listEl.innerHTML = `<p class="text-muted">Couldn't load frozen versions (${r.__status}).</p>`;
+      return;
+    }
+    if (r.versions.length === 0) {
+      listEl.innerHTML = `<p class="text-muted">No frozen versions yet.${
+        isOwner ? " Click <em>Freeze current commit</em> to create one." : ""
+      }</p>`;
+      return;
+    }
+    listEl.innerHTML = r.versions
+      .map((v) => renderFrozenRow(v, isOwner, project.id))
+      .join("");
+    listEl.querySelectorAll<HTMLButtonElement>("[data-activate]").forEach(
+      (btn) => {
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          btn.textContent = "Activating…";
+          const fid = btn.getAttribute("data-activate");
+          const res = await fetch(
+            `${cfg.apiBase}/v1/projects/${project.id}/frozen/${fid}/activate`,
+            { method: "POST", credentials: "include" },
+          );
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            statusEl.textContent = `Activate failed: ${
+              (err as { error?: string }).error || res.status
+            }`;
+          }
+          await refresh();
+        });
+      },
+    );
+  }
+
+  freezeBtn?.addEventListener("click", async () => {
+    freezeBtn.disabled = true;
+    statusEl.textContent = "Building bundle + pinning…";
+    const res = await fetch(
+      `${cfg.apiBase}/v1/projects/${project.id}/freeze`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commit: "latest" }),
+      },
+    );
+    freezeBtn.disabled = false;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      statusEl.textContent = `Freeze failed: ${
+        (err as { error?: string }).error || res.status
+      }`;
+      return;
+    }
+    statusEl.textContent = "Frozen. Activate it below to make it the live version.";
+    await refresh();
+  });
+
+  await refresh();
+}
+
+function renderFrozenRow(
+  v: FrozenVersion,
+  isOwner: boolean,
+  projectId: number,
+): string {
+  const _ = projectId; // referenced via dataset on the button only
+  const sizeKB = (v.bytes / 1024).toFixed(1);
+  const created = new Date(v.created_at * 1000).toLocaleString();
+  const pinBadges = [
+    v.pinned_w3s ? "✓ web3.storage" : "✗ web3.storage",
+    v.pinned_pinata ? "✓ Pinata" : "✗ Pinata",
+  ].join(" · ");
+  const partialNote = v.pinning_partial
+    ? `<span class="ga-badge ga-badge-archived ms-2">Partial pin</span>`
+    : "";
+  const activeBadge = v.is_active
+    ? `<span class="ga-badge ga-badge-minted ms-2">Active</span>`
+    : "";
+  const activateBtn =
+    isOwner && !v.is_active &&
+    (v.pinned_w3s || v.pinned_pinata)
+      ? `<button type="button" class="btn btn-sm btn-outline-primary rounded-0 ms-2" data-activate="${v.id}">Activate</button>`
+      : "";
+  return `
+    <div class="ga-freeze-row" style="border:1px solid var(--ga-rule); padding:12px; margin-bottom:8px;">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <code style="font-size:12px;">${escapeHtml(v.cid)}</code>
+        <span>${activeBadge}${partialNote}${activateBtn}</span>
+      </div>
+      <div class="text-muted" style="font-size:12px; line-height:1.5;">
+        <div>commit <code>${escapeHtml(v.commit_sha.slice(0, 12))}</code> · sha256 <code>${escapeHtml(v.bundle_hash.slice(0, 16))}…</code> · ${sizeKB} KB</div>
+        <div>${pinBadges} · ${escapeHtml(created)}</div>
+        <div>
+          <a href="${escapeHtml(v.gateways.w3s)}" target="_blank" rel="noopener">w3s.link ↗</a>
+          ·
+          <a href="${escapeHtml(v.gateways.pinata)}" target="_blank" rel="noopener">pinata ↗</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 window.GAProjectDetail = GAProjectDetail;
 export default GAProjectDetail;

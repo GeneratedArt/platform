@@ -27,6 +27,19 @@ export interface Env {
   // (totalMinted, isCIDLocked) so we don't need a hosted indexer for
   // the hackathon demo.
   GA_RPC_URL?: string;
+  // --- Task #15: Frozen artifact + provenance pipeline --------------------
+  // web3.storage API token (legacy `Bearer` upload endpoint). Set via
+  // `wrangler secret put W3S_TOKEN --env production`. When unset and
+  // PINATA_JWT is also unset, POST /freeze returns 503
+  // `pinning_unconfigured` rather than silently writing rows with a
+  // CID nobody can resolve.
+  W3S_TOKEN?: string;
+  // Pinata API JWT. Same fail-closed semantics as W3S_TOKEN.
+  PINATA_JWT?: string;
+  // Mock pinning for dev / determinism tests. Opt-in only — never
+  // set in production. When 1, pinBundle() reports both providers as
+  // pinned without making any network calls.
+  PINNING_MOCK?: string;
 }
 
 export interface ProjectMintState {

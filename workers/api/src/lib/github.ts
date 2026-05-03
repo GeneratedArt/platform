@@ -203,6 +203,7 @@ export async function getRepoFile(
   env: Env,
   fullName: string,
   path: string,
+  ref?: string,
 ): Promise<RepoFile> {
   if (isMockMode(env)) {
     const key = mockKey(fullName, path);
@@ -225,7 +226,12 @@ export async function getRepoFile(
     );
   }
 
-  const url = `${GITHUB_API}/repos/${fullName}/contents/${encodeURIComponent(path)}`;
+  // Optional ?ref= pins the read to a specific commit / branch / tag,
+  // which is what the freeze pipeline relies on for true provenance.
+  // Without it, GitHub returns whatever's on the default branch HEAD,
+  // which is non-deterministic across re-freezes.
+  const refQs = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+  const url = `${GITHUB_API}/repos/${fullName}/contents/${encodeURIComponent(path)}${refQs}`;
   const res = await fetch(url, { headers: ghHeaders(env.GITHUB_PAT) });
   if (res.status === 404) {
     // File doesn't exist yet — first commit will create it. Return
