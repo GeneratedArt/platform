@@ -33,12 +33,82 @@ function clampLimit(n: number | undefined): number {
   return Math.max(1, Math.min(n, PAGE_MAX));
 }
 
+/**
+ * Task #18: trait filter. The repeated `&trait=name:value` query param
+ * is parsed into a Map<name, value[]>. We translate that into one
+ * EXISTS subquery per *name* (ANDed at the SQL level), each of which
+ * tests `IN (...values)` (ORed within a name). Project rows survive
+ * only if every name has at least one matching mint_traits row for
+ * that project.
+ */
+export interface TraitFilter {
+  name: string;
+  values: string[];
+}
+
+function buildTraitFilterClause(
+  traits: TraitFilter[],
+  binds: unknown[],
+): string {
+  if (traits.length === 0) return "";
+  const clauses: string[] = [];
+  for (const t of traits) {
+    const placeholders = t.values.map(() => "?").join(", ");
+    clauses.push(
+      `EXISTS (SELECT 1 FROM mint_traits mt
+        WHERE mt.project_id = p.id
+          AND mt.trait_name = ?
+          AND mt.trait_value IN (${placeholders}))`,
+    );
+    binds.push(t.name, ...t.values);
+  }
+  return ` AND ${clauses.join(" AND ")}`;
+}
+
 export async function listRecent(
   db: D1Database,
-  opts: { limit?: number; cursor?: RecentCursor | null },
+  opts: {
+    limit?: number;
+    cursor?: RecentCursor | null;
+    traits?: TraitFilter[];
+  },
 ): Promise<{ rows: ExploreRow[]; next: RecentCursor | null }> {
   const limit = clampLimit(opts.limit);
   const cur = opts.cursor;
+  const traits = opts.traits ?? [];
+  // We must use positional placeholders because the cursor branch
+  // already uses ?1/?2/?3. To keep the trait fan-out simple, we
+  // switch to anonymous "?" binds across the whole query when traits
+  // are present, which D1 binds positionally in order.
+  if (traits.length > 0) {
+    const binds: unknown[] = [];
+    let cursorClause = "";
+    if (cur) {
+      cursorClause = "AND (p.created_at < ? OR (p.created_at = ? AND p.id < ?))";
+      binds.push(cur.created_at, cur.created_at, cur.id);
+    }
+    const traitClause = buildTraitFilterClause(traits, binds);
+    binds.push(limit + 1);
+    const sql = `
+      SELECT ${BASE_SELECT}
+      FROM projects p
+      JOIN users u ON u.id = p.owner_id
+      WHERE ${PUBLIC_STATUS_CLAUSE}
+        ${cursorClause}
+        ${traitClause}
+      ORDER BY p.created_at DESC, p.id DESC
+      LIMIT ?
+    `;
+    const result = await db.prepare(sql).bind(...binds).all<ExploreRow>();
+    const rows = result.results ?? [];
+    let next: RecentCursor | null = null;
+    if (rows.length > limit) {
+      const last = rows[limit - 1];
+      next = { created_at: last.created_at, id: last.id };
+      rows.length = limit;
+    }
+    return { rows, next };
+  }
   const sql = `
     SELECT ${BASE_SELECT}
     FROM projects p

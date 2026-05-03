@@ -6,7 +6,44 @@ import {
   listTrending,
   listFeatured,
   type ExploreRow,
+  type TraitFilter,
 } from "../db/explore";
+
+/**
+ * Parse the repeated `?trait=name:value` query param into a list of
+ * `{ name, values: [...] }` groups. Same name appearing multiple
+ * times collapses into one group with multiple values (OR within
+ * a name); distinct names become distinct groups (AND across names).
+ *
+ * Defensive caps: at most 5 distinct names, at most 10 values per
+ * name, name and value lengths matching the validator in
+ * `db/mints.ts#normaliseTraits`. Anything that doesn't parse cleanly
+ * is silently dropped — trait filters are a UX feature, not a
+ * security boundary.
+ */
+function parseTraitFilters(raws: string[]): TraitFilter[] {
+  const map = new Map<string, Set<string>>();
+  for (const raw of raws) {
+    const idx = raw.indexOf(":");
+    if (idx <= 0 || idx === raw.length - 1) continue;
+    const name = raw.slice(0, idx);
+    const value = raw.slice(idx + 1);
+    if (name.length === 0 || name.length > 32) continue;
+    if (value.length === 0 || value.length > 64) continue;
+    let set = map.get(name);
+    if (!set) {
+      if (map.size >= 5) continue;
+      set = new Set<string>();
+      map.set(name, set);
+    }
+    if (set.size >= 10) continue;
+    set.add(value);
+  }
+  return Array.from(map.entries()).map(([name, set]) => ({
+    name,
+    values: Array.from(set),
+  }));
+}
 
 type Tab = "recent" | "trending" | "featured";
 const ALLOWED_TABS: Tab[] = ["recent", "trending", "featured"];
@@ -95,9 +132,16 @@ export async function exploreHandler(
   let cards: PublicExploreCard[] = [];
   let nextCursor: string | null = null;
 
+  // Repeated query params: Hono exposes `c.req.queries(name)` which
+  // returns the full string[] (including dupes), so the same param
+  // name appearing multiple times (e.g. ?trait=palette:warm&trait=palette:cool)
+  // is preserved.
+  const traitRaw = c.req.queries("trait") ?? [];
+  const traits = parseTraitFilters(traitRaw);
+
   if (tab === "recent") {
     const cursor = decodeCursor(c.req.query("cursor"));
-    const { rows, next } = await listRecent(c.env.DB, { limit, cursor });
+    const { rows, next } = await listRecent(c.env.DB, { limit, cursor, traits });
     cards = rows.map((r) => publicCard(r, resolveCover(r, capBase, 480)));
     nextCursor = next ? encodeCursor(next) : null;
   } else {
@@ -114,5 +158,10 @@ export async function exploreHandler(
   }
 
   c.header("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
-  return c.json({ tab, cards, next_cursor: nextCursor });
+  return c.json({
+    tab,
+    cards,
+    next_cursor: nextCursor,
+    traits: traits.length > 0 ? traits : undefined,
+  });
 }

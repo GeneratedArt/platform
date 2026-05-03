@@ -20,6 +20,7 @@ import {
 } from "../db/projects";
 import { activeFrozenCid } from "./freeze";
 import { recordEvent } from "../db/events";
+import { normaliseTraits, recordMintWithTraits } from "../db/mints";
 import {
   encodeCreateProjectCalldata,
   encodeSetBaseFrozenCIDCalldata,
@@ -291,15 +292,26 @@ export async function confirmDeploy(
 
 interface ConfirmMintBody {
   tx_hash?: unknown;
+  traits?: unknown;
 }
 
 /**
  * POST /v1/projects/:id/mint/confirm-mint
  *
  * Verifies a Minted event was emitted by `project.contract_address`
- * in the receipt for `tx_hash`, then flips status → 'minted' (no-op
- * if already minted). Public — anyone who minted should be able to
- * promote the project's status, since the proof lives on-chain.
+ * in the receipt for `tx_hash`, persists the mint row (idempotent on
+ * (chain_id, contract_address, token_id)), fans the trait map out to
+ * `mint_traits`, and flips the project status → 'minted'. Public —
+ * anyone who minted should be able to register their token, since
+ * the proof lives on-chain.
+ *
+ * Traits are computed client-side in the studio preview iframe
+ * (Workers don't have a JS runtime to execute arbitrary p5/three
+ * sketches without Browser Rendering, which we don't depend on).
+ * The Worker enforces shape (flat string→string ≤ 16 keys, ≤ 32-char
+ * names, ≤ 64-char values) via `normaliseTraits` and silently drops
+ * malformed maps — the mint row itself is still persisted so the
+ * token isn't lost.
  */
 export async function confirmMint(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -318,29 +330,58 @@ export async function confirmMint(
     return c.json({ error: "mint_unconfigured" }, 503);
   }
   const expectedProject = getAddress(project.contract_address as Hex);
+  let mintEvent: { tokenId: bigint; to: Hex; seed: Hex } | null = null;
   try {
     const receipt = await publicClient(cfg.rpcUrl).getTransactionReceipt({
       hash: body.tx_hash,
     });
     if (receipt.status !== "success") return badRequest(c, "tx_reverted", 409);
-    const minted = receipt.logs
-      .filter((l) => getAddress(l.address) === expectedProject)
-      .some((l) => {
-        try {
-          const d = decodeEventLog({
-            abi: [MINTED],
-            topics: l.topics as [Hex, ...Hex[]],
-            data: l.data,
-          });
-          return d.eventName === "Minted";
-        } catch {
-          return false;
+    for (const l of receipt.logs) {
+      if (getAddress(l.address) !== expectedProject) continue;
+      try {
+        const d = decodeEventLog({
+          abi: [MINTED],
+          topics: l.topics as [Hex, ...Hex[]],
+          data: l.data,
+        });
+        if (d.eventName === "Minted") {
+          const args = d.args as { tokenId: bigint; to: Hex; seed: Hex };
+          mintEvent = {
+            tokenId: args.tokenId,
+            to: getAddress(args.to) as Hex,
+            seed: args.seed,
+          };
+          break;
         }
-      });
-    if (!minted) return badRequest(c, "event_not_found", 409);
+      } catch {
+        /* not our event */
+      }
+    }
+    if (!mintEvent) return badRequest(c, "event_not_found", 409);
   } catch (e) {
     console.error("confirm-mint verify failed", e);
     return c.json({ error: "rpc_unavailable" }, 503);
+  }
+
+  // Persist the mint row + per-trait fan-out. Idempotent on
+  // (chain_id, contract_address, token_id) — re-posting the same
+  // tx_hash by another caller is a no-op.
+  const traits = normaliseTraits(body.traits);
+  try {
+    await recordMintWithTraits(c.env.DB, {
+      projectId: project.id,
+      contractAddress: expectedProject,
+      chainId: cfg.chainId,
+      tokenId: mintEvent.tokenId.toString(),
+      ownerAddress: mintEvent.to,
+      txHash: body.tx_hash as string,
+      mintedAt: Math.floor(Date.now() / 1000),
+      traits,
+    });
+  } catch (e) {
+    console.error("mint_persist_failed", e);
+    // Don't fail the request — markProjectMinted is still useful and
+    // the on-chain truth is intact. We log so ops can backfill.
   }
 
   const updated = await markProjectMinted(c.env.DB, id);

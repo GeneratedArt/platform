@@ -464,16 +464,32 @@ class MintController {
         if (minted) {
           this.swapPreviewSeed(minted.seed);
         }
+        // Task #18: extract generative traits from the freshly-minted
+        // seed via the studio preview iframe sandbox. The extractor
+        // is wall-clocked at 500ms — if the artist's $features()
+        // never runs, takes too long, or returns garbage, we still
+        // POST confirm-mint so the mint row is recorded; the Worker
+        // simply persists null traits.
+        let traits: Record<string, string> | null = null;
+        if (minted) {
+          traits = await this.extractFeaturesForSeed(minted.seed).catch(
+            () => null,
+          );
+        }
         await fetch(
           `${this.cfg.apiBase}/v1/projects/${this.projectId}/mint/confirm-mint`,
           {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tx_hash: txHash }),
+            body: JSON.stringify({ tx_hash: txHash, traits }),
           },
         );
-        this.feedback("Minted! Token is in your wallet.");
+        this.feedback(
+          traits
+            ? `Minted! ${Object.keys(traits).length} traits captured.`
+            : "Minted! Token is in your wallet.",
+        );
       }
 
       // Reload project + chain state so the UI advances to the next phase.
@@ -578,6 +594,64 @@ class MintController {
       }
     }
     return null;
+  }
+
+  /**
+   * Ask the active preview iframe to evaluate `window.$features(seed)`
+   * for the freshly-minted seed and return the trait map. The iframe
+   * already has the artist's sketch loaded (we point it there in
+   * `renderArt`); we just need it to sandbox the call. Resolves to
+   * null if the iframe isn't ready, the function isn't defined, or
+   * the call times out — confirm-mint then proceeds with no traits.
+   *
+   * Note: the live preview iframe points at the IPFS gateway, which
+   * loads the *frozen* bundle, not the studio dev preview. The
+   * features() function lives inside the frozen bundle's index.html
+   * and is reachable via the same postMessage protocol that the
+   * studio sandbox speaks (we ship it with every bundle).
+   */
+  private async extractFeaturesForSeed(
+    seed: Hex,
+  ): Promise<Record<string, string> | null> {
+    const iframe = document.getElementById(
+      "ga-mint-iframe",
+    ) as HTMLIFrameElement | null;
+    if (!iframe || !iframe.contentWindow) return null;
+    const requestId = `feat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return await new Promise<Record<string, string> | null>((resolve) => {
+      const timer = window.setTimeout(() => {
+        window.removeEventListener("message", onMessage);
+        resolve(null);
+      }, 1500);
+      function onMessage(ev: MessageEvent) {
+        const d = ev.data as
+          | {
+              type?: string;
+              requestId?: string;
+              ok?: boolean;
+              features?: Record<string, string>;
+            }
+          | null;
+        if (!d || d.type !== "studio:features" || d.requestId !== requestId) {
+          return;
+        }
+        window.clearTimeout(timer);
+        window.removeEventListener("message", onMessage);
+        if (d.ok && d.features) resolve(d.features);
+        else resolve(null);
+      }
+      window.addEventListener("message", onMessage);
+      try {
+        iframe.contentWindow!.postMessage(
+          { type: "studio:extractFeatures", seed, requestId },
+          "*",
+        );
+      } catch {
+        window.clearTimeout(timer);
+        window.removeEventListener("message", onMessage);
+        resolve(null);
+      }
+    });
   }
 
   private swapPreviewSeed(seed: Hex): void {

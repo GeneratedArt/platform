@@ -53,6 +53,11 @@ import {
   notificationsHandler,
   markNotificationsReadHandler,
 } from "./feed/handlers";
+import {
+  projectTraitsHandler,
+  projectMintsHandler,
+  tokenDetailHandler,
+} from "./projects/traits";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -96,6 +101,12 @@ v1.get("/projects/:id{[0-9]+}/mint/state", mintStateHandler);
 v1.post("/projects/:id{[0-9]+}/mint/prepare", prepareMint);
 v1.post("/projects/:id{[0-9]+}/mint/confirm-deploy", requireAuth, confirmDeploy);
 v1.post("/projects/:id{[0-9]+}/mint/confirm-mint", confirmMint);
+
+// Task #18: traits + per-token detail. All public; the mint row + its
+// trait fan-out are written by `confirmMint`.
+v1.get("/projects/:id{[0-9]+}/traits", projectTraitsHandler);
+v1.get("/projects/:id{[0-9]+}/mints", projectMintsHandler);
+v1.get("/projects/:id{[0-9]+}/mints/:tokenId{[0-9]+}", tokenDetailHandler);
 
 // Task #15: frozen artifact + provenance pipeline. POST /freeze and
 // activate are owner-only; GET /frozen is public (the bundle CID and

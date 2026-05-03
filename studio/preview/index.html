@@ -146,7 +146,79 @@ sitemap: false
           if (lastCode) runSketch(lastCode, lastSeed);
         }
       } else if (d.type === "studio:exportPng") exportPng(d.requestId);
+      else if (d.type === "studio:extractFeatures") extractFeatures(d.seed, d.requestId);
     });
+
+    // Generative-features extractor (Task #18). The artist defines a
+    // pure `window.$features = (seed) => ({ trait: 'value', … })`
+    // helper inside their sketch. We invoke it with the requested
+    // seed, validate the return is a flat string→string map, and
+    // post the result back to the parent. The whole call is wrapped
+    // in a 500 ms wall-clock budget — a slow or pathological
+    // features() function MUST NOT block mint. The parent (mint
+    // client) is the source of truth for the seed; we don't reach
+    // into lastSeed because the user may want traits for a seed
+    // they're about to broadcast, not the one currently rendered.
+    function extractFeatures(seed, requestId) {
+      var deadline = setTimeout(function () {
+        deadline = null;
+        try {
+          parent.postMessage({
+            type: "studio:features",
+            requestId: requestId,
+            ok: false,
+            error: "timeout",
+          }, "*");
+        } catch (e) {}
+      }, 500);
+      function reply(payload) {
+        if (deadline === null) return; // already timed out
+        clearTimeout(deadline);
+        deadline = null;
+        try {
+          parent.postMessage(Object.assign({
+            type: "studio:features",
+            requestId: requestId,
+          }, payload), "*");
+        } catch (e) {}
+      }
+      try {
+        var fn = window.$features;
+        if (typeof fn !== "function") {
+          reply({ ok: false, error: "no_features_fn" });
+          return;
+        }
+        var raw = fn(typeof seed === "number" ? seed : (seed || 0));
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+          reply({ ok: false, error: "bad_shape" });
+          return;
+        }
+        var out = {};
+        var keys = Object.keys(raw);
+        if (keys.length === 0 || keys.length > 16) {
+          reply({ ok: false, error: "bad_count" });
+          return;
+        }
+        for (var i = 0; i < keys.length; i++) {
+          var k = keys[i];
+          var v = raw[k];
+          if (typeof k !== "string" || k.length === 0 || k.length > 32) {
+            reply({ ok: false, error: "bad_key" });
+            return;
+          }
+          if (typeof v === "number" && isFinite(v)) v = String(v);
+          else if (typeof v === "boolean") v = String(v);
+          if (typeof v !== "string" || v.length === 0 || v.length > 64) {
+            reply({ ok: false, error: "bad_value" });
+            return;
+          }
+          out[k] = v;
+        }
+        reply({ ok: true, features: out });
+      } catch (e) {
+        reply({ ok: false, error: String(e && e.message ? e.message : e) });
+      }
+    }
 
     parent.postMessage({ type: "studio:ready" }, "*");
   })();

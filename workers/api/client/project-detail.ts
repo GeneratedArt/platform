@@ -177,8 +177,146 @@ const GAProjectDetail = {
     }
     await render(cfg, result.project, result.owner ?? null);
     await mountFreezePanel(cfg, result.project);
+    await mountTraitsPanel(cfg, result.project);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Task #18: traits + recent mints panel.
+// ---------------------------------------------------------------------------
+// Public; renders distinct (trait_name → values) with rarity bars and
+// links each value to /explore/?trait=name:value. We also list the most
+// recent minted tokens with deep-links to /t/?p=N&id=T. The whole
+// panel is silently skipped if the project hasn't been minted yet
+// or has no captured traits.
+
+interface TraitsResp {
+  project_id: number;
+  minted: number;
+  traits: {
+    name: string;
+    distinct_count: number;
+    values: { trait_value: string; count: number; frequency: number }[];
+  }[];
+}
+
+interface MintsResp {
+  project_id: number;
+  mints: {
+    id: number;
+    token_id: string;
+    owner_address: string;
+    minted_at: number;
+    traits: Record<string, string> | null;
+  }[];
+}
+
+async function mountTraitsPanel(
+  cfg: ProjectDetailConfig,
+  project: ProjectDetail,
+) {
+  const host = cfg.rootEl.querySelector(".ga-project-detail");
+  if (!host) return;
+
+  const panel = document.createElement("section");
+  panel.className = "ga-traits-panel mt-8 pt-6";
+  panel.style.borderTop = "1px solid var(--ga-rule)";
+  panel.innerHTML = `
+    <h2 class="h5 mb-1">Traits</h2>
+    <p class="small text-muted mb-3">
+      Captured at mint time from the artist's <code>$features(seed)</code>.
+      Click any value to find other tokens that share it.
+    </p>
+    <div class="ga-traits-body small">Loading…</div>
+    <h2 class="h5 mt-6 mb-1">Recent mints</h2>
+    <div class="ga-mints-body small">Loading…</div>
+  `;
+  host.appendChild(panel);
+
+  const traitsEl = panel.querySelector(".ga-traits-body") as HTMLElement;
+  const mintsEl = panel.querySelector(".ga-mints-body") as HTMLElement;
+
+  const [traitsRes, mintsRes] = await Promise.all([
+    fetchJson<TraitsResp>(`${cfg.apiBase}/v1/projects/${project.id}/traits`),
+    fetchJson<MintsResp>(
+      `${cfg.apiBase}/v1/projects/${project.id}/mints?limit=20`,
+    ),
+  ]);
+
+  if (isErr(traitsRes) || traitsRes.minted === 0 || traitsRes.traits.length === 0) {
+    traitsEl.innerHTML = `<p class="text-muted">No traits captured yet — they appear here once tokens are minted.</p>`;
+  } else {
+    traitsEl.innerHTML = traitsRes.traits
+      .map((t) => renderTraitGroup(t))
+      .join("");
+  }
+
+  if (isErr(mintsRes) || mintsRes.mints.length === 0) {
+    mintsEl.innerHTML = `<p class="text-muted">No mints yet.</p>`;
+  } else {
+    mintsEl.innerHTML = `
+      <div class="ga-mints-grid">
+        ${mintsRes.mints.map((m) => renderMintCard(project.id, m)).join("")}
+      </div>`;
+  }
+}
+
+function renderTraitGroup(t: {
+  name: string;
+  values: { trait_value: string; count: number; frequency: number }[];
+}): string {
+  return `
+    <div class="ga-trait-group" style="margin-bottom: 14px;">
+      <div class="ga-trait-name" style="font-family: var(--ga-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ga-mute); margin-bottom: 6px;">
+        ${escapeHtml(t.name)}
+      </div>
+      <ul class="list-unstyled mb-0">
+        ${t.values
+          .map(
+            (v) => `
+          <li style="display:flex; justify-content:space-between; align-items:center; padding: 4px 0; border-bottom: 1px dashed var(--ga-rule);">
+            <a href="/explore/?trait=${encodeURIComponent(t.name)}:${encodeURIComponent(v.trait_value)}"
+               style="font-family: var(--ga-font-mono); font-size: 13px; color: var(--ga-ink); border-bottom: 1px solid var(--ga-rule);">
+              ${escapeHtml(v.trait_value)}
+            </a>
+            <span class="text-muted" style="font-family: var(--ga-font-mono); font-size: 12px;">
+              ${v.count} · ${(v.frequency * 100).toFixed(1)}%
+            </span>
+          </li>`,
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function renderMintCard(
+  projectId: number,
+  m: {
+    token_id: string;
+    owner_address: string;
+    minted_at: number;
+    traits: Record<string, string> | null;
+  },
+): string {
+  const ownerShort = `${m.owner_address.slice(0, 6)}…${m.owner_address.slice(-4)}`;
+  const ts = new Date(m.minted_at * 1000).toLocaleDateString();
+  const traitCount = m.traits ? Object.keys(m.traits).length : 0;
+  return `
+    <a class="ga-mint-card" href="/t/?p=${projectId}&id=${encodeURIComponent(m.token_id)}"
+       style="display:block; border:1px solid var(--ga-rule); padding:10px 12px; text-decoration:none; color: inherit;">
+      <div style="font-family: var(--ga-font-mono); font-size: 12px; color: var(--ga-ink);">
+        #${escapeHtml(m.token_id)}
+      </div>
+      <div class="text-muted" style="font-family: var(--ga-font-mono); font-size: 11px; margin-top: 2px;">
+        ${escapeHtml(ownerShort)} · ${escapeHtml(ts)}
+      </div>
+      <div class="text-muted" style="font-size: 11px; margin-top: 4px;">
+        ${traitCount} ${traitCount === 1 ? "trait" : "traits"}
+      </div>
+    </a>
+  `;
+}
 
 // ---------------------------------------------------------------------------
 // Task #15: freeze panel.
