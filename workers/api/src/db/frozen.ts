@@ -4,7 +4,13 @@ export interface FrozenVersionRow {
   id: number;
   project_id: number;
   commit_sha: string;
+  /// "Primary" CID, kept for backwards-compat and the projects.frozen_cid
+  /// mirror. Defaults to the first successful provider's CID. The
+  /// per-provider columns below are the source of truth for gateway
+  /// resolution.
   cid: string;
+  cid_w3s: string | null;
+  cid_pinata: string | null;
   bundle_hash: string;
   bytes: number;
   pinned_w3s: number;
@@ -20,6 +26,8 @@ export interface FrozenVersionPublic {
   id: number;
   commit_sha: string;
   cid: string;
+  cid_w3s: string | null;
+  cid_pinata: string | null;
   bundle_hash: string;
   bytes: number;
   pinned_w3s: boolean;
@@ -29,7 +37,7 @@ export interface FrozenVersionPublic {
   is_active: boolean;
   last_checked_at: number | null;
   created_at: number;
-  gateways: { w3s: string; pinata: string };
+  gateways: { w3s: string | null; pinata: string | null };
 }
 
 export function publicFrozen(row: FrozenVersionRow): FrozenVersionPublic {
@@ -45,6 +53,8 @@ export function publicFrozen(row: FrozenVersionRow): FrozenVersionPublic {
     id: row.id,
     commit_sha: row.commit_sha,
     cid: row.cid,
+    cid_w3s: row.cid_w3s,
+    cid_pinata: row.cid_pinata,
     bundle_hash: row.bundle_hash,
     bytes: row.bytes,
     pinned_w3s: row.pinned_w3s === 1,
@@ -55,8 +65,14 @@ export function publicFrozen(row: FrozenVersionRow): FrozenVersionPublic {
     last_checked_at: row.last_checked_at,
     created_at: row.created_at,
     gateways: {
-      w3s: `https://${row.cid}.ipfs.w3s.link/`,
-      pinata: `https://gateway.pinata.cloud/ipfs/${row.cid}/`,
+      // Each gateway is anchored to that provider's actual CID, not
+      // a shared "primary" CID — the providers' CIDs differ by
+      // construction so a single shared URL would 404 on whichever
+      // provider didn't return that CID.
+      w3s: row.cid_w3s ? `https://${row.cid_w3s}.ipfs.w3s.link/` : null,
+      pinata: row.cid_pinata
+        ? `https://gateway.pinata.cloud/ipfs/${row.cid_pinata}/`
+        : null,
     },
   };
 }
@@ -65,6 +81,8 @@ export interface InsertFrozenInput {
   project_id: number;
   commit_sha: string;
   cid: string;
+  cid_w3s: string | null;
+  cid_pinata: string | null;
   bundle_hash: string;
   bytes: number;
   pinned_w3s: boolean;
@@ -81,16 +99,19 @@ export async function insertFrozenVersion(
   const row = await db
     .prepare(
       `INSERT INTO frozen_versions
-         (project_id, commit_sha, cid, bundle_hash, bytes,
+         (project_id, commit_sha, cid, cid_w3s, cid_pinata,
+          bundle_hash, bytes,
           pinned_w3s, pinned_pinata, pinning_partial, pin_errors,
           is_active, last_checked_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
        RETURNING *`,
     )
     .bind(
       input.project_id,
       input.commit_sha,
       input.cid,
+      input.cid_w3s,
+      input.cid_pinata,
       input.bundle_hash,
       input.bytes,
       input.pinned_w3s ? 1 : 0,
@@ -209,6 +230,8 @@ export async function updatePinState(
     pinned_pinata?: boolean;
     pinning_partial?: boolean;
     pin_errors?: unknown;
+    cid_w3s?: string | null;
+    cid_pinata?: string | null;
   },
 ): Promise<void> {
   const sets: string[] = [];
@@ -228,6 +251,14 @@ export async function updatePinState(
   if (patch.pin_errors !== undefined) {
     sets.push("pin_errors = ?");
     binds.push(patch.pin_errors ? JSON.stringify(patch.pin_errors) : null);
+  }
+  if (patch.cid_w3s !== undefined) {
+    sets.push("cid_w3s = ?");
+    binds.push(patch.cid_w3s);
+  }
+  if (patch.cid_pinata !== undefined) {
+    sets.push("cid_pinata = ?");
+    binds.push(patch.cid_pinata);
   }
   sets.push("last_checked_at = ?");
   binds.push(Math.floor(Date.now() / 1000));

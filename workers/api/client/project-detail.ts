@@ -25,6 +25,8 @@ interface FrozenVersion {
   id: number;
   commit_sha: string;
   cid: string;
+  cid_w3s: string | null;
+  cid_pinata: string | null;
   bundle_hash: string;
   bytes: number;
   pinned_w3s: boolean;
@@ -34,7 +36,7 @@ interface FrozenVersion {
   is_active: boolean;
   last_checked_at: number | null;
   created_at: number;
-  gateways: { w3s: string; pinata: string };
+  gateways: { w3s: string | null; pinata: string | null };
 }
 
 interface MeResp {
@@ -204,10 +206,20 @@ async function mountFreezePanel(
       what gets locked into the project contract at mint time.
     </p>
     <div class="ga-freeze-actions mb-3 d-none">
-      <button type="button" class="btn btn-accent btn-sm rounded-0" data-action="freeze">
-        Freeze current commit
-      </button>
-      <span class="ga-freeze-status small text-muted ms-2"></span>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <input type="text"
+          class="ga-freeze-commit form-control form-control-sm rounded-0"
+          style="max-width:280px;font-family:monospace;font-size:12px;"
+          placeholder="commit SHA (blank = latest)"
+          aria-label="Commit SHA to freeze" />
+        <button type="button" class="btn btn-accent btn-sm rounded-0" data-action="freeze">
+          Freeze
+        </button>
+        <span class="ga-freeze-status small text-muted ms-2"></span>
+      </div>
+      <p class="small text-muted mt-1 mb-0">
+        Leave commit blank to freeze the default branch's HEAD.
+      </p>
     </div>
     <div class="ga-freeze-list small">Loading…</div>
   `;
@@ -219,6 +231,9 @@ async function mountFreezePanel(
   const freezeBtn = panel.querySelector(
     "[data-action='freeze']",
   ) as HTMLButtonElement;
+  const commitInput = panel.querySelector(
+    ".ga-freeze-commit",
+  ) as HTMLInputElement;
 
   // Probe ownership.
   let isOwner = false;
@@ -268,18 +283,44 @@ async function mountFreezePanel(
         });
       },
     );
+    listEl.querySelectorAll<HTMLButtonElement>("[data-retry-pin]").forEach(
+      (btn) => {
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          btn.textContent = "Retrying…";
+          const fid = btn.getAttribute("data-retry-pin");
+          const res = await fetch(
+            `${cfg.apiBase}/v1/projects/${project.id}/frozen/${fid}/retry-pin`,
+            { method: "POST", credentials: "include" },
+          );
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            statusEl.textContent = `Retry pin failed: ${
+              (err as { error?: string }).error || res.status
+            }`;
+          } else {
+            statusEl.textContent = "Retry pin succeeded.";
+          }
+          await refresh();
+        });
+      },
+    );
   }
 
   freezeBtn?.addEventListener("click", async () => {
     freezeBtn.disabled = true;
-    statusEl.textContent = "Building bundle + pinning…";
+    const commit = (commitInput?.value || "").trim() || "latest";
+    statusEl.textContent =
+      commit === "latest"
+        ? "Building bundle from HEAD + pinning…"
+        : `Building bundle from ${commit.slice(0, 12)} + pinning…`;
     const res = await fetch(
       `${cfg.apiBase}/v1/projects/${project.id}/freeze`,
       {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commit: "latest" }),
+        body: JSON.stringify({ commit }),
       },
     );
     freezeBtn.disabled = false;
@@ -291,6 +332,7 @@ async function mountFreezePanel(
       return;
     }
     statusEl.textContent = "Frozen. Activate it below to make it the live version.";
+    if (commitInput) commitInput.value = "";
     await refresh();
   });
 
@@ -318,20 +360,29 @@ function renderFrozenRow(
     (v.pinned_w3s || v.pinned_pinata)
       ? `<button type="button" class="btn btn-sm btn-outline-primary rounded-0 ms-2" data-activate="${v.id}">Activate</button>`
       : "";
+  const retryBtn =
+    isOwner && v.pinning_partial
+      ? `<button type="button" class="btn btn-sm btn-outline-secondary rounded-0 ms-2" data-retry-pin="${v.id}" title="Rebuild from commit and re-pin to the dropped provider">Retry pin</button>`
+      : "";
+  // Each provider's CID and gateway link, when known. Showing them
+  // separately reflects the reality that w3s and Pinata produce
+  // different CIDs for the same bytes.
+  const w3sLine = v.cid_w3s
+    ? `<a href="${escapeHtml(v.gateways.w3s || "")}" target="_blank" rel="noopener">w3s.link ↗</a> <code style="font-size:11px;">${escapeHtml(v.cid_w3s.slice(0, 18))}…</code>`
+    : `<span class="text-muted">w3s: not pinned</span>`;
+  const pinataLine = v.cid_pinata
+    ? `<a href="${escapeHtml(v.gateways.pinata || "")}" target="_blank" rel="noopener">pinata ↗</a> <code style="font-size:11px;">${escapeHtml(v.cid_pinata.slice(0, 18))}…</code>`
+    : `<span class="text-muted">pinata: not pinned</span>`;
   return `
     <div class="ga-freeze-row" style="border:1px solid var(--ga-rule); padding:12px; margin-bottom:8px;">
       <div class="d-flex justify-content-between align-items-center mb-1">
         <code style="font-size:12px;">${escapeHtml(v.cid)}</code>
-        <span>${activeBadge}${partialNote}${activateBtn}</span>
+        <span>${activeBadge}${partialNote}${activateBtn}${retryBtn}</span>
       </div>
       <div class="text-muted" style="font-size:12px; line-height:1.5;">
         <div>commit <code>${escapeHtml(v.commit_sha.slice(0, 12))}</code> · sha256 <code>${escapeHtml(v.bundle_hash.slice(0, 16))}…</code> · ${sizeKB} KB</div>
         <div>${pinBadges} · ${escapeHtml(created)}</div>
-        <div>
-          <a href="${escapeHtml(v.gateways.w3s)}" target="_blank" rel="noopener">w3s.link ↗</a>
-          ·
-          <a href="${escapeHtml(v.gateways.pinata)}" target="_blank" rel="noopener">pinata ↗</a>
-        </div>
+        <div>${w3sLine} · ${pinataLine}</div>
       </div>
     </div>
   `;

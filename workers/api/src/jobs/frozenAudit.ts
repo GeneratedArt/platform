@@ -21,6 +21,11 @@ import { getProjectById } from "../db/projects";
 import { checkPinHealth, repinTo } from "../lib/pinning";
 import { buildBundle } from "../lib/freeze";
 
+interface RebuildResult {
+  bytes: Uint8Array;
+  filename: string;
+}
+
 const AUDIT_BATCH_SIZE = 25;
 
 export interface AuditSummary {
@@ -65,12 +70,15 @@ async function auditOne(
   // deterministically-rebuilt bundle.
   let recoveredW3s = health.pinned_w3s;
   let recoveredPinata = health.pinned_pinata;
+  let cidW3s: string | null | undefined; // undefined = leave as-is
+  let cidPinata: string | null | undefined;
   if ((driftedW3s || driftedPinata) && env.PINNING_MOCK !== "1") {
     const rebuild = await tryRebuild(env, row, summary);
     if (rebuild) {
       if (driftedW3s && env.W3S_TOKEN) {
         try {
-          await repinTo(env, "w3s", rebuild);
+          const r = await repinTo(env, "w3s", rebuild);
+          cidW3s = r.cid;
           recoveredW3s = true;
           summary.re_pinned++;
         } catch (err) {
@@ -79,7 +87,8 @@ async function auditOne(
       }
       if (driftedPinata && env.PINATA_JWT) {
         try {
-          await repinTo(env, "pinata", rebuild);
+          const r = await repinTo(env, "pinata", rebuild);
+          cidPinata = r.cid;
           recoveredPinata = true;
           summary.re_pinned++;
         } catch (err) {
@@ -95,6 +104,8 @@ async function auditOne(
     pinned_pinata: recoveredPinata,
     pinning_partial: partial,
     pin_errors: Object.keys(health.errors).length > 0 ? health.errors : null,
+    cid_w3s: cidW3s,
+    cid_pinata: cidPinata,
   });
 }
 
@@ -102,7 +113,7 @@ async function tryRebuild(
   env: Env,
   row: FrozenVersionRow,
   summary: AuditSummary,
-): Promise<{ bytes: Uint8Array; filename: string } | null> {
+): Promise<RebuildResult | null> {
   const project = await getProjectById(env.DB, row.project_id);
   if (!project) {
     console.error("audit_rebuild_project_missing", row.id, row.project_id);

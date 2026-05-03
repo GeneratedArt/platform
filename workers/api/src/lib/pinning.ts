@@ -12,7 +12,15 @@
 import type { Env } from "../types";
 
 export interface PinResult {
-  /// Resolved CID. Empty string when neither provider returned one.
+  /// Each provider's actual returned CID. These differ by
+  /// construction — web3.storage and Pinata wrap UnixFS differently
+  /// for single-file uploads — so we MUST track them separately
+  /// rather than picking one as canonical and pretending both
+  /// providers agreed on it.
+  cid_w3s: string | null;
+  cid_pinata: string | null;
+  /// "Primary" CID for backwards-compat / the projects.frozen_cid
+  /// mirror. First successful provider wins, w3s first.
   cid: string;
   pinned_w3s: boolean;
   pinned_pinata: boolean;
@@ -42,6 +50,8 @@ export async function pinBundle(
     // any network calls.
     return {
       cid: "",
+      cid_w3s: null,
+      cid_pinata: null,
       pinned_w3s: true,
       pinned_pinata: true,
       partial: false,
@@ -74,7 +84,15 @@ export async function pinBundle(
   const pinned_w3s = cidW3s !== null;
   const pinned_pinata = cidPinata !== null;
   const partial = !(pinned_w3s && pinned_pinata);
-  return { cid, pinned_w3s, pinned_pinata, partial, errors };
+  return {
+    cid,
+    cid_w3s: cidW3s,
+    cid_pinata: cidPinata,
+    pinned_w3s,
+    pinned_pinata,
+    partial,
+    errors,
+  };
 }
 
 /// Re-pin existing bytes to a single named provider. Used by the

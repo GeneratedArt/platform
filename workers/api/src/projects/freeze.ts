@@ -87,11 +87,16 @@ export async function freezeProject(
   // local fallback CID would resolve nowhere on the IPFS network,
   // which is the exact failure mode this feature is preventing.
   // Mock mode is the one exception — we substitute the locally
-  // computed CID so dev/CI flows remain testable end-to-end.
+  // computed CID for both providers so dev/CI flows remain
+  // testable end-to-end.
   let resolvedCid = pin.cid;
+  let cidW3s = pin.cid_w3s;
+  let cidPinata = pin.cid_pinata;
   if (!resolvedCid) {
     if (isMock) {
       resolvedCid = bundle.local_cid;
+      cidW3s = bundle.local_cid;
+      cidPinata = bundle.local_cid;
       pin.pinned_w3s = true;
       pin.pinned_pinata = true;
       pin.partial = false;
@@ -104,6 +109,8 @@ export async function freezeProject(
     project_id: project.id,
     commit_sha: bundle.commit_sha,
     cid: resolvedCid,
+    cid_w3s: cidW3s,
+    cid_pinata: cidPinata,
     bundle_hash: bundle.bundle_hash,
     bytes: bundle.bytes.length,
     pinned_w3s: pin.pinned_w3s,
@@ -182,4 +189,122 @@ export async function activeFrozenCid(
 ): Promise<string | null> {
   const row = await getActiveFrozenForProject(env.DB, projectId);
   return row ? row.cid : null;
+}
+
+/**
+ * POST /v1/projects/:id/frozen/:fid/retry-pin
+ *
+ * Owner-only. Rebuilds the bundle deterministically from the row's
+ * stored `commit_sha`, verifies the rebuilt bytes hash to the same
+ * `bundle_hash` (so a force-push can't silently swap the contents
+ * we re-pin), and re-uploads to whichever providers are currently
+ * marked unpinned. Mirrors the cron's recovery logic but runs
+ * synchronously on the owner's request.
+ */
+export async function retryPinFrozen(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
+  const id = parseInt(c.req.param("id") || "", 10);
+  const fid = parseInt(c.req.param("fid") || "", 10);
+  if (!id || Number.isNaN(id)) return c.json({ error: "invalid_id" }, 400);
+  if (!fid || Number.isNaN(fid)) return c.json({ error: "invalid_fid" }, 400);
+
+  const session = getAuthUser(c);
+  const project = await getProjectById(c.env.DB, id);
+  if (!project) return c.json({ error: "not_found" }, 404);
+  if (session.uid !== project.owner_id) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+
+  const row = await getFrozenById(c.env.DB, fid);
+  if (!row || row.project_id !== project.id) {
+    return c.json({ error: "frozen_not_found" }, 404);
+  }
+  if (row.pinned_w3s === 1 && row.pinned_pinata === 1) {
+    return c.json({ error: "already_fully_pinned" }, 409);
+  }
+
+  const isMock = c.env.PINNING_MOCK === "1";
+  if (!c.env.W3S_TOKEN && !c.env.PINATA_JWT && !isMock) {
+    return c.json({ error: "pinning_unconfigured" }, 503);
+  }
+
+  // Deterministic rebuild from the stored commit SHA.
+  let rebuilt;
+  try {
+    rebuilt = await buildBundle(c.env, {
+      repoFull: project.repo_full,
+      engine: project.engine,
+      title: project.title,
+      commit: row.commit_sha,
+      projectId: project.id,
+    });
+  } catch (err) {
+    console.error("retry_pin_rebuild_failed", row.id, err);
+    return c.json({ error: "bundle_failed", detail: String(err) }, 502);
+  }
+  if (rebuilt.bundle_hash !== row.bundle_hash) {
+    // Repo has been force-pushed or the runtime version drifted —
+    // refuse to re-pin different bytes under the original hash.
+    return c.json(
+      {
+        error: "rebuild_hash_mismatch",
+        expected: row.bundle_hash,
+        got: rebuilt.bundle_hash,
+      },
+      409,
+    );
+  }
+
+  const filename = `project-${project.id}-${row.bundle_hash.slice(0, 8)}.html`;
+  const errors: Record<string, string> = {};
+  let recoveredW3s = row.pinned_w3s === 1;
+  let recoveredPinata = row.pinned_pinata === 1;
+  let cidW3s: string | null = row.cid_w3s;
+  let cidPinata: string | null = row.cid_pinata;
+
+  const { repinTo } = await import("../lib/pinning");
+  if (!recoveredW3s && c.env.W3S_TOKEN) {
+    try {
+      const r = await repinTo(c.env, "w3s", { bytes: rebuilt.bytes, filename });
+      cidW3s = r.cid;
+      recoveredW3s = true;
+    } catch (err) {
+      errors.w3s = String(err);
+    }
+  }
+  if (!recoveredPinata && c.env.PINATA_JWT) {
+    try {
+      const r = await repinTo(c.env, "pinata", {
+        bytes: rebuilt.bytes,
+        filename,
+      });
+      cidPinata = r.cid;
+      recoveredPinata = true;
+    } catch (err) {
+      errors.pinata = String(err);
+    }
+  }
+  if (isMock) {
+    // Dev/CI: pretend both providers are happy and adopt the local
+    // CID for whichever side wasn't already set.
+    cidW3s = cidW3s ?? rebuilt.local_cid;
+    cidPinata = cidPinata ?? rebuilt.local_cid;
+    recoveredW3s = true;
+    recoveredPinata = true;
+  }
+
+  const { updatePinState } = await import("../db/frozen");
+  await updatePinState(c.env.DB, row.id, {
+    pinned_w3s: recoveredW3s,
+    pinned_pinata: recoveredPinata,
+    pinning_partial: !(recoveredW3s && recoveredPinata),
+    pin_errors: Object.keys(errors).length > 0 ? errors : null,
+    cid_w3s: cidW3s,
+    cid_pinata: cidPinata,
+  });
+
+  const updated = await getFrozenById(c.env.DB, row.id);
+  if (!updated) return c.json({ error: "not_found" }, 404);
+  return c.json({ frozen: publicFrozen(updated) });
 }

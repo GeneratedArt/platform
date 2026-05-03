@@ -23,6 +23,7 @@ import {
   freezeProject,
   listFrozen,
   activateFrozen,
+  retryPinFrozen,
 } from "./projects/freeze";
 import { runFrozenAudit } from "./jobs/frozenAudit";
 import {
@@ -96,6 +97,11 @@ v1.post(
   "/projects/:id{[0-9]+}/frozen/:fid{[0-9]+}/activate",
   requireAuth,
   activateFrozen,
+);
+v1.post(
+  "/projects/:id{[0-9]+}/frozen/:fid{[0-9]+}/retry-pin",
+  requireAuth,
+  retryPinFrozen,
 );
 
 // User profile + social graph
