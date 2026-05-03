@@ -95,6 +95,10 @@ export interface UserRow {
   display_name: string | null;
   socials: string | null;     // JSON-encoded array of {label,url}
   cover_image: string | null;
+  // Task #19: curator gate. 0 = regular user, 1 = verified curator
+  // (can create galleries + upload gallery covers). Set manually for
+  // v1; see scripts/grant_curator.sh for the helper.
+  is_curator: number;
   created_at: number;
   updated_at: number;
 }

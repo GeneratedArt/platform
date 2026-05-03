@@ -528,7 +528,7 @@ function bindCoverInput(cfg: BaseConfig): void {
 // New
 // ---------------------------------------------------------------------------
 async function mountNew(cfg: BaseConfig): Promise<void> {
-  const me = await apiGet<{ user: { handle: string; is_curator?: number } }>(cfg.apiBase, "/v1/me");
+  const me = await apiGet<{ user: { handle: string; is_curator: number } }>(cfg.apiBase, "/v1/me");
   if (isErr(me)) {
     cfg.rootEl.innerHTML = `
       <div class="text-center py-10">
@@ -597,7 +597,7 @@ async function mountEdit(cfg: BaseConfig): Promise<void> {
     return;
   }
   const [meRes, galRes] = await Promise.all([
-    apiGet<{ user: { id: number; handle: string; is_curator?: number } }>(cfg.apiBase, "/v1/me"),
+    apiGet<{ user: { id: number; handle: string; is_curator: number } }>(cfg.apiBase, "/v1/me"),
     apiGet<{ gallery: GalleryDetail }>(cfg.apiBase, `/v1/galleries/${encodeURIComponent(slug)}`),
   ]);
   if (isErr(meRes)) {

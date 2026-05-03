@@ -207,7 +207,7 @@ export async function createGalleryHandler(
 
   const user = await getUserById(c.env.DB, session.uid);
   if (!user) return c.json({ error: "user_not_found" }, 404);
-  if (!(user as unknown as { is_curator?: number }).is_curator) {
+  if (!user.is_curator) {
     return c.json(
       {
         error: "not_a_curator",
@@ -475,7 +475,7 @@ export async function uploadGalleryCoverHandler(
   const session = getAuthUser(c);
   const user = await getUserById(c.env.DB, session.uid);
   if (!user) return c.json({ error: "user_not_found" }, 404);
-  if (!(user as unknown as { is_curator?: number }).is_curator) {
+  if (!user.is_curator) {
     return c.json({ error: "not_a_curator" }, 403);
   }
 

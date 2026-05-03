@@ -42,6 +42,10 @@ export async function meHandler(
       avatar_url: user.avatar_url,
       cover_image: user.cover_image,
       socials,
+      // Task #19: surfaced so the /galleries/new client gate can
+      // show the form to verified curators rather than the
+      // request-access screen. Always a number (0/1) — never null.
+      is_curator: user.is_curator ? 1 : 0,
       created_at: user.created_at,
     },
     counts,
