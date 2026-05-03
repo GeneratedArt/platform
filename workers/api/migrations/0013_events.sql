@@ -2,10 +2,13 @@
 -- Events are append-only. Two read paths share the table:
 --   * Feed:        recipient_id IS NULL, joined against follows.
 --   * Notifications: recipient_id = :viewer.
--- A single row never serves both — when an actor's activity is also a
--- notification to one specific user (e.g. follow), the producer writes
--- two rows: one public-feed (recipient_id NULL) and one notification
--- (recipient_id = target_user).
+-- A single row never serves both. Producers choose per kind:
+--   * Notification-only (recipient_id = target user): `follow`,
+--     `brief_application`, `featured`. These are private signals to
+--     one user; broadcasting them would add noise to followers' feeds.
+--   * Public-only (recipient_id NULL): `commit`, `freeze`, `brief_posted`.
+--   * Both — two rows: `mint` writes one public-feed row plus one
+--     notification to the project owner ("your project was minted").
 
 CREATE TABLE IF NOT EXISTS events (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
