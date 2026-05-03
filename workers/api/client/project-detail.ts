@@ -176,10 +176,66 @@ const GAProjectDetail = {
       return;
     }
     await render(cfg, result.project, result.owner ?? null);
+    await mountCuratedByPanel(cfg, result.project);
     await mountFreezePanel(cfg, result.project);
     await mountTraitsPanel(cfg, result.project);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Task #19: "Curated by" panel.
+// ---------------------------------------------------------------------------
+// Lists the galleries that include this project. Renders nothing
+// (silently) when the reverse-lookup endpoint returns an empty list
+// or 404, so projects that haven't been curated stay clean.
+
+interface CuratedByResp {
+  project_id: number;
+  galleries: Array<{
+    id: number;
+    slug: string;
+    title: string;
+    curator_handle: string;
+    curator_display_name: string | null;
+    added_at: number;
+  }>;
+}
+
+async function mountCuratedByPanel(
+  cfg: ProjectDetailConfig,
+  project: ProjectDetail,
+) {
+  const host = cfg.rootEl.querySelector(".ga-project-detail");
+  if (!host) return;
+  const r = await fetchJson<CuratedByResp>(
+    `${cfg.apiBase}/v1/projects/${project.id}/galleries`,
+  );
+  if (isErr(r) || r.galleries.length === 0) return;
+
+  const panel = document.createElement("section");
+  panel.className = "ga-curated-by-panel mt-8 pt-6";
+  panel.style.borderTop = "1px solid var(--ga-rule)";
+  panel.innerHTML = `
+    <h2 class="h5 mb-2">Curated by</h2>
+    <ul class="list-unstyled mb-0">
+      ${r.galleries
+        .map(
+          (g) => `
+        <li class="py-2" style="border-bottom: 1px dashed var(--ga-rule);">
+          <a href="/galleries/${escapeHtml(g.slug)}/"
+             style="font-family: var(--ga-font-mono); font-size: 14px; color: var(--ga-ink); border-bottom: 1px solid var(--ga-rule);">
+            ${escapeHtml(g.title)}
+          </a>
+          <span class="text-muted small ms-2">
+            · @${escapeHtml(g.curator_handle)}
+          </span>
+        </li>`,
+        )
+        .join("")}
+    </ul>
+  `;
+  host.appendChild(panel);
+}
 
 // ---------------------------------------------------------------------------
 // Task #18: traits + recent mints panel.

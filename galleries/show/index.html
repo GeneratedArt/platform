@@ -1,0 +1,93 @@
+---
+layout: default
+permalink: /galleries/show/
+title: "Gallery — GeneratedArt"
+meta_title: "Gallery — GeneratedArt"
+meta_description: |
+  A curated gallery on GeneratedArt.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% comment %}
+  Galleries are routed by slug. The 404.html SPA fallback rewrites
+  `/galleries/{slug}/` to `/galleries/show/?slug=…` so the canonical
+  share URL stays clean. This page is what the rewrite lands on.
+{% endcomment %}
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+    <div class="row gx-lg-8">
+      <div class="col-lg-10 mx-auto">
+        <div id="ga-galleries-root">
+          <p class="text-muted small">Loading…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-gallery-meta {
+    font-family: var(--ga-font-mono);
+    font-size: 13px; color: var(--ga-mute);
+    letter-spacing: 0.04em;
+    margin: 0 0 8px;
+  }
+  .ga-gallery-meta a { color: var(--ga-ink); border-bottom: 1px solid var(--ga-rule); }
+  .ga-gallery-detail-cover {
+    width: 100%; max-height: 480px; object-fit: cover;
+    border: 1px solid var(--ga-rule); margin-bottom: 1.5rem;
+  }
+  .ga-gallery-body :is(h3,h4,h5) { margin-top: 1.5rem; }
+  .ga-gallery-body code { background: #f4f4f4; padding: 1px 6px; }
+  .ga-gallery-body blockquote {
+    border-left: 3px solid var(--ga-rule);
+    margin: 1rem 0; padding: 4px 12px; color: var(--ga-mute);
+  }
+  .ga-gallery-projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .ga-gallery-project-card {
+    display: block; color: inherit; text-decoration: none;
+    border: 1px solid var(--ga-rule);
+  }
+  .ga-gallery-project-card:hover { border-color: var(--ga-ink); }
+  .ga-gallery-project-cover {
+    aspect-ratio: 1 / 1; background: #EEE; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ga-gallery-project-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .ga-gallery-project-empty {
+    font-family: var(--ga-font-mono);
+    font-size: 11px; color: var(--ga-mute);
+  }
+  .ga-gallery-project-body { padding: 10px 12px; }
+  .ga-gallery-map { display: inline-block; margin-top: 8px; }
+  .ga-gallery-map img { max-width: 100%; border: 1px solid var(--ga-rule); }
+  .ga-gallery-map-fallback {
+    font-family: var(--ga-font-mono);
+    font-size: 13px; color: var(--ga-ink);
+    border-bottom: 1px solid var(--ga-rule);
+  }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-galleries.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GAGalleries) return setTimeout(tryMount, 50);
+    window.GAGalleries.mountDetail({ apiBase: apiBase, rootEl: document.getElementById("ga-galleries-root") });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

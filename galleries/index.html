@@ -1,0 +1,76 @@
+---
+layout: default
+permalink: /galleries/
+title: "Galleries — GeneratedArt"
+meta_title: "Galleries — GeneratedArt"
+meta_description: |
+  Curator-grouped exhibitions of generative art on GeneratedArt — recent
+  galleries, physical shows, and curator-led discovery.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+    <div id="ga-galleries-root">
+      <p class="text-muted small">Loading…</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-galleries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  .ga-gallery-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    border: 1px solid var(--ga-rule);
+  }
+  .ga-gallery-card:hover { border-color: var(--ga-ink); }
+  .ga-gallery-cover {
+    aspect-ratio: 16 / 9;
+    background: #EEE;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .ga-gallery-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .ga-gallery-cover-empty {
+    font-family: var(--ga-font-mono);
+    font-size: 12px; color: var(--ga-mute);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .ga-gallery-card-body { padding: 14px 16px; }
+  .ga-gallery-meta {
+    font-family: var(--ga-font-mono);
+    font-size: 12px;
+    color: var(--ga-mute);
+    margin: 0 0 4px;
+    letter-spacing: 0.04em;
+  }
+  .ga-gallery-meta a {
+    color: var(--ga-ink);
+    border-bottom: 1px solid var(--ga-rule);
+  }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-galleries.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GAGalleries) return setTimeout(tryMount, 50);
+    window.GAGalleries.mountList({ apiBase: apiBase, rootEl: document.getElementById("ga-galleries-root") });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

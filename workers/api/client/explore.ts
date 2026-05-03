@@ -27,6 +27,32 @@ interface ExploreResp {
   next_cursor: string | null;
 }
 
+// Task #19: galleries tab. Different shape from project cards —
+// cards are gallery summaries, paginated by `next_before` (a unix
+// timestamp), no offset.
+interface GalleryListItem {
+  id: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  cover_url: string | null;
+  location: string | null;
+  starts_at: number | null;
+  ends_at: number | null;
+  created_at: number;
+  project_count: number;
+  curator: {
+    id: number;
+    handle: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+interface GalleriesResp {
+  galleries: GalleryListItem[];
+  next_before: number | null;
+}
+
 interface ExploreConfig {
   apiBase: string;
   rootEl: HTMLElement;
@@ -117,6 +143,7 @@ const GAExplore = {
         <button type="button" class="ga-explore-tab is-active" role="tab" data-tab="recent">Recent</button>
         <button type="button" class="ga-explore-tab" role="tab" data-tab="trending">Trending</button>
         <button type="button" class="ga-explore-tab" role="tab" data-tab="featured">Featured</button>
+        <button type="button" class="ga-explore-tab" role="tab" data-tab="galleries">Galleries</button>
       </div>
       <div class="ga-explore-grid" id="ga-explore-grid"></div>
       <div class="ga-explore-status text-center py-6 text-muted small" id="ga-explore-status">Loading…</div>
@@ -127,15 +154,16 @@ const GAExplore = {
     const sentinel = host.querySelector(".ga-explore-sentinel") as HTMLElement;
     const tabs = host.querySelectorAll<HTMLButtonElement>(".ga-explore-tab");
 
-    let activeTab: "recent" | "trending" | "featured" = "recent";
+    type ExploreTab = "recent" | "trending" | "featured" | "galleries";
+    let activeTab: ExploreTab = "recent";
     let nextCursor: string | null = null;
     let loading = false;
     let exhausted = false;
 
     // Allow ?tab=trending in URL to deep-link
     const initialTab = new URLSearchParams(location.search).get("tab");
-    if (initialTab === "trending" || initialTab === "featured") {
-      activeTab = initialTab;
+    if (initialTab === "trending" || initialTab === "featured" || initialTab === "galleries") {
+      activeTab = initialTab as ExploreTab;
       tabs.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === activeTab));
     }
 
@@ -151,28 +179,52 @@ const GAExplore = {
       } else {
         status.textContent = "Loading more…";
       }
-      const url = new URL(`${apiBase}/v1/explore`);
-      url.searchParams.set("tab", activeTab);
-      if (nextCursor) url.searchParams.set("cursor", nextCursor);
       try {
-        const res = await fetch(url.toString());
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as ExploreResp;
-        if (data.cards.length === 0 && reset) {
-          status.textContent =
-            activeTab === "featured"
-              ? "No featured projects yet."
-              : activeTab === "trending"
-                ? "No trending activity yet — check back after a few mints."
-                : "No projects yet.";
-        } else {
-          grid.insertAdjacentHTML("beforeend", data.cards.map((card) => renderCard(card, apiBase)).join(""));
-          nextCursor = data.next_cursor;
-          if (!nextCursor) {
-            exhausted = true;
-            status.textContent = grid.children.length === 0 ? status.textContent : "End of feed.";
+        if (activeTab === "galleries") {
+          const url = new URL(`${apiBase}/v1/galleries`);
+          if (nextCursor) url.searchParams.set("before", nextCursor);
+          const res = await fetch(url.toString());
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = (await res.json()) as GalleriesResp;
+          if (data.galleries.length === 0 && reset) {
+            status.textContent = "No galleries yet.";
           } else {
-            status.textContent = "";
+            grid.insertAdjacentHTML(
+              "beforeend",
+              data.galleries.map(renderGalleryCard).join(""),
+            );
+            nextCursor = data.next_before !== null ? String(data.next_before) : null;
+            if (!nextCursor) {
+              exhausted = true;
+              status.textContent =
+                grid.children.length === 0 ? status.textContent : "End of feed.";
+            } else {
+              status.textContent = "";
+            }
+          }
+        } else {
+          const url = new URL(`${apiBase}/v1/explore`);
+          url.searchParams.set("tab", activeTab);
+          if (nextCursor) url.searchParams.set("cursor", nextCursor);
+          const res = await fetch(url.toString());
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = (await res.json()) as ExploreResp;
+          if (data.cards.length === 0 && reset) {
+            status.textContent =
+              activeTab === "featured"
+                ? "No featured projects yet."
+                : activeTab === "trending"
+                  ? "No trending activity yet — check back after a few mints."
+                  : "No projects yet.";
+          } else {
+            grid.insertAdjacentHTML("beforeend", data.cards.map((card) => renderCard(card, apiBase)).join(""));
+            nextCursor = data.next_cursor;
+            if (!nextCursor) {
+              exhausted = true;
+              status.textContent = grid.children.length === 0 ? status.textContent : "End of feed.";
+            } else {
+              status.textContent = "";
+            }
           }
         }
       } catch (err) {
@@ -190,7 +242,7 @@ const GAExplore = {
 
     tabs.forEach((btn) => {
       btn.addEventListener("click", () => {
-        const t = btn.dataset.tab as "recent" | "trending" | "featured";
+        const t = btn.dataset.tab as ExploreTab;
         if (t === activeTab) return;
         activeTab = t;
         tabs.forEach((b) => b.classList.toggle("is-active", b === btn));
@@ -217,6 +269,27 @@ const GAExplore = {
     loadPage(true);
   },
 };
+
+function renderGalleryCard(g: GalleryListItem): string {
+  const cover = g.cover_url
+    ? `<img src="${escapeHtml(g.cover_url)}" alt="" loading="lazy" />`
+    : `<span class="ga-explore-cover-empty">No cover</span>`;
+  const curator = g.curator?.handle
+    ? `Curated by @${escapeHtml(g.curator.handle)}`
+    : "Uncurated";
+  const projects = `${g.project_count} ${g.project_count === 1 ? "project" : "projects"}`;
+  const meta = g.location ? escapeHtml(g.location) : "";
+  return `
+    <a class="ga-explore-card" href="/galleries/${escapeHtml(g.slug)}/">
+      <div class="ga-explore-cover">${cover}</div>
+      <div class="ga-explore-card-body">
+        <h3>${escapeHtml(g.title)}</h3>
+        <p class="ga-explore-card-meta">${escapeHtml(curator)}${meta ? ` · ${meta}` : ""}</p>
+        <p class="ga-explore-card-mints"><span class="ga-explore-mints">${projects}</span></p>
+      </div>
+    </a>
+  `;
+}
 
 window.GAExplore = GAExplore;
 export default GAExplore;

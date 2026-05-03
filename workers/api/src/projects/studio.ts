@@ -320,7 +320,16 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
   // have written.
   const key = c.req.param("rest");
   if (!key) return c.json({ error: "invalid_key" }, 400);
-  if (!/^captures\/\d+\/[A-Za-z0-9._-]+\.png$/.test(key)) {
+  // Two prefixes are allowed: `captures/{projectId}/...` (project
+  // sketch captures, written by the studio) and
+  // `gallery-covers/{userId}/...` (curator-uploaded gallery covers,
+  // task #19). The strict allowlist + charset prevents an attacker
+  // tricking the Worker into reading arbitrary R2 objects this
+  // binding (or any future binding-mate) may have written.
+  if (
+    !/^captures\/\d+\/[A-Za-z0-9._-]+\.png$/.test(key) &&
+    !/^gallery-covers\/\d+\/[A-Za-z0-9._-]+\.png$/.test(key)
+  ) {
     return c.json({ error: "invalid_key" }, 400);
   }
   const ALLOWED_WIDTHS = [240, 480, 800, 1200];

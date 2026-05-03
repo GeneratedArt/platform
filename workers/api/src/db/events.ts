@@ -64,9 +64,20 @@ export type EventKind =
   // 0009_discovery_search.sql; whatever curator path inserts a row
   // should call recordFeaturedEvent() to notify the project owner.
   | "brief_application"
-  | "featured";
+  | "featured"
+  // Notification kind emitted when a curator adds a project to one
+  // of their galleries. Recipient is the project's artist; payload
+  // carries the gallery slug + title and the project title so the
+  // notification renderer can format the message without a join.
+  | "gallery_added";
 
-export type EventTargetKind = "project" | "user" | "brief" | "frozen" | "mint";
+export type EventTargetKind =
+  | "project"
+  | "user"
+  | "brief"
+  | "frozen"
+  | "mint"
+  | "gallery";
 
 export interface RecordEventInput {
   kind: EventKind;
@@ -159,6 +170,42 @@ export async function recordFeaturedEvent(
     payload: {
       project_id: args.projectId,
       title: args.projectTitle ?? null,
+    },
+  });
+}
+
+/**
+ * Notify an artist that one of their projects was added to a
+ * curator's gallery. Called best-effort from the gallery
+ * `add_project` handler after the gallery_projects row is committed.
+ * The target is the *project* (so the client can deep-link back to
+ * /p/?id=N) but the payload carries gallery slug + title so the
+ * notification reads "@curator added <project> to <gallery>".
+ */
+export async function recordGalleryAddedEvent(
+  db: D1Database,
+  args: {
+    curatorId: number;
+    artistId: number;
+    projectId: number;
+    galleryId: number;
+    gallerySlug: string;
+    galleryTitle: string;
+    projectTitle?: string | null;
+  },
+): Promise<void> {
+  await recordEvent(db, {
+    kind: "gallery_added",
+    actor_id: args.curatorId,
+    target_kind: "project",
+    target_id: args.projectId,
+    recipient_id: args.artistId,
+    payload: {
+      gallery_id: args.galleryId,
+      gallery_slug: args.gallerySlug,
+      gallery_title: args.galleryTitle,
+      project_id: args.projectId,
+      project_title: args.projectTitle ?? null,
     },
   });
 }

@@ -24,3 +24,24 @@ export async function uniqueProjectSlug(
   }
   return `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
 }
+
+/**
+ * Galleries' `slug` is globally UNIQUE (not per-owner like projects).
+ * Mirrors uniqueProjectSlug's collision-suffix loop with a random
+ * tail as the bounded fallback.
+ */
+export async function uniqueGallerySlug(
+  db: D1Database,
+  base: string,
+): Promise<string> {
+  const baseSlug = slugify(base);
+  for (let i = 0; i < 50; i++) {
+    const candidate = i === 0 ? baseSlug : `${baseSlug}-${i + 1}`;
+    const taken = await db
+      .prepare("SELECT 1 FROM galleries WHERE slug = ?")
+      .bind(candidate)
+      .first();
+    if (!taken) return candidate;
+  }
+  return `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
+}

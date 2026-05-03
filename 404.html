@@ -70,7 +70,12 @@ header_image: "/assets/images/art/bg31.webp"
   var pPath = location.pathname.match(/^\/p\/(\d+)\/?$/);
   var mintPath = location.pathname.match(/^\/mint\/(\d+)\/?$/);
   var briefPath = location.pathname.match(/^\/briefs\/(\d+)\/?$/);
-  if (!pPath && !mintPath && !briefPath) {
+  // Galleries are slug-routed (Task #19). Match `/galleries/{slug}/`
+  // and `/galleries/{slug}/edit/` and rewrite to the canonical
+  // `?slug=…` page so the gallery's own bundle takes over.
+  var galPath = location.pathname.match(/^\/galleries\/([a-z0-9-]+)\/?$/);
+  var galEditPath = location.pathname.match(/^\/galleries\/([a-z0-9-]+)\/edit\/?$/);
+  if (!pPath && !mintPath && !briefPath && !galPath && !galEditPath) {
     document.getElementById("ga-project-root").hidden = true;
     document.getElementById("ga-404-default").hidden = false;
     return;
@@ -85,6 +90,20 @@ header_image: "/assets/images/art/bg31.webp"
   }
   if (mintPath) {
     location.replace("/mint/?id=" + mintPath[1]);
+    return;
+  }
+  if (galEditPath) {
+    location.replace("/galleries/edit/?slug=" + encodeURIComponent(galEditPath[1]));
+    return;
+  }
+  if (galPath) {
+    // Don't shadow reserved sub-paths.
+    if (galPath[1] === "new" || galPath[1] === "show" || galPath[1] === "edit") {
+      document.getElementById("ga-project-root").hidden = true;
+      document.getElementById("ga-404-default").hidden = false;
+      return;
+    }
+    location.replace("/galleries/show/?slug=" + encodeURIComponent(galPath[1]));
     return;
   }
   var projectId = pPath[1];

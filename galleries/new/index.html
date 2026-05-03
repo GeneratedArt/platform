@@ -1,0 +1,44 @@
+---
+layout: default
+permalink: /galleries/new/
+title: "New gallery — GeneratedArt"
+meta_title: "Create a gallery — GeneratedArt"
+meta_description: |
+  Create a curated gallery on GeneratedArt. Verified curators only.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+    <div class="row gx-lg-8">
+      <div class="col-lg-8 mx-auto">
+        <div id="ga-galleries-root">
+          <p class="text-muted small">Loading…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-mono { font-family: var(--ga-font-mono); }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-galleries.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GAGalleries) return setTimeout(tryMount, 50);
+    window.GAGalleries.mountNew({ apiBase: apiBase, rootEl: document.getElementById("ga-galleries-root") });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

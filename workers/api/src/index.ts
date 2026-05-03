@@ -58,6 +58,15 @@ import {
   projectMintsHandler,
   tokenDetailHandler,
 } from "./projects/traits";
+import {
+  listGalleriesHandler,
+  getGalleryHandler,
+  createGalleryHandler,
+  patchGalleryHandler,
+  galleryProjectsHandler,
+  uploadGalleryCoverHandler,
+  projectGalleriesHandler,
+} from "./galleries/handlers";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -107,6 +116,26 @@ v1.post("/projects/:id{[0-9]+}/mint/confirm-mint", confirmMint);
 v1.get("/projects/:id{[0-9]+}/traits", projectTraitsHandler);
 v1.get("/projects/:id{[0-9]+}/mints", projectMintsHandler);
 v1.get("/projects/:id{[0-9]+}/mints/:tokenId{[0-9]+}", tokenDetailHandler);
+// Task #19: galleries reverse lookup powering the "Curated by"
+// badge on /p/?id=N.
+v1.get("/projects/:id{[0-9]+}/galleries", projectGalleriesHandler);
+
+// Task #19: galleries & curator surface. Slugs match the Jekyll
+// route shape `/galleries/{slug}/`. Cover upload is its own
+// endpoint (separate from project captures) so we can independently
+// rate-limit + gate on `users.is_curator`. The cover-upload route
+// must precede the `:slug` route so Hono doesn't try to match the
+// literal "cover" as a slug.
+v1.get("/galleries", listGalleriesHandler);
+v1.post("/galleries", requireAuth, createGalleryHandler);
+v1.post("/galleries/cover", requireAuth, uploadGalleryCoverHandler);
+v1.get("/galleries/:slug{[a-z0-9-]+}", getGalleryHandler);
+v1.patch("/galleries/:slug{[a-z0-9-]+}", requireAuth, patchGalleryHandler);
+v1.post(
+  "/galleries/:slug{[a-z0-9-]+}/projects",
+  requireAuth,
+  galleryProjectsHandler,
+);
 
 // Task #15: frozen artifact + provenance pipeline. POST /freeze and
 // activate are owner-only; GET /frozen is public (the bundle CID and
