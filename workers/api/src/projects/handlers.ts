@@ -17,6 +17,7 @@ import {
   type ProjectStatus,
   insertProject,
   getProjectById,
+  getProjectOwner,
   listProjectsByHandle,
   listProjectsByOwner,
   updateProject,
@@ -132,7 +133,13 @@ export async function getProject(c: Context<{ Bindings: Env }>) {
   if (!id || Number.isNaN(id)) return badRequest(c, "invalid_id");
   const row = await getProjectById(c.env.DB, id);
   if (!row) return c.json({ error: "not_found" }, 404);
-  return c.json({ project: publicProject(row) });
+  // Resolve owner so /p/{id} can render a byline that links to the
+  // correct `/@handle/` page. Doing the join here (one extra
+  // lightweight indexed read) is much safer than the previous
+  // client-side guess of "split repo_full at the first dash" — that
+  // heuristic broke for any handle containing a dash (e.g. ga-smoke).
+  const owner = await getProjectOwner(c.env.DB, row.owner_id);
+  return c.json({ project: publicProject(row), owner });
 }
 
 interface PatchBody {

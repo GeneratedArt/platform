@@ -61,6 +61,32 @@ export async function getProjectById(
     .first<ProjectRow>();
 }
 
+/**
+ * Owner data we expose alongside a project. Mirrors the public-user
+ * shape (handle/display_name/avatar_url) so consumers can render a
+ * byline + link to `/@handle/` without a second round-trip — and
+ * without guessing the handle from `repo_full` (which breaks for any
+ * handle containing a dash).
+ */
+export interface ProjectOwner {
+  id: number;
+  handle: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export async function getProjectOwner(
+  db: D1Database,
+  ownerId: number,
+): Promise<ProjectOwner | null> {
+  return db
+    .prepare(
+      "SELECT id, handle, display_name, avatar_url FROM users WHERE id = ?",
+    )
+    .bind(ownerId)
+    .first<ProjectOwner>();
+}
+
 export async function listProjectsByOwner(
   db: D1Database,
   ownerId: number,

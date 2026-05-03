@@ -14,10 +14,11 @@ interface ProjectDetail {
   updated_at: number;
 }
 
-interface PublicUser {
+interface ProjectOwner {
   id: number;
   handle: string;
   display_name: string | null;
+  avatar_url: string | null;
 }
 
 interface ProjectDetailConfig {
@@ -69,40 +70,11 @@ const STATUS_LABELS: Record<string, string> = {
   archived: "Archived",
 };
 
-async function findOwner(cfg: ProjectDetailConfig, ownerId: number): Promise<PublicUser | null> {
-  // The /v1/users endpoint is keyed by handle, not id. We don't have a
-  // by-id endpoint yet, so we look up the project owner via /v1/me when
-  // the viewer is the owner, otherwise fall back to "anon" — the project
-  // shipping a `repo_full` like "GeneratedArt-artists/handle-slug" gives
-  // us the handle as the prefix before the first dash. Best-effort,
-  // good enough for MVP demo flow.
-  const me = await fetchJson<{ user: PublicUser }>(`${cfg.apiBase}/v1/me`);
-  if (!isErr(me) && me.user.id === ownerId) {
-    return me.user;
-  }
-  return null;
-}
-
-function ownerHandleFromRepo(repoFull: string | null, slug: string): string | null {
-  if (!repoFull) return null;
-  // repo names are `${handle}-${title-slug}`; the project slug is the
-  // same string. The handle is the prefix up to the first dash that
-  // matches the slug head. For demo accuracy we just split repoFull's
-  // name by `-` and take the first token — handles are 2-31 chars of
-  // [a-z0-9-] so this is wrong if a handle itself contains dashes. We
-  // mark this UNRESOLVED in that case (no link rendered).
-  const name = repoFull.split("/")[1] || "";
-  if (!name) return null;
-  const dash = name.indexOf("-");
-  if (dash <= 0) return null;
-  const headGuess = name.slice(0, dash);
-  // Only trust the guess if it looks consistent with the slug:
-  // slug = `${handle}-${title}` so handle must be a prefix of slug too.
-  if (!slug.startsWith(headGuess + "-")) return null;
-  return headGuess;
-}
-
-async function render(cfg: ProjectDetailConfig, project: ProjectDetail) {
+async function render(
+  cfg: ProjectDetailConfig,
+  project: ProjectDetail,
+  owner: ProjectOwner | null,
+) {
   const tmpl = document.getElementById("ga-project-tmpl") as HTMLTemplateElement | null;
   if (!tmpl) return;
   const node = tmpl.content.cloneNode(true) as DocumentFragment;
@@ -135,22 +107,17 @@ async function render(cfg: ProjectDetailConfig, project: ProjectDetail) {
   const updatedDate = new Date(project.updated_at * 1000);
   updated.textContent = `Updated ${updatedDate.toLocaleDateString()}`;
 
-  // Best-effort owner attribution. If we can resolve a handle, link to
-  // `/@handle/`; otherwise show the address-style fallback.
+  // Owner attribution comes straight from the API now (joined on the
+  // server in `getProject`). Previous versions guessed the handle by
+  // splitting `repo_full` at the first dash, which broke for any
+  // handle containing a dash (e.g. `ga-smoke`).
   const byline = root.querySelector(".ga-project-author")! as HTMLAnchorElement;
-  const me = await findOwner(cfg, project.owner_id);
-  if (me) {
-    byline.href = `/@${me.handle}/`;
-    byline.textContent = `@${me.handle}`;
+  if (owner) {
+    byline.href = `/@${owner.handle}/`;
+    byline.textContent = `@${owner.handle}`;
   } else {
-    const guess = ownerHandleFromRepo(project.repo_full, project.slug);
-    if (guess) {
-      byline.href = `/@${guess}/`;
-      byline.textContent = `@${guess}`;
-    } else {
-      byline.removeAttribute("href");
-      byline.textContent = `artist #${project.owner_id}`;
-    }
+    byline.removeAttribute("href");
+    byline.textContent = `artist #${project.owner_id}`;
   }
 
   cfg.rootEl.innerHTML = "";
@@ -177,9 +144,10 @@ const GAProjectDetail = {
       renderError(cfg, "No project id provided. Project URLs look like /p/?id=123.");
       return;
     }
-    const result = await fetchJson<{ project: ProjectDetail }>(
-      `${cfg.apiBase}/v1/projects/${id}`,
-    );
+    const result = await fetchJson<{
+      project: ProjectDetail;
+      owner: ProjectOwner | null;
+    }>(`${cfg.apiBase}/v1/projects/${id}`);
     if (isErr(result)) {
       renderError(
         cfg,
@@ -189,7 +157,7 @@ const GAProjectDetail = {
       );
       return;
     }
-    await render(cfg, result.project);
+    await render(cfg, result.project, result.owner ?? null);
   },
 };
 
