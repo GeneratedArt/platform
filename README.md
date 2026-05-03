@@ -25,7 +25,7 @@
 
 ```mermaid
 graph LR
-  subgraph "Static site (GitHub Pages)"
+  subgraph "Static site (Cloudflare Pages)"
     Jekyll[Jekyll<br/>generatedart.com]
     Authors["_authors/{handle}.md"]
     Studio[/studio/]
@@ -63,7 +63,7 @@ graph LR
 
 §2 of the platform brief in long form. Highlights:
 
-- **One static target, one dynamic service.** GitHub Pages serves the
+- **One static target, one dynamic service.** Cloudflare Pages serves the
   Jekyll site; everything dynamic is one Hono Worker. No AWS, Vercel,
   Firebase, Supabase, Mongo, or Stripe-as-primary-rails.
 - **Wallet does every transaction.** The Worker only returns calldata for
@@ -86,12 +86,7 @@ platform/
 │       ├── src/     index.ts + auth/ + projects/ + users/ + briefs/ + db/ + lib/
 │       ├── client/  Vanilla TS bundles (esbuild → assets/js/ga-*.js)
 │       └── migrations/  D1 schema (0001..0006) + demo seed (0004)
-├── contracts/       Foundry — GAProject, GAProjectFactory (Base L2)
-├── CNAME            generatedart.com
-└── .github/workflows/
-    ├── pages.yml         Jekyll build + GitHub Pages deploy
-    ├── worker-api.yml    Wrangler deploy → api.generatedart.com
-    └── contracts.yml     forge build + test
+└── contracts/       Foundry — GAProject, GAProjectFactory (Base L2)
 ```
 
 ## Quickstart
@@ -113,13 +108,45 @@ npm run build:all                              # rebuilds every assets/js/ga-*.j
 
 The Replit `Start application` workflow runs the Jekyll command above.
 
+## Cloudflare Pages setup
+
+The static site is hosted on **Cloudflare Pages**. Use these settings in
+the Cloudflare dashboard:
+
+- **Framework preset:** Jekyll
+- **Build command:** `bundle exec jekyll build`
+- **Build output directory:** `_site`
+- **Production branch:** `main`
+- **Root directory:** `/` (project root)
+- **Environment variables:** `JEKYLL_ENV=production`, `BUNDLE_PATH=vendor/bundle`
+
+> **Why no `github-pages` gem?** This site uses `jekyll-paginate-v2` and
+> `jekyll-archives`, neither of which is on GitHub Pages' plugin allowlist.
+> The Gemfile pins standalone Jekyll 4.3.x; Cloudflare Pages runs the
+> build itself, so the standard plugin set works without restriction.
+
+### Deploy to Cloudflare Pages (first-time setup)
+
+1. **Workers & Pages → Create application → Pages → Connect to Git**;
+   pick the GitHub repo.
+2. **Production branch:** `main`.
+3. **Build command:** `bundle exec jekyll build`.
+4. **Build output directory:** `_site`.
+5. **Custom domains:** add `generatedart.com` (and `www.generatedart.com`
+   if desired).
+6. **DNS:** point `generatedart.com`'s nameservers at Cloudflare, then
+   create the proxied CNAME / apex record Cloudflare suggests in the
+   Pages → Custom Domains tab.
+7. **Disable GitHub Pages** in the repo settings once Cloudflare Pages
+   is serving traffic and DNS has propagated.
+
 ## Deploy
 
-| Surface         | Where             | How                                                   |
-|-----------------|-------------------|-------------------------------------------------------|
-| Static site     | GitHub Pages      | `pages.yml` on push to `main`                          |
-| API Worker      | Cloudflare Workers| `worker-api.yml` on push to `workers/api/**`           |
-| Contracts       | Base L2           | `forge script script/Deploy.s.sol --rpc-url base --broadcast` |
+| Surface         | Where             | How                                                                |
+|-----------------|-------------------|--------------------------------------------------------------------|
+| Static site     | Cloudflare Pages  | Auto-deploy on push to `main` (settings above)                     |
+| API Worker      | Cloudflare Workers| `wrangler deploy --env production` (run from `workers/api/`)       |
+| Contracts       | Base L2           | `forge script script/Deploy.s.sol --rpc-url base --broadcast`      |
 
 **Prod prerequisites** (one-time, before the first prod Worker deploy):
 

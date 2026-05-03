@@ -1,7 +1,7 @@
 # GeneratedArt — Platform Monorepo
 
 ## Overview
-GeneratedArt is a community-run generative art platform and NFT marketplace focusing on code-based generative art (p5.js / three.js / WebGL / GLSL). It aims to be a spiritual successor to platforms like fxhash and Art Blocks, incorporating a physical-digital bridge through the Geneva gallery. The project prioritizes a streamlined architecture with GitHub Pages for static content and a Cloudflare Worker for dynamic services.
+GeneratedArt is a community-run generative art platform and NFT marketplace focusing on code-based generative art (p5.js / three.js / WebGL / GLSL). It aims to be a spiritual successor to platforms like fxhash and Art Blocks, incorporating a physical-digital bridge through the Geneva gallery. The project prioritizes a streamlined architecture: **Cloudflare Pages** serves the Jekyll static site, and a **Cloudflare Worker** handles all dynamic services.
 
 ## User Preferences
 Not specified in the original document.
@@ -10,13 +10,13 @@ Not specified in the original document.
 - Homepage hero (`index.html`) carries one primary CTA "Start a sketch" and a quiet secondary "Browse artists"; the surfaces grid below summarises the six live surfaces (auth, repo-as-project, studio, profile/follow, mint, briefs). The earlier T1–T6 "queued/done" grid was removed since everything is shipped.
 - `README.md` is the demo-facing pitch with a mermaid architecture diagram, surface table, quickstart, and prod-prereq notes. It carries TODO placeholders for the 90-second Loom URL and the Basescan tx URL; both must be filled before tagging `v0.1.0-hackathon`.
 - Demo seed data: migration `0004_seed_demo_users.sql` already provisions `ga-smoke` + `ga-curator` (mutual follow, one published project each). The README's "demo mint on Basescan" link points at the real Base Sepolia mint that the human will run during the Loom recording — there is **no placeholder mint seed in `workers/api/migrations/`**, because anything stamped there would (a) be applied automatically by `wrangler d1 migrations apply` and (b) collide with the live mint flow's "if `contract_address` is set, treat as already deployed" check, blocking the real deploy.
-- Out of agent's reach (must be done by a human before tagging): record the Loom, run the actual Sepolia mint, paste the real Loom + Basescan URLs into `README.md` (replacing the two `TODO` lines), push the `v0.1.0-hackathon` tag, confirm the GitHub Pages + Worker deploys are green.
+- Out of agent's reach (must be done by a human before tagging): record the Loom, run the actual Sepolia mint, paste the real Loom + Basescan URLs into `README.md` (replacing the two `TODO` lines), push the `v0.1.0-hackathon` tag, confirm the Cloudflare Pages + Worker deploys are green.
 
 ## System Architecture
 
 ### Core Design Principles
 The architecture is deliberately minimal, focusing on:
-- **One static-site deployment target**: GitHub Pages.
+- **One static-site deployment target**: Cloudflare Pages (build command `bundle exec jekyll build`, output `_site`, production branch `main`). Migrated off GitHub Pages because the site uses `jekyll-paginate-v2` and `jekyll-archives`, neither of which is on the GitHub Pages plugin allowlist.
 - **One dynamic service**: A single Cloudflare Worker.
 - **No client-side JavaScript frameworks**: Vanilla TS is used for client-side functionality.
 - **Fail-closed approach**: Critical configurations (e.g., `GITHUB_PAT`) cause explicit errors if unconfigured in production.
@@ -34,7 +34,7 @@ The architecture is deliberately minimal, focusing on:
 - **Briefs board (Task #7, live)**: Open commissions / collab calls at `/briefs/` (filter chips per `?industry=…`), `/briefs/new/` (auth-gated form, markdown body + preview, optional ETH budget + deadline), `/briefs/{id}/` (404.html SPA shim → `/briefs/show/?id=N`, sanitised markdown render + Apply stub). Industries: `textile / fashion / architecture / product / gallery / collab / other`. Worker endpoints: `GET /v1/briefs?industry=&limit=&before=` (public, paginated, defaults to status=`open`), `GET /v1/briefs/:id` (public), `POST /v1/briefs` (auth, **5/address/day** rate limit). Validation: title ≤200, body ≤10 000, budget regex `^\d+(\.\d{1,18})?$`, deadline as unix seconds. Body is stored raw and **rendered** with a built-in escape-first sanitiser in `client/briefs.ts` (allowlist: h3-h5, p/br, strong, em, code, blockquote, ul/ol/li, hr, http(s)-only `<a>`); no raw HTML or `javascript:` URLs survive. Schema added by migration `0006_briefs_extras.sql` — `industry / budget / deadline` columns layered on top of the original `briefs` table from 0001. Bundle: `assets/js/ga-briefs.js` (~10 KB).
 - **Database**: Cloudflare D1 (SQLite) with migrations managed via SQL files. Includes 8 tables for users, projects, follows, briefs, applications, galleries, gallery_projects, and mints, plus an FTS5 virtual table for search. Migrations 0001..0006; 0004 seeds the two demo artists.
 - **UI/UX**: Minimalist brand-focused design with custom CSS (`assets/css/brand.css`) enforcing specific UI rules (e.g., no box shadows, hairline borders, accent color for primary CTAs). Favicon and OG images are also branded.
-- **CI/CD**: GitHub Actions for Jekyll build/deploy, Worker deploy, and Foundry contract build/test.
+- **CI/CD**: Cloudflare Pages auto-builds the Jekyll static site on every push to `main`. The Worker is deployed manually via `wrangler deploy --env production` from `workers/api/`. Foundry contracts are built/tested locally before any `forge script ... --broadcast`.
 
 ### Key Features
 - **Generative Art Platform**: Supports p5.js, three.js, WebGL, GLSL.
@@ -47,7 +47,8 @@ The architecture is deliberately minimal, focusing on:
 - **Dashboard**: Provides a user interface for managing personal projects.
 
 ## External Dependencies
-- **GitHub**: Used for source code management, project templating, and direct interaction via the GitHub API for project creation and updates.
+- **GitHub**: Source code management, project templating, and direct interaction via the GitHub API for project creation and `_authors/{handle}.md` updates. (Static-site hosting moved to Cloudflare Pages — GitHub is no longer the deploy target.)
+- **Cloudflare Pages**: Static-site hosting for the Jekyll site at `generatedart.com`. Auto-builds on push to `main`.
 - **Cloudflare Workers**: Primary dynamic service platform.
 - **Cloudflare D1**: SQLite-compatible serverless database.
 - **Cloudflare KV**: Key-value store for sessions and rate limiting.
