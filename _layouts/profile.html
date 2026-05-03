@@ -5,25 +5,9 @@ header_image: "/assets/images/art/bg31.webp"
 
 {% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
 
-{% comment %}
-  Liquid does NOT auto-escape interpolated variables. Every `{{ … }}`
-  rendered from author front-matter (which is a write-through cache of
-  user-controlled `PATCH /v1/me` input) is filtered through `| escape`
-  here to prevent stored XSS — a malicious bio or social URL must not
-  inject markup or `javascript:` handlers into the public page.
+<!-- Author front-matter is user input via PATCH /v1/me; every interpolation
+     below uses the `escape` filter because Liquid does not auto-escape. -->
 
-  - Text contexts use `| escape` (HTML-entity-encodes &, <, >, ", ').
-  - URL contexts in `href`/`src` ALSO use `| escape` so a `"` inside
-    a URL can't break out of the attribute, and combine with a strict
-    rel="noopener". `javascript:` URLs are not auto-blocked by Liquid;
-    the worker validates `https:` only on PATCH, but the static
-    seeds + future migrations may contain anything, so the layout
-    treats author input as untrusted.
-  - The cover image is rendered as an `<img>` (not an inline
-    `background-image` style) so it gets the same attribute escaping
-    as other URL fields rather than CSS-context escaping (which Liquid
-    can't do correctly).
-{% endcomment %}
 
 <section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
   <div class="container py-10 py-md-12">

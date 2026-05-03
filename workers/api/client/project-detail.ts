@@ -107,10 +107,6 @@ async function render(
   const updatedDate = new Date(project.updated_at * 1000);
   updated.textContent = `Updated ${updatedDate.toLocaleDateString()}`;
 
-  // Owner attribution comes straight from the API now (joined on the
-  // server in `getProject`). Previous versions guessed the handle by
-  // splitting `repo_full` at the first dash, which broke for any
-  // handle containing a dash (e.g. `ga-smoke`).
   const byline = root.querySelector(".ga-project-author")! as HTMLAnchorElement;
   if (owner) {
     byline.href = `/@${owner.handle}/`;

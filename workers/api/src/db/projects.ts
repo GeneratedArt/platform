@@ -61,13 +61,6 @@ export async function getProjectById(
     .first<ProjectRow>();
 }
 
-/**
- * Owner data we expose alongside a project. Mirrors the public-user
- * shape (handle/display_name/avatar_url) so consumers can render a
- * byline + link to `/@handle/` without a second round-trip — and
- * without guessing the handle from `repo_full` (which breaks for any
- * handle containing a dash).
- */
 export interface ProjectOwner {
   id: number;
   handle: string;

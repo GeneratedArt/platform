@@ -68,9 +68,6 @@ function projectCard(p: ProjectSummary): string {
   const cover = p.cover_url
     ? `<img src="${escapeHtml(p.cover_url)}" alt="${escapeHtml(p.title)}" loading="lazy" />`
     : `<span class="ga-profile-card-cover-empty">${escapeHtml(p.engine)}</span>`;
-  // Pretty `/p/{id}/` URL — handled at runtime via 404.html SPA
-  // fallback (GH Pages serves /404.html for unknown paths and our
-  // 404.html detects `/p/{N}` and hydrates the same bundle as /p/).
   return `
     <a class="ga-profile-card" href="/p/${p.id}/">
       <div class="ga-profile-card-cover">${cover}</div>
@@ -112,20 +109,13 @@ async function hydrateProfile(cfg: ProfileConfig, handle: string) {
   setText(cfg.rootEl, "#ga-profile-followers-count", String(profileResult.counts.followers));
   setText(cfg.rootEl, "#ga-profile-following-count", String(profileResult.counts.following));
 
-  // Viewer-aware controls. Three states:
-  //   1. Anonymous → "Connect wallet to follow" link
-  //   2. Self      → "Edit profile" link
-  //   3. Other     → Follow / Unfollow toggle
   if (profileResult.is_self === true) {
     show(editLink);
     if (followBtn) followBtn.dataset.gaState = "self";
   } else if (profileResult.is_self === false) {
     show(followBtn);
     if (followBtn) {
-      const following = !!profileResult.is_following;
-      followBtn.dataset.gaState = following ? "following" : "not-following";
-      followBtn.textContent = following ? "Following" : "Follow";
-      if (following) followBtn.classList.replace("btn-accent", "btn-outline-primary");
+      setFollowState(followBtn, !!profileResult.is_following);
     }
   } else {
     // Anonymous viewer (no `is_self` key in response).
@@ -156,39 +146,64 @@ async function loadProjects(cfg: ProfileConfig, handle: string) {
   grid.innerHTML = visible.map(projectCard).join("");
 }
 
+function setFollowState(btn: HTMLButtonElement, following: boolean) {
+  btn.dataset.gaState = following ? "following" : "not-following";
+  btn.textContent = following ? "Following" : "Follow";
+  if (following) {
+    btn.classList.remove("btn-accent");
+    btn.classList.add("btn-outline-primary");
+  } else {
+    btn.classList.remove("btn-outline-primary");
+    btn.classList.add("btn-accent");
+  }
+}
+
 function attachFollowToggle(cfg: ProfileConfig, handle: string) {
   const btn = cfg.rootEl.querySelector<HTMLButtonElement>("#ga-follow-btn");
   if (!btn) return;
+  const countEl = cfg.rootEl.querySelector<HTMLElement>("#ga-profile-followers-count");
+  const statusEl = cfg.rootEl.querySelector<HTMLElement>("#ga-follow-status");
+
   btn.addEventListener("click", async () => {
     if (btn.dataset.gaState === "self") return;
-    if (btn.disabled) return;
-    btn.disabled = true;
+    if (btn.dataset.gaPending === "1") return;
+
+    // Optimistic flip: update button + follower count immediately, then
+    // POST/DELETE in the background. On failure, revert the UI to the
+    // pre-click state and surface the reason in the status region.
     const wasFollowing = btn.dataset.gaState === "following";
-    const method = wasFollowing ? "DELETE" : "POST";
+    const willFollow = !wasFollowing;
+    const prevCountText = countEl?.textContent ?? "0";
+    const prevCount = parseInt(prevCountText, 10) || 0;
+    const optimisticCount = willFollow ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    btn.dataset.gaPending = "1";
+    setFollowState(btn, willFollow);
+    if (countEl) countEl.textContent = String(optimisticCount);
+    if (statusEl) statusEl.textContent = "";
+
     const result = await fetchJson<{ is_following: boolean; counts: { followers: number; following: number } }>(
       `${cfg.apiBase}/v1/users/${encodeURIComponent(handle)}/follow`,
-      { method },
+      { method: willFollow ? "POST" : "DELETE" },
     );
-    btn.disabled = false;
-    const statusEl = cfg.rootEl.querySelector<HTMLElement>("#ga-follow-status");
+    btn.dataset.gaPending = "";
+
     if (isErr(result)) {
+      setFollowState(btn, wasFollowing);
+      if (countEl) countEl.textContent = prevCountText;
       if (statusEl) {
         statusEl.textContent =
           result.__status === 401
             ? "Sign in to follow artists."
-            : `Follow failed (${result.__status}).`;
+            : `Follow failed (${result.__status}). Try again in a moment.`;
       }
       return;
     }
-    if (statusEl) statusEl.textContent = "";
-    btn.dataset.gaState = result.is_following ? "following" : "not-following";
-    btn.textContent = result.is_following ? "Following" : "Follow";
-    if (result.is_following) {
-      btn.classList.replace("btn-accent", "btn-outline-primary");
-    } else {
-      btn.classList.replace("btn-outline-primary", "btn-accent");
-    }
-    setText(cfg.rootEl, "#ga-profile-followers-count", String(result.counts.followers));
+
+    // Reconcile with the server's authoritative count (covers races
+    // where another tab or device also followed/unfollowed).
+    setFollowState(btn, result.is_following);
+    if (countEl) countEl.textContent = String(result.counts.followers);
   });
 }
 
