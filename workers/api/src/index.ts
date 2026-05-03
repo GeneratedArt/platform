@@ -16,6 +16,7 @@ import {
   prepareMint,
   confirmDeploy,
   confirmMint,
+  mintConfigHandler,
 } from "./projects/mint";
 import {
   getProjectFileHandler,
@@ -64,12 +65,14 @@ v1.post("/projects/:id{[0-9]+}/commit", requireAuth, commitProjectFileHandler);
 v1.post("/projects/:id{[0-9]+}/captures", requireAuth, uploadCaptureHandler);
 v1.get("/captures/:rest{.+}", getCaptureHandler);
 
-// Mint flow (Task #6). prepareMint returns calldata; the user's wallet
-// signs the tx. confirm-deploy / confirm-mint persist the result so
-// the dashboard and /p/{id} can render Basescan deep-links.
-v1.post("/projects/:id{[0-9]+}/mint/prepare", requireAuth, prepareMint);
+// Mint flow (Task #6). `prepare` is public for the `mint` phase
+// (collectors don't need a SIWE session) and gates owner-only phases
+// (deploy / lock_cid) inside the handler. confirm-deploy is owner-only;
+// confirm-mint is public + verified against an on-chain receipt.
+v1.get("/mint/config", mintConfigHandler);
+v1.post("/projects/:id{[0-9]+}/mint/prepare", prepareMint);
 v1.post("/projects/:id{[0-9]+}/mint/confirm-deploy", requireAuth, confirmDeploy);
-v1.post("/projects/:id{[0-9]+}/mint/confirm-mint", requireAuth, confirmMint);
+v1.post("/projects/:id{[0-9]+}/mint/confirm-mint", confirmMint);
 
 // User profile + social graph
 v1.get("/users/:handle", getUserByHandleHandler);

@@ -1,7 +1,17 @@
 import type { Context } from "hono";
+import {
+  createPublicClient,
+  decodeEventLog,
+  getAddress,
+  http,
+  parseAbiItem,
+  type Hex,
+} from "viem";
 import type { Env } from "../types";
 import type { AuthVariables } from "../auth/middleware";
 import { getAuthUser } from "../auth/middleware";
+import { maybeAuthUser } from "../users/handlers";
+import { getUserById } from "../db/users";
 import {
   getProjectById,
   recordProjectDeploy,
@@ -12,8 +22,15 @@ import {
   encodeCreateProjectCalldata,
   encodeSetBaseFrozenCIDCalldata,
   encodeMintCalldata,
-  type Hex,
+  projectAbi,
 } from "../lib/abi";
+
+const PROJECT_CREATED = parseAbiItem(
+  "event ProjectCreated(address indexed project, address indexed artist, string name, string symbol, uint96 royaltyBps, uint256 maxSupply)",
+);
+const MINTED = parseAbiItem(
+  "event Minted(uint256 indexed tokenId, address indexed to, bytes32 seed)",
+);
 
 function badRequest(c: Context, code: string, status = 400) {
   return c.json({ error: code }, status as 400);
@@ -38,19 +55,26 @@ function chainConfig(env: Env) {
   return { factory, chainId, rpcUrl };
 }
 
+function publicClient(rpcUrl: string) {
+  return createPublicClient({ transport: http(rpcUrl) });
+}
+
 /**
  * POST /v1/projects/:id/mint/prepare
  *
- * Returns the calldata + target the user's wallet should sign next, so
- * the Worker stays a *thin* coordinator and never touches a private key.
+ * Returns the calldata + target the user's wallet should sign next.
  *
- * The flow has three phases keyed off project state:
- *   1. `deploy`   — no contract_address yet → call GAProjectFactory.createProject
- *   2. `lock_cid` — contract deployed, CID not yet locked on-chain → call setBaseFrozenCID
- *   3. `mint`     — CID locked → call GAProject.mint(seed)
+ * Auth model:
+ *   - phase=deploy / lock_cid → owner only (requires SIWE session)
+ *   - phase=mint              → public (any wallet can mint after the
+ *                                CID is locked on-chain)
  *
- * The client tells us which phase it's in (or asks for "auto"); the
- * Worker validates ownership for deploy/lock_cid and returns calldata.
+ * The `mint` phase is also gated on the *on-chain* lock state read
+ * directly from the deployed `GAProject` clone, not on the D1
+ * `frozen_cid` column — D1 can lag the chain or be wrong, but the
+ * contract's `isCIDLocked()` is the source of truth. If the contract
+ * isn't locked yet, we return 409 `cid_not_locked` so the UI can
+ * surface "the artist hasn't finalised this drop yet".
  */
 export async function prepareMint(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -70,34 +94,30 @@ export async function prepareMint(
   const body = (await c.req.json().catch(() => ({}))) as Body;
   const requested = (body.phase ?? "auto").toString();
 
-  // Auto-detect the next phase from D1 state. The client renders this
-  // back to the artist/collector and is free to override (e.g. if
-  // they want to retry a stuck deploy with a different gas price).
   let phase: "deploy" | "lock_cid" | "mint";
   if (!project.contract_address) phase = "deploy";
-  else if (!project.deploy_tx_hash) phase = "deploy";
   else phase = "mint";
   if (requested === "deploy" || requested === "lock_cid" || requested === "mint") {
     phase = requested;
   }
 
-  if (phase === "deploy") {
-    // Deploying the per-project clone is artist-only.
-    const session = getAuthUser(c);
-    if (session.uid !== project.owner_id) {
+  // Owner-only phases: require an authenticated session whose uid
+  // matches project.owner_id.
+  if (phase === "deploy" || phase === "lock_cid") {
+    const viewer = await maybeAuthUser(c);
+    if (!viewer) return c.json({ error: "auth_required" }, 401);
+    if (viewer.uid !== project.owner_id) {
       return c.json({ error: "forbidden" }, 403);
     }
-    if (project.contract_address) {
-      return c.json({ error: "already_deployed" }, 409);
-    }
-    // Use the project slug as on-chain name; symbol is the
-    // upper-cased first 6 chars of the slug, padded if too short.
+  }
+
+  if (phase === "deploy") {
+    if (project.contract_address) return c.json({ error: "already_deployed" }, 409);
     const name = project.title.slice(0, 32);
     const symbol = (project.slug.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() || "GAART")
       .slice(0, 6);
-    const royaltyBps = 500; // 5% — hardcoded for hackathon (matches done criteria).
-    const maxSupply = 0n;   // open edition for the demo.
-
+    const royaltyBps = 500;
+    const maxSupply = 0n;
     const data = encodeCreateProjectCalldata(name, symbol, royaltyBps, maxSupply);
     return c.json({
       phase: "deploy",
@@ -110,16 +130,8 @@ export async function prepareMint(
   }
 
   if (phase === "lock_cid") {
-    const session = getAuthUser(c);
-    if (session.uid !== project.owner_id) {
-      return c.json({ error: "forbidden" }, 403);
-    }
-    if (!project.contract_address) {
-      return c.json({ error: "not_deployed" }, 409);
-    }
-    if (!project.frozen_cid) {
-      return c.json({ error: "no_frozen_cid" }, 409);
-    }
+    if (!project.contract_address) return c.json({ error: "not_deployed" }, 409);
+    if (!project.frozen_cid) return c.json({ error: "no_frozen_cid" }, 409);
     const data = encodeSetBaseFrozenCIDCalldata(project.frozen_cid);
     return c.json({
       phase: "lock_cid",
@@ -131,17 +143,26 @@ export async function prepareMint(
     });
   }
 
-  // phase === "mint" — open to anyone with a wallet.
+  // phase === "mint" — open to any connected wallet.
   if (!project.contract_address) {
     return c.json({ error: "not_deployed" }, 409);
   }
-  if (!project.frozen_cid) {
-    return c.json({ error: "no_frozen_cid" }, 409);
+
+  // On-chain truth check: only allow mint calldata when the contract
+  // confirms its CID is locked. Saves the collector from sending a tx
+  // that would revert with CIDNotSet.
+  try {
+    const locked = await publicClient(cfg.rpcUrl).readContract({
+      address: project.contract_address as Hex,
+      abi: projectAbi,
+      functionName: "isCIDLocked",
+    });
+    if (!locked) return c.json({ error: "cid_not_locked" }, 409);
+  } catch (e) {
+    console.error("isCIDLocked read failed", e);
+    return c.json({ error: "rpc_unavailable" }, 503);
   }
 
-  // Seed defaults to a fresh per-mint random 32-byte value generated
-  // server-side using the Workers crypto RNG. The client may pass an
-  // explicit hex seed for reproducible demos.
   let seed: Hex;
   if (body.seed && isHex32(body.seed)) {
     seed = body.seed;
@@ -163,19 +184,22 @@ export async function prepareMint(
 }
 
 interface ConfirmDeployBody {
-  contract_address?: unknown;
   tx_hash?: unknown;
-  chain_id?: unknown;
 }
 
 /**
  * POST /v1/projects/:id/mint/confirm-deploy
  *
- * Called by the client after `factory.createProject` has been mined.
- * The client supplies the new clone address it parsed from the
- * `ProjectCreated` event log + the deploy tx hash; we persist that
- * to D1 so subsequent `mint/prepare` calls advance to the next phase
- * and so `/p/{id}` can deep-link to Basescan.
+ * The client passes the deploy tx hash. The Worker fetches the receipt
+ * from the configured RPC, verifies:
+ *   - tx succeeded
+ *   - tx target was the configured factory
+ *   - a `ProjectCreated(project, artist=session.user.address, …)` log
+ *     was emitted by the factory
+ * and persists the resulting clone address. Trusting only the tx hash
+ * (not a client-provided contract address) means a malicious client
+ * cannot register a project deployed on a different factory or by
+ * a different artist.
  */
 export async function confirmDeploy(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -190,20 +214,62 @@ export async function confirmDeploy(
   if (project.contract_address) return c.json({ error: "already_deployed" }, 409);
 
   const body = (await c.req.json().catch(() => ({}))) as ConfirmDeployBody;
-  if (!isAddress(body.contract_address)) return badRequest(c, "invalid_contract_address");
   if (!isTxHash(body.tx_hash)) return badRequest(c, "invalid_tx_hash");
 
   const cfg = chainConfig(c.env);
-  // Lock the chain id to whatever the Worker is configured for so a
-  // misbehaving client can't claim a deploy on, say, mainnet.
-  if (body.chain_id !== undefined && Number(body.chain_id) !== cfg.chainId) {
-    return badRequest(c, "chain_id_mismatch");
+  if (!cfg.factory || Number.isNaN(cfg.chainId)) {
+    return c.json({ error: "mint_unconfigured" }, 503);
+  }
+  const owner = await getUserById(c.env.DB, project.owner_id);
+  if (!owner) return c.json({ error: "owner_missing" }, 500);
+  const expectedArtist = getAddress(owner.address as Hex);
+  const expectedFactory = getAddress(cfg.factory as Hex);
+
+  let cloneAddr: Hex;
+  try {
+    const client = publicClient(cfg.rpcUrl);
+    const receipt = await client.getTransactionReceipt({
+      hash: body.tx_hash,
+    });
+    if (receipt.status !== "success") {
+      return badRequest(c, "tx_reverted", 409);
+    }
+    if (!receipt.to || getAddress(receipt.to) !== expectedFactory) {
+      return badRequest(c, "wrong_factory", 409);
+    }
+    const found = receipt.logs
+      .filter((l) => getAddress(l.address) === expectedFactory)
+      .map((l) => {
+        try {
+          return decodeEventLog({
+            abi: [PROJECT_CREATED],
+            topics: l.topics as [Hex, ...Hex[]],
+            data: l.data,
+          });
+        } catch {
+          return null;
+        }
+      })
+      .find(
+        (d) =>
+          d?.eventName === "ProjectCreated" &&
+          getAddress((d.args as { artist: Hex }).artist) === expectedArtist,
+      );
+    if (!found) {
+      return badRequest(c, "event_not_found", 409);
+    }
+    cloneAddr = getAddress(
+      (found.args as { project: Hex }).project,
+    ) as Hex;
+  } catch (e) {
+    console.error("confirm-deploy verify failed", e);
+    return c.json({ error: "rpc_unavailable" }, 503);
   }
 
   const updated = await recordProjectDeploy(
     c.env.DB,
     id,
-    body.contract_address,
+    cloneAddr,
     cfg.chainId,
     body.tx_hash,
   );
@@ -211,15 +277,17 @@ export async function confirmDeploy(
   return c.json({ project: publicProject(updated) });
 }
 
+interface ConfirmMintBody {
+  tx_hash?: unknown;
+}
+
 /**
  * POST /v1/projects/:id/mint/confirm-mint
  *
- * Called after a *collector* mints token #1 — flips the project status
- * to "minted" so the dashboard / portfolio show the new badge. Mints of
- * tokens 2..N do not flip status (it stays minted). This endpoint is
- * advisory only — it does not need to be auth'd to a specific user
- * because everything it asserts is already reflected on-chain; we
- * still gate it behind requireAuth to discourage abuse.
+ * Verifies a Minted event was emitted by `project.contract_address`
+ * in the receipt for `tx_hash`, then flips status → 'minted' (no-op
+ * if already minted). Public — anyone who minted should be able to
+ * promote the project's status, since the proof lives on-chain.
  */
 export async function confirmMint(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -230,8 +298,53 @@ export async function confirmMint(
   if (!project) return c.json({ error: "not_found" }, 404);
   if (!project.contract_address) return c.json({ error: "not_deployed" }, 409);
 
+  const body = (await c.req.json().catch(() => ({}))) as ConfirmMintBody;
+  if (!isTxHash(body.tx_hash)) return badRequest(c, "invalid_tx_hash");
+
+  const cfg = chainConfig(c.env);
+  if (Number.isNaN(cfg.chainId)) {
+    return c.json({ error: "mint_unconfigured" }, 503);
+  }
+  const expectedProject = getAddress(project.contract_address as Hex);
+  try {
+    const receipt = await publicClient(cfg.rpcUrl).getTransactionReceipt({
+      hash: body.tx_hash,
+    });
+    if (receipt.status !== "success") return badRequest(c, "tx_reverted", 409);
+    const minted = receipt.logs
+      .filter((l) => getAddress(l.address) === expectedProject)
+      .some((l) => {
+        try {
+          const d = decodeEventLog({
+            abi: [MINTED],
+            topics: l.topics as [Hex, ...Hex[]],
+            data: l.data,
+          });
+          return d.eventName === "Minted";
+        } catch {
+          return false;
+        }
+      });
+    if (!minted) return badRequest(c, "event_not_found", 409);
+  } catch (e) {
+    console.error("confirm-mint verify failed", e);
+    return c.json({ error: "rpc_unavailable" }, 503);
+  }
+
   const updated = await markProjectMinted(c.env.DB, id);
-  // markProjectMinted is a no-op if status is already 'minted' — return
-  // the existing row in that case so the client always gets a 200.
   return c.json({ project: publicProject(updated ?? project) });
+}
+
+/** Whether this Worker has the on-chain factory wired up. Used by the
+ *  client UI's bootstrap to short-circuit before connecting a wallet. */
+export async function mintConfigHandler(
+  c: Context<{ Bindings: Env }>,
+) {
+  const cfg = chainConfig(c.env);
+  return c.json({
+    configured: !!cfg.factory && !Number.isNaN(cfg.chainId),
+    chain_id: Number.isNaN(cfg.chainId) ? null : cfg.chainId,
+    factory_address: cfg.factory ?? null,
+    rpc_url: cfg.rpcUrl || null,
+  });
 }

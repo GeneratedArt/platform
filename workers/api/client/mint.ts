@@ -318,17 +318,37 @@ class MintController {
       // user to switch.
       await this.ensureChain(prep.chain.id);
 
+      // Simulate / estimate gas before asking the wallet to sign.
+      // This catches reverts (e.g. CIDNotSet, MintLimitReached) and
+      // surfaces a "you'll spend ~X gas" preview so the user knows
+      // what they're signing.
+      button.textContent = "Simulating…";
+      const txParams = {
+        from: this.connectedAddress,
+        to: prep.to,
+        data: prep.data,
+        value: prep.value,
+      };
+      let estimatedGas: bigint | null = null;
+      try {
+        const gasHex = (await window.ethereum!.request({
+          method: "eth_estimateGas",
+          params: [txParams],
+        })) as Hex;
+        estimatedGas = BigInt(gasHex);
+        this.feedback(
+          `Simulation OK — estimated gas ${estimatedGas.toLocaleString()}.`,
+        );
+      } catch (e) {
+        const reason = (e as Error).message || "unknown";
+        this.feedback(`Simulation failed: ${reason}`);
+        return;
+      }
+
       button.textContent = "Awaiting wallet…";
       const txHash = (await window.ethereum!.request({
         method: "eth_sendTransaction",
-        params: [
-          {
-            from: this.connectedAddress,
-            to: prep.to,
-            data: prep.data,
-            value: prep.value,
-          },
-        ],
+        params: [txParams],
       })) as Hex;
       this.showTx(txHash, prep.chain.id);
 
@@ -350,19 +370,24 @@ class MintController {
           );
           return;
         }
-        await fetch(
+        const cdRes = await fetch(
           `${this.cfg.apiBase}/v1/projects/${this.projectId}/mint/confirm-deploy`,
           {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contract_address: cloneAddr,
-              tx_hash: txHash,
-              chain_id: prep.chain.id,
-            }),
+            body: JSON.stringify({ tx_hash: txHash }),
           },
         );
+        if (!cdRes.ok) {
+          const err = (await cdRes.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          this.feedback(
+            `Deploy succeeded on-chain but server verification failed: ${err.error ?? cdRes.statusText}.`,
+          );
+          return;
+        }
         this.feedback(
           `Deployed at ${cloneAddr.slice(0, 6)}…${cloneAddr.slice(-4)}.`,
         );
@@ -379,6 +404,7 @@ class MintController {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tx_hash: txHash }),
           },
         );
         this.feedback("Minted! Token is in your wallet.");
