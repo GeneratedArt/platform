@@ -1,18 +1,9 @@
-// Task #20: Minimal Sentry capture for the Worker.
+// Hand-rolled Sentry envelope POST. Skips @sentry/cloudflare
+// (bundle size + auto-instrumentation conflicts with Hono).
 //
-// We deliberately do not pull in `@sentry/cloudflare` — it adds
-// ~30KB to the Worker bundle and the SDK's auto-instrumentation
-// fights Hono's middleware chain. Instead this file constructs a
-// Sentry envelope by hand and POSTs it to the project's ingest
-// endpoint derived from SENTRY_DSN. When SENTRY_DSN is unset (dev,
-// or before secrets are wired in prod) every helper is a no-op so
-// nothing leaks to a public network.
-//
-// PII stripping policy:
-//   - We never include cookies, Authorization headers, or request
-//     bodies in the event payload.
-//   - User context is limited to {id} — no address, handle, email.
-//   - Tags surface only route, status, request_id, and worker env.
+// PII policy: no cookies, no Authorization, no request body, no
+// user handle/address/email. Only {id} on user; only request_id /
+// route / status on tags.
 
 import type { Env } from "../types";
 

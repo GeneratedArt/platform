@@ -1,19 +1,5 @@
-// Task #20: Structured logging + request_id helper.
-//
-// Every Worker request emits exactly one JSON access-log line via
-// `logAccess()` once the response is finalised. Errors call
-// `logError()` (which is also picked up by Cloudflare's log view).
-// We deliberately use plain `console.log/error` rather than a fancy
-// transport — Cloudflare's runtime captures stdout/stderr and the
-// dashboard already pretty-prints JSON.
-//
-// `request_id` is a short UUID-ish string generated per request and
-// attached to:
-//   1. the structured log line,
-//   2. the error response body (so a user-reported screenshot is
-//      one click away from the stack trace),
-//   3. the `x-request-id` response header,
-//   4. the Sentry tag on captureException() (see lib/sentry.ts).
+// Structured access logging + request_id helpers.
+// One JSON line per request via logAccess(); ad-hoc errors via logError().
 
 export type LogLevel = "info" | "warn" | "error";
 

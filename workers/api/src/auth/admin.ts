@@ -1,13 +1,6 @@
-// Task #20: env-var-gated admin middleware.
-//
-// `users.is_admin` does not yet exist in the schema (Task #21
-// "Moderation & admin console" will introduce it). For v1 we gate
-// on a comma-separated allowlist of handles in the `ADMIN_HANDLES`
-// environment variable — small enough to live in wrangler.toml.vars
-// and easy to flip on a deploy without a migration.
-//
-// `requireAdmin` runs *after* `requireAuth`, so the JWT is already
-// validated and `c.get("user")` returns the session payload.
+// Env-var-gated admin middleware. Closed-by-default: when
+// ADMIN_HANDLES is unset or empty the route 403s admin_unconfigured.
+// Runs after requireAuth so c.get("user") is populated.
 
 import type { Context, MiddlewareHandler } from "hono";
 import type { Env } from "../types";

@@ -1,12 +1,6 @@
-// Task #20: Uptime probe + Slack notifier.
-//
-// Triggered every minute by the Cloudflare cron `* * * * *`. Hits
-// three URLs and pages the configured Slack channel when any of
-// them fail. Each incident is muted for `MUTE_SECONDS` so a flapping
-// origin doesn't wake the team every minute.
-//
-// Disabled (no-op) when SLACK_WEBHOOK_URL is unset OR when
-// UPTIME_PUBLIC_BASE is unset. This means local dev never pages.
+// Per-minute uptime probe. Hits /health, /v1/me (expect 401), and
+// an optional public project URL; pages Slack on failure with a
+// per-URL 5-min mute via KV. No-op when UPTIME_PUBLIC_BASE is unset.
 
 import type { Env } from "../types";
 

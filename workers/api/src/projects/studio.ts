@@ -180,7 +180,6 @@ export async function commitProjectFileHandler(
     } catch (e) {
       console.error("event_commit_failed", e);
     }
-    // Task #20: bump commits_per_hour metric for activity-drop alerts.
     try {
       const { safeBumpActivity } = await import("../lib/metrics");
       await safeBumpActivity(c.env, "commit");

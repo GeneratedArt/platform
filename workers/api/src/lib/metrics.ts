@@ -1,97 +1,77 @@
-// Task #20: D1-backed rolling metric counters.
+// Per-minute rolling counters for /v1/internal/stats.
 //
-// Three counter families:
-//   * activity counters  — kind in {"commit","mint","freeze"}; a
-//     simple +1 per success. Used for the activity-drop alerts the
-//     task brief calls out (commits_per_hour etc).
-//   * request counters   — kind in {"request","error"}; written by
-//     the per-request access middleware; broken down by route.
-//   * latency counters   — kind = "latency"; carries sum_ms and
-//     max_ms so readStats() can produce avg + p95-ish numbers
-//     without per-sample storage.
+// Three counter families share one table:
+//   * activity (commit/mint/freeze)  — global, route=''
+//   * request / error                — per route
+//   * latency histogram              — kind=lat_h{0..7}, per route
 //
-// Reads only ever look at the last 1h of buckets, so the table
-// stays small. A nightly prune (in the existing scheduled handler)
-// drops anything older than 48h.
+// readStats() filters strictly to the last 60 minutes via bucket_min.
 
 import type { D1Database } from "@cloudflare/workers-types";
 import type { Env } from "../types";
 
 export type ActivityKind = "commit" | "mint" | "freeze";
-export type RequestKind = "request" | "error";
 
-export function hourBucket(now: number = Date.now()): number {
-  return Math.floor(now / 1000 / 3600);
-}
-
-/**
- * Increment an activity counter (commits/mints/freezes). Caller is
- * expected to wrap this in `ctx.waitUntil()` so a counter write
- * never blocks the user-facing response.
- */
-// Sentinel for activity counters — see note in metric_counters
-// schema. SQLite treats NULL as distinct in UNIQUE constraints, so
-// `ON CONFLICT(kind,hour_bucket,route)` would never match if we
-// stored NULL here and every increment would land as a new row.
-// Empty string is reserved for the "global / no route" bucket.
 const NO_ROUTE = "";
 
+// Histogram boundaries in ms. 8 buckets total; the last is open-ended.
+// Keep this stable — readStats() relies on the index/edge alignment.
+const LATENCY_EDGES = [50, 100, 250, 500, 1000, 2500, 5000];
+
+export function minuteBucket(now: number = Date.now()): number {
+  return Math.floor(now / 60_000);
+}
+
+function latencyBucketIndex(ms: number): number {
+  for (let i = 0; i < LATENCY_EDGES.length; i++) {
+    if (ms < LATENCY_EDGES[i]) return i;
+  }
+  return LATENCY_EDGES.length;
+}
+
 export async function bumpActivity(db: D1Database, kind: ActivityKind): Promise<void> {
-  const bucket = hourBucket();
   await db
     .prepare(
-      `INSERT INTO metric_counters (kind, hour_bucket, route, count)
+      `INSERT INTO metric_counters (kind, bucket_min, route, count)
        VALUES (?, ?, ?, 1)
-       ON CONFLICT(kind, hour_bucket, route) DO UPDATE SET count = count + 1`,
+       ON CONFLICT(kind, bucket_min, route) DO UPDATE SET count = count + 1`,
     )
-    .bind(kind, bucket, NO_ROUTE)
+    .bind(kind, minuteBucket(), NO_ROUTE)
     .run();
 }
 
-/**
- * Per-request increment with route + latency. Called from the
- * access-log middleware after the response status is known.
- */
 export async function bumpRequest(
   db: D1Database,
-  args: {
-    route: string;
-    status: number;
-    latency_ms: number;
-  },
+  args: { route: string; status: number; latency_ms: number },
 ): Promise<void> {
-  const bucket = hourBucket();
+  const bucket = minuteBucket();
   const route = sanitizeRoute(args.route);
   const ms = Math.max(0, Math.min(60_000, Math.round(args.latency_ms)));
+  const histKind = `lat_h${latencyBucketIndex(ms)}`;
 
-  // Single-statement BATCH so the three rows land or fail together;
-  // a partial write would skew error_rate readings.
   const stmts = [
     db
       .prepare(
-        `INSERT INTO metric_counters (kind, hour_bucket, route, count)
+        `INSERT INTO metric_counters (kind, bucket_min, route, count)
          VALUES ('request', ?, ?, 1)
-         ON CONFLICT(kind, hour_bucket, route) DO UPDATE SET count = count + 1`,
+         ON CONFLICT(kind, bucket_min, route) DO UPDATE SET count = count + 1`,
       )
       .bind(bucket, route),
     db
       .prepare(
-        `INSERT INTO metric_counters (kind, hour_bucket, route, count, sum_ms, max_ms)
-         VALUES ('latency', ?, ?, 1, ?, ?)
-         ON CONFLICT(kind, hour_bucket, route) DO UPDATE
-           SET count = count + 1,
-               sum_ms = sum_ms + excluded.sum_ms,
-               max_ms = MAX(max_ms, excluded.max_ms)`,
+        `INSERT INTO metric_counters (kind, bucket_min, route, count)
+         VALUES (?, ?, ?, 1)
+         ON CONFLICT(kind, bucket_min, route) DO UPDATE SET count = count + 1`,
       )
-      .bind(bucket, route, ms, ms),
+      .bind(histKind, bucket, route),
   ];
   if (args.status >= 500) {
     stmts.push(
       db
         .prepare(
-          `INSERT INTO metric_counters (kind, hour_bucket, route, count)
+          `INSERT INTO metric_counters (kind, bucket_min, route, count)
            VALUES ('error', ?, ?, 1)
-           ON CONFLICT(kind, hour_bucket, route) DO UPDATE SET count = count + 1`,
+           ON CONFLICT(kind, bucket_min, route) DO UPDATE SET count = count + 1`,
         )
         .bind(bucket, route),
     );
@@ -99,99 +79,126 @@ export async function bumpRequest(
   await db.batch(stmts);
 }
 
+export interface RouteRow {
+  route: string;
+  requests: number;
+  errors: number;
+  error_rate: number;
+  p50_ms: number;
+  p95_ms: number;
+}
+
 export interface StatsSnapshot {
-  hour_bucket: number;
+  window_min: number;
   commits_per_hour: number;
   mints_per_hour: number;
   freezes_per_hour: number;
   request_count_1h: number;
   error_count_1h: number;
   error_rate: number;
-  by_route: Array<{
-    route: string;
-    requests: number;
-    errors: number;
-    avg_ms: number;
-    max_ms: number;
-  }>;
+  p50_ms: number;
+  p95_ms: number;
+  by_route: RouteRow[];
 }
 
 export async function readStats(db: D1Database): Promise<StatsSnapshot> {
-  const bucket = hourBucket();
-  // 1h cutoff. Two buckets are queried so reads near a bucket boundary
-  // see a contiguous window.
-  const minBucket = bucket - 1;
+  const now = minuteBucket();
+  const windowMin = 60;
+  const minBucket = now - windowMin + 1; // strict last 60 minutes
 
-  const [counters, perRoute] = await Promise.all([
-    db
-      .prepare(
-        `SELECT kind, SUM(count) AS n
-           FROM metric_counters
-          WHERE hour_bucket >= ?
-            AND kind IN ('commit','mint','freeze','request','error')
-          GROUP BY kind`,
-      )
-      .bind(minBucket)
-      .all<{ kind: string; n: number }>(),
-    db
-      .prepare(
-        `SELECT route,
-                COALESCE(SUM(CASE WHEN kind='request' THEN count END), 0) AS requests,
-                COALESCE(SUM(CASE WHEN kind='error'   THEN count END), 0) AS errors,
-                COALESCE(SUM(CASE WHEN kind='latency' THEN sum_ms END), 0) AS sum_ms,
-                COALESCE(SUM(CASE WHEN kind='latency' THEN count  END), 0) AS samples,
-                COALESCE(MAX(CASE WHEN kind='latency' THEN max_ms END), 0) AS max_ms
-           FROM metric_counters
-          WHERE hour_bucket >= ?
-            AND route IS NOT NULL
-            AND route != ''
-          GROUP BY route
-          ORDER BY requests DESC
-          LIMIT 50`,
-      )
-      .bind(minBucket)
-      .all<{
-        route: string;
-        requests: number;
-        errors: number;
-        sum_ms: number;
-        samples: number;
-        max_ms: number;
-      }>(),
-  ]);
+  // Single fan-out read: pull every row in the window, aggregate in JS.
+  // The window holds <= ~3000 rows (60 min × ~50 routes × few kinds).
+  const rs = await db
+    .prepare(
+      `SELECT kind, route, count
+         FROM metric_counters
+        WHERE bucket_min >= ?`,
+    )
+    .bind(minBucket)
+    .all<{ kind: string; route: string; count: number }>();
 
-  const byKind = new Map<string, number>();
-  for (const r of counters.results ?? []) byKind.set(r.kind, r.n);
-  const requests = byKind.get("request") ?? 0;
-  const errors = byKind.get("error") ?? 0;
+  const totals: Record<string, number> = {
+    commit: 0,
+    mint: 0,
+    freeze: 0,
+    request: 0,
+    error: 0,
+  };
+  // route -> { requests, errors, hist[8] }
+  const perRoute = new Map<
+    string,
+    { requests: number; errors: number; hist: number[] }
+  >();
+  // global histogram
+  const globalHist = new Array<number>(LATENCY_EDGES.length + 1).fill(0);
+
+  for (const row of rs.results ?? []) {
+    if (row.kind in totals) totals[row.kind] += row.count;
+    const isHist = row.kind.startsWith("lat_h");
+    const isReq = row.kind === "request";
+    const isErr = row.kind === "error";
+    if (!isHist && !isReq && !isErr) continue;
+    if (!row.route) continue;
+    let agg = perRoute.get(row.route);
+    if (!agg) {
+      agg = { requests: 0, errors: 0, hist: new Array(LATENCY_EDGES.length + 1).fill(0) };
+      perRoute.set(row.route, agg);
+    }
+    if (isReq) agg.requests += row.count;
+    else if (isErr) agg.errors += row.count;
+    else if (isHist) {
+      const idx = parseInt(row.kind.slice("lat_h".length), 10);
+      if (idx >= 0 && idx <= LATENCY_EDGES.length) {
+        agg.hist[idx] += row.count;
+        globalHist[idx] += row.count;
+      }
+    }
+  }
+
+  const byRoute: RouteRow[] = [];
+  for (const [route, agg] of perRoute) {
+    byRoute.push({
+      route,
+      requests: agg.requests,
+      errors: agg.errors,
+      error_rate: agg.requests > 0 ? +(agg.errors / agg.requests).toFixed(4) : 0,
+      p50_ms: histPercentile(agg.hist, 0.5),
+      p95_ms: histPercentile(agg.hist, 0.95),
+    });
+  }
+  byRoute.sort((a, b) => b.requests - a.requests);
 
   return {
-    hour_bucket: bucket,
-    commits_per_hour: byKind.get("commit") ?? 0,
-    mints_per_hour: byKind.get("mint") ?? 0,
-    freezes_per_hour: byKind.get("freeze") ?? 0,
-    request_count_1h: requests,
-    error_count_1h: errors,
-    error_rate: requests > 0 ? +(errors / requests).toFixed(4) : 0,
-    by_route: (perRoute.results ?? []).map((r) => ({
-      route: r.route,
-      requests: r.requests,
-      errors: r.errors,
-      avg_ms: r.samples > 0 ? Math.round(r.sum_ms / r.samples) : 0,
-      max_ms: r.max_ms,
-    })),
+    window_min: windowMin,
+    commits_per_hour: totals.commit,
+    mints_per_hour: totals.mint,
+    freezes_per_hour: totals.freeze,
+    request_count_1h: totals.request,
+    error_count_1h: totals.error,
+    error_rate: totals.request > 0 ? +(totals.error / totals.request).toFixed(4) : 0,
+    p50_ms: histPercentile(globalHist, 0.5),
+    p95_ms: histPercentile(globalHist, 0.95),
+    by_route: byRoute.slice(0, 50),
   };
 }
 
-/**
- * Best-effort wrapper for activity increments: swallows any error
- * and emits a warn line so a counter outage never breaks user flow.
- * Intended for `ctx.waitUntil(safeBump(...))` from handlers.
- */
-export async function safeBumpActivity(
-  env: Env,
-  kind: ActivityKind,
-): Promise<void> {
+function histPercentile(hist: number[], q: number): number {
+  const total = hist.reduce((a, b) => a + b, 0);
+  if (total === 0) return 0;
+  const target = Math.ceil(total * q);
+  let cum = 0;
+  for (let i = 0; i < hist.length; i++) {
+    cum += hist[i];
+    if (cum >= target) {
+      // Report the upper edge of the bucket; final (open) bucket
+      // reports its lower edge as a conservative estimate.
+      return i < LATENCY_EDGES.length ? LATENCY_EDGES[i] : LATENCY_EDGES[LATENCY_EDGES.length - 1];
+    }
+  }
+  return LATENCY_EDGES[LATENCY_EDGES.length - 1];
+}
+
+export async function safeBumpActivity(env: Env, kind: ActivityKind): Promise<void> {
   try {
     await bumpActivity(env.DB, kind);
   } catch (err) {
@@ -210,11 +217,11 @@ export async function safeBumpRequest(
   }
 }
 
-/** Drop counter rows older than 48h. Called from the daily cron. */
+/** Drop counter rows older than 24h. Called from the daily cron. */
 export async function pruneOldMetrics(db: D1Database): Promise<void> {
-  const cutoff = hourBucket() - 48;
+  const cutoff = minuteBucket() - 24 * 60;
   await db
-    .prepare(`DELETE FROM metric_counters WHERE hour_bucket < ?`)
+    .prepare(`DELETE FROM metric_counters WHERE bucket_min < ?`)
     .bind(cutoff)
     .run();
 }
@@ -222,9 +229,6 @@ export async function pruneOldMetrics(db: D1Database): Promise<void> {
 const ROUTE_ALLOWED = /^[a-z0-9_:./-]+$/i;
 
 function sanitizeRoute(route: string): string {
-  // The middleware passes the matched Hono path (e.g. "/v1/projects/:id/commit").
-  // Belt-and-braces: clip at 120 chars and refuse anything weird so a
-  // crafted URL can't smuggle SQL or 1MB of garbage into the table.
   const clipped = route.slice(0, 120);
   return ROUTE_ALLOWED.test(clipped) ? clipped : "_invalid";
 }

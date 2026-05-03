@@ -245,7 +245,6 @@ function attachEvents(cfg: DashboardConfig) {
 
 const GADashboard = {
   async mount(cfg: DashboardConfig & { onUnauthenticated?: () => void }) {
-    // Task #20: install global error reporter early.
     installClientErrorReporter({ apiBase: cfg.apiBase, page: "dashboard" });
     let me: MeResponse | null = null;
     try {

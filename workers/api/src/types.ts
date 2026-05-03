@@ -55,31 +55,13 @@ export interface Env {
   // set in production. When 1, pinBundle() reports both providers as
   // pinned without making any network calls.
   PINNING_MOCK?: string;
-  // --- Task #20: Observability & error monitoring -------------------------
-  // Sentry DSN for the Worker. When unset, captureException() is a
-  // no-op — local dev never beacons. Set in production via:
-  //   wrangler secret put SENTRY_DSN --env production
-  SENTRY_DSN?: string;
-  // Optional environment label included on every captured event.
-  // Defaults to "production" inside captureException when omitted.
+  // Observability — all optional, no-op when unset.
+  SENTRY_DSN?: string;            // worker exceptions
+  SENTRY_DSN_PUBLIC?: string;     // browser-forwarded errors (separate quota)
   SENTRY_ENVIRONMENT?: string;
-  // Public DSN forwarded to client-side error handlers via the
-  // /v1/internal/client-error route. Distinct from the worker DSN
-  // so the client and worker can be sampled / quota'd separately.
-  SENTRY_DSN_PUBLIC?: string;
-  // Slack incoming webhook the per-minute uptime probe pages on
-  // failure. When unset the probe still runs (and logs results) but
-  // never posts.
-  SLACK_WEBHOOK_URL?: string;
-  // CSV of handles allowed to hit /v1/internal/* surfaces. Empty
-  // means closed by default — the route 403s `admin_unconfigured`.
-  ADMIN_HANDLES?: string;
-  // Public origin the uptime probe should hit (e.g.
-  // https://api.generatedart.com). When unset the probe is a no-op
-  // so a misconfigured dev environment doesn't ping random hosts.
+  SLACK_WEBHOOK_URL?: string;     // uptime probe pages
+  ADMIN_HANDLES?: string;         // csv allowlist for /v1/internal/*
   UPTIME_PUBLIC_BASE?: string;
-  // Optional third URL (typically a known public project page) the
-  // probe also hits. Defaults to skipped when unset.
   UPTIME_PROJECT_PROBE_URL?: string;
 }
 

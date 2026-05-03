@@ -1,14 +1,13 @@
-// Task #20: /v1/internal/stats — admin-only health snapshot.
-//
-// Read-only. Pulls activity + request + latency counters from D1
-// (lib/metrics.ts) and inspects the RATE_LIMIT KV for the
-// approximate bucket size. No secrets in the response.
+// /v1/internal/stats — admin-only health snapshot.
+// /v1/internal/_throw — admin-only forced 500 to verify request_id.
+// /v1/internal/client-error — public, IP rate-limited client error sink.
 
 import type { Context } from "hono";
 import type { Env } from "../types";
 import type { AuthVariables } from "../auth/middleware";
 import { readStats } from "../lib/metrics";
 import { logError } from "../lib/log";
+import { captureException } from "../lib/sentry";
 
 export async function statsHandler(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -16,9 +15,6 @@ export async function statsHandler(
   const requestId = c.get("requestId");
   try {
     const snap = await readStats(c.env.DB);
-    // Approximate rate-limit bucket size — list returns up to 1000
-    // keys; for ops visibility "more than X buckets active" is
-    // enough.
     let rate_limit_buckets = 0;
     try {
       const list = await c.env.RATE_LIMIT.list({ limit: 1000 });
@@ -30,6 +26,7 @@ export async function statsHandler(
       stats: { ...snap, rate_limit_buckets },
       env: {
         sentry_configured: Boolean(c.env.SENTRY_DSN),
+        sentry_public_configured: Boolean(c.env.SENTRY_DSN_PUBLIC),
         slack_configured: Boolean(c.env.SLACK_WEBHOOK_URL),
         uptime_base: c.env.UPTIME_PUBLIC_BASE ?? null,
       },
@@ -37,36 +34,40 @@ export async function statsHandler(
     });
   } catch (err) {
     logError(requestId, "stats_handler_failed", err);
-    return c.json(
-      { error: "stats_failed", request_id: requestId },
-      500,
-    );
+    return c.json({ error: "stats_failed", request_id: requestId }, 500);
   }
 }
 
-/**
- * Forced-throw smoke route. Admin-only; raises so the global
- * onError handler runs. The point is to verify the request_id
- * round-trips end to end (response body, log line, Sentry tag).
- */
 export async function throwHandler(
   _c: Context<{ Bindings: Env; Variables: AuthVariables }>,
 ): Promise<Response> {
   throw new Error("forced_internal_throw_for_smoke_test");
 }
 
-/**
- * Receives client-side errors from studio.ts / dashboard.ts /
- * galleries.ts. Public + rate-limited at the handler level so an
- * abusive page can't fill the log pipeline. The body is bounded at
- * 4KB before we even decode it.
- */
 const CLIENT_ERROR_MAX_BYTES = 4 * 1024;
+const CLIENT_ERROR_LIMIT_PER_MIN = 30;
 
 export async function clientErrorHandler(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
 ) {
   const requestId = c.get("requestId");
+
+  // Per-IP rate limit: 30 reports / minute. Prevents an abusive page
+  // from filling the log pipeline or burning Sentry quota.
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const minute = Math.floor(Date.now() / 60_000);
+  const rlKey = `cerr:${minute}:${ip}`;
+  try {
+    const cur = await c.env.RATE_LIMIT.get(rlKey);
+    const n = cur ? parseInt(cur, 10) : 0;
+    if (n >= CLIENT_ERROR_LIMIT_PER_MIN) {
+      return c.json({ error: "rate_limited", request_id: requestId }, 429);
+    }
+    await c.env.RATE_LIMIT.put(rlKey, String(n + 1), { expirationTtl: 90 });
+  } catch {
+    // KV outage — fail open rather than block error reporting
+  }
+
   const len = parseInt(c.req.header("content-length") ?? "0", 10);
   if (Number.isFinite(len) && len > CLIENT_ERROR_MAX_BYTES) {
     return c.json({ error: "payload_too_large", request_id: requestId }, 413);
@@ -83,7 +84,7 @@ export async function clientErrorHandler(
   const page = typeof b.page === "string" ? b.page.slice(0, 200) : null;
   const ua = c.req.header("user-agent")?.slice(0, 200) ?? null;
   const session = c.get("user");
-  // Structured log so Logflare / Cloudflare logs pick it up.
+
   console.error(
     JSON.stringify({
       ts: new Date().toISOString(),
@@ -97,20 +98,28 @@ export async function clientErrorHandler(
       user_id: session?.uid ?? null,
     }),
   );
-  // Best-effort Sentry forward. Imported lazily to keep the cold
-  // path light when no client errors fire.
-  try {
-    const { captureException } = await import("../lib/sentry");
-    const err = new Error(message);
-    if (stack) err.stack = stack;
-    await captureException(c.env, err, {
-      request_id: requestId,
-      route: "client",
-      tags: { source: "client", page: page ?? "" },
-      user_id: session?.uid ?? null,
-    });
-  } catch {
-    // already logged above
+
+  // Forward to a *separate* Sentry project via SENTRY_DSN_PUBLIC so
+  // browser-side noise has its own quota / sampling and doesn't
+  // crowd out worker exceptions on SENTRY_DSN.
+  if (c.env.SENTRY_DSN_PUBLIC) {
+    try {
+      const err = new Error(message);
+      if (stack) err.stack = stack;
+      // captureException reads SENTRY_DSN; pass an env override.
+      await captureException(
+        { ...c.env, SENTRY_DSN: c.env.SENTRY_DSN_PUBLIC } as Env,
+        err,
+        {
+          request_id: requestId,
+          route: "client",
+          tags: { source: "client", page: page ?? "" },
+          user_id: session?.uid ?? null,
+        },
+      );
+    } catch {
+      // already logged structured above
+    }
   }
   return c.json({ ok: true, request_id: requestId });
 }

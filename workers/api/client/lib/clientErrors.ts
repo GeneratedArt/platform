@@ -1,9 +1,5 @@
-// Task #20: Tiny client-side error reporter shared by all bundles.
-//
-// Installs window.onerror + unhandledrejection handlers that POST a
-// stripped payload to /v1/internal/client-error. The Worker logs it
-// structured and best-effort forwards to Sentry. Designed to add a
-// negligible byte budget to each bundle (~0.5KB after gzip).
+// Window onerror / unhandledrejection → POST /v1/internal/client-error.
+// Per-page de-dupe and 10-report cap; the Worker rate-limits per IP.
 
 const SEEN = new Set<string>();
 const MAX_REPORTS_PER_PAGE = 10;

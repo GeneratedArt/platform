@@ -568,8 +568,6 @@ class StudioController {
 
 const GAStudio = {
   mount(cfg: StudioConfig) {
-    // Task #20: install global error reporter early so a crash
-    // during ctrl.start() is still captured.
     installClientErrorReporter({ apiBase: cfg.apiBase, page: "studio" });
     const ctrl = new StudioController(cfg);
     void ctrl.start();
