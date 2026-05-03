@@ -48,6 +48,11 @@ import { searchHandler } from "./search/handlers";
 import { exploreHandler } from "./explore/handlers";
 import { projectOgHandler, projectOgDataHandler } from "./og/handlers";
 import { pruneOldViewEvents } from "./db/events";
+import {
+  feedHandler,
+  notificationsHandler,
+  markNotificationsReadHandler,
+} from "./feed/handlers";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -131,6 +136,13 @@ v1.get("/og/projects/:id{[0-9]+}", projectOgHandler);
 // JSON variant consumed by the /p/ Pages Function so the static
 // project page itself carries project-specific OG meta.
 v1.get("/og/projects/:id{[0-9]+}/data", projectOgDataHandler);
+
+// Activity feed + in-app notifications. All three are personal — the
+// handlers set Cache-Control: private,no-store so the edge cache
+// never mixes one viewer's feed with another's.
+v1.get("/feed", requireAuth, feedHandler);
+v1.get("/notifications", requireAuth, notificationsHandler);
+v1.post("/notifications/read", requireAuth, markNotificationsReadHandler);
 
 app.route("/v1", v1);
 

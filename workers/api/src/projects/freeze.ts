@@ -13,6 +13,7 @@ import {
 } from "../db/frozen";
 import { buildBundle } from "../lib/freeze";
 import { pinBundle } from "../lib/pinning";
+import { recordEvent } from "../db/events";
 
 /**
  * POST /v1/projects/:id/freeze
@@ -119,6 +120,24 @@ export async function freezeProject(
     pin_errors: Object.keys(pin.errors).length > 0 ? pin.errors : null,
   });
 
+  try {
+    await recordEvent(c.env.DB, {
+      kind: "freeze",
+      actor_id: session.uid,
+      target_kind: "frozen",
+      target_id: row.id,
+      payload: {
+        project_id: project.id,
+        title: project.title,
+        slug: project.slug,
+        commit_sha: row.commit_sha,
+        cid: row.cid,
+        bundle_hash: row.bundle_hash,
+      },
+    });
+  } catch (e) {
+    console.error("event_freeze_failed", e);
+  }
   return c.json({ frozen: publicFrozen(row) }, 201);
 }
 

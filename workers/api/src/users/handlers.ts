@@ -16,6 +16,7 @@ import {
   listFollowers,
   listFollowing,
 } from "../db/follows";
+import { recordEvent } from "../db/events";
 import { checkRateLimit } from "../lib/rateLimit";
 import { commitAuthorProfile, GitHubError } from "../lib/github";
 import { SESSION_COOKIE } from "../lib/cookies";
@@ -363,7 +364,26 @@ export async function followHandler(
   });
   if (!rl.ok) return c.json({ error: "rate_limited", reset_at: rl.resetAt }, 429);
 
-  await followUser(c.env.DB, session.uid, target.id);
+  const { created } = await followUser(c.env.DB, session.uid, target.id);
+  // Only emit on a fresh follow so a double-tap doesn't spam the
+  // recipient's notification drawer. The recipient gets a personal
+  // notification (recipient_id = target.id); we do NOT broadcast a
+  // follow into the public feed since that's noisy and low-signal.
+  if (created) {
+    try {
+      await recordEvent(c.env.DB, {
+        kind: "follow",
+        actor_id: session.uid,
+        target_kind: "user",
+        target_id: target.id,
+        recipient_id: target.id,
+        payload: { handle: target.handle },
+      });
+    } catch (e) {
+      // Feed write must never fail the primary follow action.
+      console.error("event_follow_failed", e);
+    }
+  }
   const counts = await getFollowCounts(c.env.DB, target.id);
   return c.json({ is_following: true, counts });
 }

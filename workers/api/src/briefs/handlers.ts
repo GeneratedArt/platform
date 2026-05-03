@@ -14,6 +14,7 @@ import {
   type BriefRow,
   type BriefAuthor,
 } from "../db/briefs";
+import { recordEvent } from "../db/events";
 
 const TITLE_MAX = 200;
 const BODY_MAX = 10_000;
@@ -205,5 +206,18 @@ export async function createBriefHandler(
   });
   const author = await getBriefAuthor(c.env.DB, session.uid);
   if (!author) return c.json({ error: "author_missing" }, 500);
+  // Public-feed event so followers of the briefing org/individual see
+  // the new brief in their feed. No recipient_id — this is broadcast.
+  try {
+    await recordEvent(c.env.DB, {
+      kind: "brief_posted",
+      actor_id: session.uid,
+      target_kind: "brief",
+      target_id: row.id,
+      payload: { title: row.title, industry: row.industry },
+    });
+  } catch (e) {
+    console.error("event_brief_posted_failed", e);
+  }
   return c.json({ brief: publicBrief(row, author) }, 201);
 }

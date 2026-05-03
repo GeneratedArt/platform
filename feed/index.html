@@ -1,0 +1,79 @@
+---
+layout: default
+title: Feed
+permalink: /feed/
+description: Reverse-chronological activity from artists you follow.
+robots: noindex, nofollow
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+
+    <header class="d-flex flex-wrap align-items-center justify-content-between mb-6">
+      <div>
+        <h1 class="mb-1">Feed</h1>
+        <p class="text-muted mb-0">Recent activity from artists you follow.</p>
+      </div>
+      <a href="/explore/" class="btn btn-sm btn-outline-secondary">Explore</a>
+    </header>
+
+    <div id="ga-feed-root">
+      <div class="ga-feed-loading text-muted">Loading feed&hellip;</div>
+    </div>
+
+    <template id="ga-feed-empty-tpl">
+      <div class="ga-feed-empty">
+        <h3>No signal yet.</h3>
+        <p class="text-muted">
+          Follow a few artists to start seeing commits, freezes and mints here.
+        </p>
+        <ul class="ga-feed-suggestions list-unstyled" data-suggestions></ul>
+      </div>
+    </template>
+
+    <template id="ga-feed-signin-tpl">
+      <div class="ga-feed-empty">
+        <h3>Sign in to see your feed.</h3>
+        <p class="text-muted">
+          Your feed shows activity from artists you follow. Connect a wallet to start curating it.
+        </p>
+        <p><a class="btn btn-sm btn-primary" href="/dashboard/">Sign in</a></p>
+      </div>
+    </template>
+  </div>
+</section>
+
+<style>
+  .ga-feed-list { margin: 0; padding: 0; }
+  .ga-feed-item { border-bottom: 1px solid var(--ga-rule); padding: 14px 0; }
+  .ga-feed-item-unread { background: rgba(255, 215, 0, 0.06); }
+  .ga-feed-link { display: flex; gap: 12px; align-items: flex-start; color: inherit; text-decoration: none; }
+  .ga-feed-avatar { width: 36px; height: 36px; border-radius: 50%; flex: none; object-fit: cover; }
+  .ga-feed-avatar-fallback {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ga-rule, #eee); font-size: 12px; font-weight: 600;
+  }
+  .ga-feed-body { flex: 1 1 auto; min-width: 0; }
+  .ga-feed-text { line-height: 1.4; }
+  .ga-feed-time { display: block; font-size: 12px; color: var(--ga-mute, #888); margin-top: 4px; }
+  .ga-feed-empty { text-align: center; padding: 60px 0; }
+  .ga-feed-suggestions li { padding: 10px 0; display: flex; gap: 10px; align-items: center; justify-content: center; }
+</style>
+
+<!-- ga-auth.js + ga-feed.js are loaded globally from
+     _includes/core/scripts/scripts.html — don't double-load here.
+     Mirror the apiBase resolution onto the feed root so bootFeedPage()
+     can read it from data-api-base. -->
+<script>
+  (function () {
+    var apiBase = document.body.dataset.gaApiBase
+      || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+        ? "http://" + location.hostname + ":8787"
+        : "https://api.generatedart.com");
+    var root = document.getElementById("ga-feed-root");
+    if (root) root.dataset.apiBase = apiBase;
+  })();
+</script>
