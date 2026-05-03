@@ -549,11 +549,8 @@ const GAMint = {
 
 window.GAMint = GAMint;
 
-document.addEventListener("DOMContentLoaded", () => {
-  const apiBase =
-    (document.querySelector('meta[name="ga-api-base"]') as HTMLMetaElement | null)
-      ?.content ?? DEFAULTS.apiBase;
-  void GAMint.start({ apiBase });
-});
+// No auto-start: /mint/index.html computes the right apiBase
+// (localhost for dev, https://api.generatedart.com for prod) and
+// calls GAMint.start() explicitly, mirroring /p/index.html.
 
 export {};

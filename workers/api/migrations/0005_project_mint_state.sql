@@ -12,10 +12,8 @@ ALTER TABLE projects ADD COLUMN chain_id         INTEGER;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_contract_address
   ON projects(contract_address) WHERE contract_address IS NOT NULL;
 
--- Hardcoded frozen bundle for the hackathon demo project (ga-smoke / id 5).
--- The full freeze pipeline is P1 follow-up; for the hackathon we want
--- one project that can be minted end-to-end against Base Sepolia.
-UPDATE projects
-SET    frozen_cid = 'bafybeihackathondemo5flowfields000000000000000000000000000000'
-WHERE  id = 5
-  AND  frozen_cid IS NULL;
+-- Note: frozen_cid stays NULL until the artist pins a frozen bundle
+-- and runs the lock_cid step from /mint/{id}. We deliberately do NOT
+-- seed a placeholder CID here — IPFS gateways would 404 on it and the
+-- mint flow correctly refuses to mint until the contract reports
+-- isCIDLocked()=true.
