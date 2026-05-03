@@ -12,9 +12,9 @@ header_image: "/assets/images/art/bg31.webp"
 {% comment %}
   Project IDs are auto-incremented by D1 and can't be statically routed
   by Jekyll. We ship a single page that reads `?id=N` and hydrates
-  from `/v1/projects/:id`. Profile cards link here as `/p/?id=N`. A
-  follow-up may add per-slug pre-rendering during the Pages build for
-  better OG previews; today the OG meta is generic.
+  from `/v1/projects/:id`. Project-specific OG/Twitter tags are
+  injected at the edge by `functions/p/_middleware.ts`, which fetches
+  `/v1/og/projects/:id/data` and rewrites this page's <head>.
 {% endcomment %}
 
 {% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}

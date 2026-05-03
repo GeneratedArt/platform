@@ -21,9 +21,25 @@ function siteOrigin(env: Env): string {
   return first || "https://generatedart.com";
 }
 
-function captureUrl(env: Env, key: string, w: number): string {
-  const base = (env.CAPTURES_PUBLIC_BASE || siteOrigin(env)).replace(/\/$/, "");
-  return `${base}/v1/captures/${key}?w=${w}`;
+export function ogImageFor(env: Env, project: {
+  status: string;
+  frozen_cid: string | null;
+  last_capture_key: string | null;
+  cover_url: string | null;
+}): string {
+  // Prefer the active frozen capture (IPFS-pinned, immutable) when the
+  // project is minted. Fall back to the most recent studio capture,
+  // then the artist-provided cover, then the site default.
+  if (project.frozen_cid && (project.status === "minted" || project.status === "published")) {
+    const gateway = (env.IPFS_GATEWAY || "https://w3s.link").replace(/\/$/, "");
+    return `${gateway}/ipfs/${project.frozen_cid}`;
+  }
+  if (project.last_capture_key) {
+    const base = (env.CAPTURES_PUBLIC_BASE || siteOrigin(env)).replace(/\/$/, "");
+    return `${base}/v1/captures/${project.last_capture_key}?w=1200`;
+  }
+  if (project.cover_url) return project.cover_url;
+  return `${siteOrigin(env)}${SITE_DEFAULT_OG}`;
 }
 
 export async function projectOgHandler(c: Context<{ Bindings: Env }>) {
@@ -37,15 +53,7 @@ export async function projectOgHandler(c: Context<{ Bindings: Env }>) {
   const owner = await getProjectOwner(c.env.DB, project.owner_id);
   const origin = siteOrigin(c.env);
   const canonical = `${origin}/p/?id=${id}`;
-
-  let ogImage: string;
-  if (project.last_capture_key) {
-    ogImage = captureUrl(c.env, project.last_capture_key, 1200);
-  } else if (project.cover_url) {
-    ogImage = project.cover_url;
-  } else {
-    ogImage = `${origin}${SITE_DEFAULT_OG}`;
-  }
+  const ogImage = ogImageFor(c.env, project);
 
   const title = project.title;
   const description =
@@ -89,5 +97,31 @@ export async function projectOgHandler(c: Context<{ Bindings: Env }>) {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
     },
+  });
+}
+
+// JSON variant used by the Pages Function on /p/ to inject OG meta
+// directly into the static project page (so /p/?id=N itself carries
+// project-specific tags for crawlers, not just the worker URL).
+export async function projectOgDataHandler(c: Context<{ Bindings: Env }>) {
+  const id = parseInt(c.req.param("id") || "", 10);
+  if (!id || Number.isNaN(id)) return c.json({ error: "invalid_id" }, 400);
+
+  const project = await getProjectById(c.env.DB, id);
+  if (!project || (project.status !== "published" && project.status !== "minted")) {
+    return c.json({ error: "not_found" }, 404);
+  }
+  const owner = await getProjectOwner(c.env.DB, project.owner_id);
+  const origin = siteOrigin(c.env);
+  c.header("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+  return c.json({
+    id: project.id,
+    title: project.title,
+    description:
+      project.description?.replace(/\s+/g, " ").trim().slice(0, 200) ||
+      `A generative-art project on GeneratedArt by @${owner?.handle ?? "artist"}.`,
+    canonical: `${origin}/p/?id=${id}`,
+    og_image: ogImageFor(c.env, project),
+    owner_handle: owner?.handle ?? null,
   });
 }

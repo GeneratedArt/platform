@@ -3,6 +3,21 @@ export interface Env {
   SESSIONS: KVNamespace;
   RATE_LIMIT: KVNamespace;
   CAPTURES?: R2Bucket;
+  // Cloudflare Workers Images binding. Used by the captures resize
+  // handler to transform R2 originals to allowlisted widths. When
+  // unbound the handler falls back to the original PNG (dev path).
+  IMAGES?: {
+    input(stream: ReadableStream | ArrayBuffer): {
+      transform(opts: { width?: number; height?: number; fit?: string }): {
+        output(opts: { format: string; quality?: number }): Promise<{
+          response(): Response;
+        }>;
+      };
+    };
+  };
+  // Public IPFS gateway used to resolve frozen_cid images for OG cards.
+  // Defaults to w3s.link when unset.
+  IPFS_GATEWAY?: string;
   JWT_SECRET: string;
   COOKIE_DOMAIN: string;
   ALLOWED_ORIGINS: string;

@@ -1,4 +1,5 @@
-// Single FTS5 ranking query across users/projects/briefs, then
+// Per-kind FTS5 ranking queries (so a kind-filter never drops valid
+// matches because another kind dominated the global top-N), then
 // per-kind hydration. Query sanitisation: alphanum tokens only,
 // reassembled as `tok* OR tok* …` so users can't inject FTS5 operators.
 
@@ -58,9 +59,27 @@ export interface SearchResults {
 }
 
 interface RankedRef {
-  kind: "user" | "project" | "brief";
   ref_id: number;
   rank: number;
+}
+
+async function rankByKind(
+  db: D1Database,
+  ftsQuery: string,
+  kind: "user" | "project" | "brief",
+  cap: number,
+): Promise<RankedRef[]> {
+  const res = await db
+    .prepare(
+      `SELECT ref_id, bm25(search_index) AS r
+       FROM search_index
+       WHERE search_index MATCH ?1 AND kind = ?2
+       ORDER BY r ASC
+       LIMIT ?3`,
+    )
+    .bind(ftsQuery, kind, cap)
+    .all<{ ref_id: number; r: number }>();
+  return (res.results ?? []).map((row) => ({ ref_id: row.ref_id, rank: -row.r }));
 }
 
 export async function searchAll(
@@ -70,39 +89,20 @@ export async function searchAll(
   limit: number,
 ): Promise<SearchResults> {
   const ftsQuery = buildFtsQuery(q);
-  const empty: SearchResults = { projects: [], artists: [], briefs: [], query: ftsQuery ?? "" };
-  if (!ftsQuery) return empty;
+  const out: SearchResults = { projects: [], artists: [], briefs: [], query: ftsQuery ?? "" };
+  if (!ftsQuery) return out;
 
   const cap = Math.max(1, Math.min(limit, PER_KIND_MAX));
-  // One ranking pass over all kinds. We over-fetch (cap*3) so each
-  // grouped list still has up to `cap` rows even when one kind
-  // dominates the top of the bm25 ordering.
-  const ranked = await db
-    .prepare(
-      `SELECT kind, ref_id, bm25(search_index) AS r
-       FROM search_index
-       WHERE search_index MATCH ?1
-       ORDER BY r ASC
-       LIMIT ?2`,
-    )
-    .bind(ftsQuery, cap * 3)
-    .all<{ kind: string; ref_id: number; r: number }>();
-
-  const refs: RankedRef[] = (ranked.results ?? [])
-    .filter((row) => row.kind === "user" || row.kind === "project" || row.kind === "brief")
-    .map((row) => ({
-      kind: row.kind as RankedRef["kind"],
-      ref_id: row.ref_id,
-      rank: -row.r,
-    }));
 
   const wantProjects = kind === "all" || kind === "projects";
   const wantArtists = kind === "all" || kind === "artists";
   const wantBriefs = kind === "all" || kind === "briefs";
 
-  const projectRefs = wantProjects ? refs.filter((r) => r.kind === "project").slice(0, cap) : [];
-  const userRefs = wantArtists ? refs.filter((r) => r.kind === "user").slice(0, cap) : [];
-  const briefRefs = wantBriefs ? refs.filter((r) => r.kind === "brief").slice(0, cap) : [];
+  const [projectRefs, userRefs, briefRefs] = await Promise.all([
+    wantProjects ? rankByKind(db, ftsQuery, "project", cap) : Promise.resolve([] as RankedRef[]),
+    wantArtists ? rankByKind(db, ftsQuery, "user", cap) : Promise.resolve([] as RankedRef[]),
+    wantBriefs ? rankByKind(db, ftsQuery, "brief", cap) : Promise.resolve([] as RankedRef[]),
+  ]);
 
   const tasks: Promise<void>[] = [];
 
@@ -130,7 +130,7 @@ export async function searchAll(
         }>()
         .then((res) => {
           const byId = new Map((res.results ?? []).map((row) => [row.id, row]));
-          empty.projects = projectRefs
+          out.projects = projectRefs
             .map((ref) => {
               const row = byId.get(ref.ref_id);
               if (!row) return null;
@@ -169,7 +169,7 @@ export async function searchAll(
         }>()
         .then((res) => {
           const byId = new Map((res.results ?? []).map((row) => [row.id, row]));
-          empty.artists = userRefs
+          out.artists = userRefs
             .map((ref) => {
               const row = byId.get(ref.ref_id);
               if (!row) return null;
@@ -210,7 +210,7 @@ export async function searchAll(
         }>()
         .then((res) => {
           const byId = new Map((res.results ?? []).map((row) => [row.id, row]));
-          empty.briefs = briefRefs
+          out.briefs = briefRefs
             .map((ref) => {
               const row = byId.get(ref.ref_id);
               if (!row) return null;
@@ -230,7 +230,7 @@ export async function searchAll(
   }
 
   await Promise.all(tasks);
-  return empty;
+  return out;
 }
 
 export const SEARCH_DEFAULTS = { PER_KIND_DEFAULT, PER_KIND_MAX };

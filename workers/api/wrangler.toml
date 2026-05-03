@@ -48,6 +48,13 @@ id      = "local-dev-rate-limit"
 binding     = "CAPTURES"
 bucket_name = "generatedart-assets-dev"
 
+# Cloudflare Workers Images binding (Task #16). Drives the
+# /v1/captures/...?w=N resize pipeline. Local dev does not provision
+# this binding — the captures handler detects its absence and falls
+# back to serving the original PNG.
+[images]
+binding = "IMAGES"
+
 # ============================================================================
 # Production environment (api.generatedart.com)
 # ============================================================================
@@ -94,6 +101,9 @@ id      = "071e1e836716455d9e30fd37389c03fa"
 [[env.production.r2_buckets]]
 binding     = "CAPTURES"
 bucket_name = "generatedart-assets"
+
+[env.production.images]
+binding = "IMAGES"
 
 # --- Async render + IPFS pin jobs — uncomment with Task #4 / Task #5 --------
 # [[env.production.queues.producers]]

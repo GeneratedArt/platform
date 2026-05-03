@@ -303,12 +303,6 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
   if (!/^captures\/\d+\/[A-Za-z0-9._-]+\.png$/.test(key)) {
     return c.json({ error: "invalid_key" }, 400);
   }
-  // Width is allowlisted so the cache key can't be stuffed with
-  // arbitrary integers. Today this endpoint is a passthrough — the
-  // URL contract is forward-compatible and a future change will
-  // pipe the R2 body through `fetch(..., { cf: { image: {...} } })`
-  // against a non-Worker origin (or via the Image Resizing API) so
-  // the resize subrequest never re-enters this handler.
   const ALLOWED_WIDTHS = [240, 480, 800, 1200];
   const wRaw = c.req.query("w");
   const w = wRaw && /^\d+$/.test(wRaw) ? parseInt(wRaw, 10) : null;
@@ -324,13 +318,41 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
   const obj = await c.env.CAPTURES.get(key);
   if (!obj) return c.json({ error: "not_found" }, 404);
 
-  const response = new Response(obj.body, {
-    status: 200,
-    headers: {
-      "Content-Type": obj.httpMetadata?.contentType || "image/png",
-      "Cache-Control": "public, max-age=31536000, immutable",
-    },
-  });
+  const THIRTY_DAYS = 30 * 24 * 3600;
+  let response: Response;
+
+  if (width && c.env.IMAGES) {
+    try {
+      const transformed = await c.env.IMAGES.input(obj.body)
+        .transform({ width, fit: "scale-down" })
+        .output({ format: "image/webp", quality: 85 });
+      const r = transformed.response();
+      response = new Response(r.body, {
+        status: 200,
+        headers: {
+          "Content-Type": r.headers.get("Content-Type") || "image/webp",
+          "Cache-Control": `public, max-age=${THIRTY_DAYS}, immutable`,
+        },
+      });
+    } catch {
+      const fresh = await c.env.CAPTURES.get(key);
+      response = new Response(fresh?.body ?? null, {
+        status: 200,
+        headers: {
+          "Content-Type": fresh?.httpMetadata?.contentType || "image/png",
+          "Cache-Control": `public, max-age=${THIRTY_DAYS}, immutable`,
+        },
+      });
+    }
+  } else {
+    response = new Response(obj.body, {
+      status: 200,
+      headers: {
+        "Content-Type": obj.httpMetadata?.contentType || "image/png",
+        "Cache-Control": `public, max-age=${THIRTY_DAYS}, immutable`,
+      },
+    });
+  }
 
   try {
     c.executionCtx.waitUntil(cache.put(cacheReq, response.clone()));

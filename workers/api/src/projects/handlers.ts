@@ -150,7 +150,7 @@ export async function getProject(
 
   const owner = await getProjectOwner(c.env.DB, row.owner_id);
 
-  // Task #16: record a view event for the trending score on /explore.
+  // Record a view event for the trending score on /explore.
   // Public-status projects only; owners viewing their own work shouldn't
   // boost trending. Best-effort: a failure here mustn't break the read,
   // and the IP-hash dedupe in recordProjectView keeps the increment

@@ -23,6 +23,7 @@ plugins:
 exclude:
   - workers
   - contracts
+  - functions
   - node_modules
   - .github
   - .agents

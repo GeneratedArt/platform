@@ -46,7 +46,7 @@ import {
 } from "./briefs/handlers";
 import { searchHandler } from "./search/handlers";
 import { exploreHandler } from "./explore/handlers";
-import { projectOgHandler } from "./og/handlers";
+import { projectOgHandler, projectOgDataHandler } from "./og/handlers";
 import { pruneOldViewEvents } from "./db/events";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
@@ -122,12 +122,15 @@ v1.get("/briefs", listBriefsHandler);
 v1.get("/briefs/:id{[0-9]+}", getBriefHandler);
 v1.post("/briefs", requireAuth, createBriefHandler);
 
-// Task #16: Discovery & search surfaces. All public; no auth.
+// Discovery & search surfaces. All public; no auth.
 v1.get("/explore", exploreHandler);
 v1.get("/search", searchHandler);
 // Server-rendered OG landing — used by social crawlers when sharing
 // /v1/og/projects/:id; humans get an instant meta-refresh to /p/?id=N.
 v1.get("/og/projects/:id{[0-9]+}", projectOgHandler);
+// JSON variant consumed by the /p/ Pages Function so the static
+// project page itself carries project-specific OG meta.
+v1.get("/og/projects/:id{[0-9]+}/data", projectOgDataHandler);
 
 app.route("/v1", v1);
 
@@ -149,7 +152,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<void> {
     ctx.waitUntil(runFrozenAudit(env));
-    // Task #16: trim project_view_events older than 30 days so the
+    // Trim project_view_events older than 30 days so the
     // trending query stays cheap. The 7-day window is computed in
     // SQL on every read so older rows are dead weight.
     ctx.waitUntil(pruneOldViewEvents(env.DB).catch((e) => console.error("prune_views_failed", e)));
