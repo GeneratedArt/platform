@@ -40,6 +40,15 @@ cd "$SCRIPT_DIR/.."
 # Lowercase the handle to match the column's normalisation.
 LC_HANDLE="$(printf '%s' "$HANDLE" | tr '[:upper:]' '[:lower:]')"
 
+# Defence-in-depth: even though this is an operator-only tool, validate
+# the handle against the same regex the API uses (^[a-z0-9][a-z0-9-]{1,30}$)
+# so a typo can't smuggle SQL through the interpolated UPDATE.
+if ! [[ "$LC_HANDLE" =~ ^[a-z0-9][a-z0-9-]{1,30}$ ]]; then
+  echo "error: handle '${HANDLE}' is not a valid handle." >&2
+  echo "  must match ^[a-z0-9][a-z0-9-]{1,30}$ — letters, digits, dashes; 2-31 chars." >&2
+  exit 1
+fi
+
 echo "Setting is_curator=${VALUE} for handle='${LC_HANDLE}' on ${TARGET}…"
 
 # Single-statement SQL keeps the wrangler call simple and idempotent.
