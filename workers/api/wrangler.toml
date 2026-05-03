@@ -144,6 +144,23 @@ GA_CHAIN_ID          = "84532"
 GA_RPC_URL           = "https://sepolia.base.org"
 # GA_FACTORY_ADDRESS = "0x0000000000000000000000000000000000000000"
 
+# --- Task #20: Observability & error monitoring -----------------------------
+# All four are optional — when unset the relevant surface no-ops:
+#   * SENTRY_DSN          → Sentry envelope POST is skipped
+#   * SLACK_WEBHOOK_URL   → uptime probe runs but doesn't page
+#   * UPTIME_PUBLIC_BASE  → uptime probe is a no-op (no targets)
+#   * ADMIN_HANDLES       → /v1/internal/* returns 403 admin_unconfigured
+# Set the secrets via:
+#   wrangler secret put SENTRY_DSN        --env production
+#   wrangler secret put SENTRY_DSN_PUBLIC --env production
+#   wrangler secret put SLACK_WEBHOOK_URL --env production
+# Non-secret defaults live here so they ship in the deployment
+# artifact and are auditable. Empty string = "leave unset"; the
+# code paths gate on truthy values.
+ADMIN_HANDLES        = ""
+UPTIME_PUBLIC_BASE   = "https://api.generatedart.com"
+SENTRY_ENVIRONMENT   = "production"
+
 # --- Task #15: frozen artifact + provenance pipeline -----------------------
 # Pinning provider tokens. BOTH must be set in production via:
 #   wrangler secret put W3S_TOKEN  --env production
@@ -153,14 +170,19 @@ GA_RPC_URL           = "https://sepolia.base.org"
 # `pinning_partial=true` flagged on the row.
 #
 # Nightly cron audits pin health and marks drifted rows for re-pin.
+# Per-minute cron drives the uptime probe (Task #20). The Worker
+# scheduled() handler dispatches by event.cron so the daily audit
+# never runs from the minute trigger.
 [[env.production.triggers.crons]]
 cron = "0 4 * * *"
+[[env.production.triggers.crons]]
+cron = "* * * * *"
 
 # Local-dev cron trigger (matches the production schedule). Wrangler
 # dev with --test-scheduled lets you trigger this manually for
 # integration testing.
 [triggers]
-crons = ["0 4 * * *"]
+crons = ["0 4 * * *", "* * * * *"]
 
 # Zone bound at the route level above (zone_name = "generatedart.com").
 # CLOUDFLARE_ZONE_ID = "5f16e1194f7d4b9f508b955e49c7c6ad" lives in the

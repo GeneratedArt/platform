@@ -6,6 +6,10 @@ import type { Env, JwtPayload } from "../types";
 
 export type AuthVariables = {
   user: JwtPayload;
+  // Task #20: per-request id stamped by the access-log middleware
+  // before any handler runs. Always present on a Hono Context (the
+  // middleware sets it for *every* request, authed or not).
+  requestId: string;
 };
 
 export const requireAuth: MiddlewareHandler<{

@@ -1,3 +1,4 @@
+import { installClientErrorReporter } from "./lib/clientErrors";
 import { EditorState, Compartment, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
@@ -567,6 +568,9 @@ class StudioController {
 
 const GAStudio = {
   mount(cfg: StudioConfig) {
+    // Task #20: install global error reporter early so a crash
+    // during ctrl.start() is still captured.
+    installClientErrorReporter({ apiBase: cfg.apiBase, page: "studio" });
     const ctrl = new StudioController(cfg);
     void ctrl.start();
   },

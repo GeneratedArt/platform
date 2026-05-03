@@ -38,7 +38,6 @@ externalPort = 80
 [[ports]]
 localPort = 8787
 externalPort = 3003
-exposeLocalhost = true
 
 [deployment]
 deploymentTarget = "static"

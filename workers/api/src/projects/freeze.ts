@@ -138,6 +138,14 @@ export async function freezeProject(
   } catch (e) {
     console.error("event_freeze_failed", e);
   }
+  // Task #20: bump freezes_per_hour metric. Outside the recordEvent
+  // try/catch so a feed-write failure doesn't suppress the counter.
+  try {
+    const { safeBumpActivity } = await import("../lib/metrics");
+    await safeBumpActivity(c.env, "freeze");
+  } catch {
+    // already best-effort inside safeBumpActivity
+  }
   return c.json({ frozen: publicFrozen(row) }, 201);
 }
 

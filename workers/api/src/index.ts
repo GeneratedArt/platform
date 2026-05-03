@@ -67,8 +67,24 @@ import {
   uploadGalleryCoverHandler,
   projectGalleriesHandler,
 } from "./galleries/handlers";
+import { accessMiddleware } from "./middleware/access";
+import { logError } from "./lib/log";
+import { captureException } from "./lib/sentry";
+import { runUptimeProbe } from "./lib/uptime";
+import { pruneOldMetrics } from "./lib/metrics";
+import { requireAdmin } from "./auth/admin";
+import {
+  statsHandler,
+  throwHandler,
+  clientErrorHandler,
+} from "./internal/stats";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+
+// Task #20: access log + request_id middleware. Must run BEFORE
+// CORS so that preflight 4xx responses still carry an x-request-id
+// header and contribute to the access log.
+app.use("*", accessMiddleware);
 
 app.use("*", async (c, next) => {
   const allowed = c.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim());
@@ -184,12 +200,48 @@ v1.get("/feed", requireAuth, feedHandler);
 v1.get("/notifications", requireAuth, notificationsHandler);
 v1.post("/notifications/read", requireAuth, markNotificationsReadHandler);
 
+// Task #20: internal admin-only observability surface. requireAuth
+// runs first so requireAdmin can read the session. The forced-throw
+// route exists solely so an admin can verify request_id round-trips
+// end to end — see Step 6 of the task brief.
+v1.get("/internal/stats", requireAuth, requireAdmin, statsHandler);
+v1.get("/internal/_throw", requireAuth, requireAdmin, throwHandler);
+// Public — receives JS errors fired from the studio / dashboard
+// pages. Body is bounded inside the handler.
+v1.post("/internal/client-error", clientErrorHandler);
+
 app.route("/v1", v1);
 
-app.notFound((c) => c.json({ error: "not_found" }, 404));
+app.notFound((c) =>
+  c.json(
+    { error: "not_found", request_id: c.get("requestId") },
+    404,
+  ),
+);
 app.onError((err, c) => {
-  console.error(err);
-  return c.json({ error: "internal_error" }, 500);
+  // Task #20: every 5xx carries the request_id in both the body
+  // and (already) the x-request-id header. The structured log line
+  // pairs the same id with the full stack; a user-reported
+  // screenshot is one grep away from the failure.
+  const requestId = c.get("requestId");
+  const route = c.req.routePath || c.req.path;
+  logError(requestId, "unhandled_exception", err, { route });
+  // Best-effort Sentry beacon. We can't reach ExecutionContext
+  // from inside onError, so we fire-and-forget; the captureException
+  // helper itself swallows network errors.
+  void captureException(c.env, err, {
+    request_id: requestId,
+    route,
+    status: 500,
+    user_id: c.get("user")?.uid ?? null,
+  });
+  return c.json(
+    {
+      error: "internal_error",
+      request_id: requestId,
+    },
+    500,
+  );
 });
 
 // Task #15: Cloudflare scheduled handler. The cron trigger in
@@ -199,14 +251,33 @@ app.onError((err, c) => {
 export default {
   fetch: app.fetch,
   async scheduled(
-    _event: ScheduledEvent,
+    event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    // Task #20: two cron schedules now share this handler:
+    //   * "* * * * *"  — uptime probe (every minute)
+    //   * "0 4 * * *"  — frozen-audit + log/metric prune (daily)
+    // Dispatch by event.cron so a transient minute-cron doesn't
+    // also re-run the daily audit.
+    if (event.cron === "* * * * *") {
+      ctx.waitUntil(
+        runUptimeProbe(env).catch((e) =>
+          console.error("uptime_probe_failed", (e as Error).message),
+        ),
+      );
+      return;
+    }
     ctx.waitUntil(runFrozenAudit(env));
     // Trim project_view_events older than 30 days so the
     // trending query stays cheap. The 7-day window is computed in
     // SQL on every read so older rows are dead weight.
     ctx.waitUntil(pruneOldViewEvents(env.DB).catch((e) => console.error("prune_views_failed", e)));
+    // Task #20: drop metric_counters rows older than 48h.
+    ctx.waitUntil(
+      pruneOldMetrics(env.DB).catch((e) =>
+        console.error("prune_metrics_failed", (e as Error).message),
+      ),
+    );
   },
 };

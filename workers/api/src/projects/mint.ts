@@ -436,6 +436,13 @@ export async function confirmMint(
     } catch (e) {
       console.error("event_mint_failed", e);
     }
+    // Task #20: bump mints_per_hour metric. Inside the `if (updated)`
+    // guard so we only count the once-per-project state transition,
+    // never re-confirmations of the same tx.
+    try {
+      const { safeBumpActivity } = await import("../lib/metrics");
+      await safeBumpActivity(c.env, "mint");
+    } catch {}
   }
   return c.json({ project: publicProject(updated ?? project) });
 }
