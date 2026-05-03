@@ -56,7 +56,15 @@ export type EventKind =
   | "freeze"
   | "mint"
   | "follow"
-  | "brief_posted";
+  | "brief_posted"
+  // Notification kinds emitted by future application/curation handlers.
+  // The `applications` table exists since 0001_init.sql; the route that
+  // creates a row should call recordBriefApplicationEvent() to notify
+  // the brief author. The `featured_projects` table exists since
+  // 0009_discovery_search.sql; whatever curator path inserts a row
+  // should call recordFeaturedEvent() to notify the project owner.
+  | "brief_application"
+  | "featured";
 
 export type EventTargetKind = "project" | "user" | "brief" | "frozen" | "mint";
 
@@ -97,6 +105,62 @@ export async function recordEvent(
       now,
     )
     .run();
+}
+
+/**
+ * Notify a brief author that someone applied to their brief. Call
+ * from the (future) POST /v1/briefs/:id/applications handler after
+ * the application row is committed.
+ */
+export async function recordBriefApplicationEvent(
+  db: D1Database,
+  args: {
+    applicantId: number;
+    briefAuthorId: number;
+    briefId: number;
+    briefTitle?: string | null;
+    applicationId?: number | null;
+  },
+): Promise<void> {
+  await recordEvent(db, {
+    kind: "brief_application",
+    actor_id: args.applicantId,
+    target_kind: "brief",
+    target_id: args.briefId,
+    recipient_id: args.briefAuthorId,
+    payload: {
+      brief_id: args.briefId,
+      title: args.briefTitle ?? null,
+      application_id: args.applicationId ?? null,
+    },
+  });
+}
+
+/**
+ * Notify a project owner that their project was featured. Call from
+ * the (future) curator-only handler after a row is inserted into
+ * `featured_projects`.
+ */
+export async function recordFeaturedEvent(
+  db: D1Database,
+  args: {
+    curatorId: number;
+    projectOwnerId: number;
+    projectId: number;
+    projectTitle?: string | null;
+  },
+): Promise<void> {
+  await recordEvent(db, {
+    kind: "featured",
+    actor_id: args.curatorId,
+    target_kind: "project",
+    target_id: args.projectId,
+    recipient_id: args.projectOwnerId,
+    payload: {
+      project_id: args.projectId,
+      title: args.projectTitle ?? null,
+    },
+  });
 }
 
 export interface FeedRow {

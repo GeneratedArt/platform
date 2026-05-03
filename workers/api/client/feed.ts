@@ -89,7 +89,9 @@ function deepLinkFor(ev: FeedEvent): string {
     case "follow":
       return `/@${encodeURIComponent(ev.actor.handle)}/`;
     case "brief_posted":
+    case "brief_application":
       return ev.target_id ? `/briefs/?id=${ev.target_id}` : "/briefs/";
+    case "featured":
     case "commit":
     case "freeze":
     case "mint": {
@@ -140,6 +142,18 @@ function renderEvent(ev: FeedEvent): string {
         ev.target_id ? `<a href="/briefs/?id=${ev.target_id}">${escapeHtml(title)}</a>` : escapeHtml(title)
       }.`;
       break;
+    case "brief_application":
+      body = `${who} applied to your brief${
+        ev.target_id ? `: <a href="/briefs/?id=${ev.target_id}">${escapeHtml(title || "view brief")}</a>` : ""
+      }.`;
+      break;
+    case "featured": {
+      const pid = typeof payload.project_id === "number"
+        ? (payload.project_id as number)
+        : ev.target_kind === "project" ? ev.target_id : null;
+      body = `${who} featured ${projectLink(pid, title || "your project")}.`;
+      break;
+    }
     default:
       body = `${who} did something.`;
   }
