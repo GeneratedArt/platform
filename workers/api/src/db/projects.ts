@@ -93,18 +93,28 @@ export async function listProjectsByOwner(
   return result.results ?? [];
 }
 
+// Statuses that are safe to expose on a public profile. `draft` and
+// `archived` are owner-private and must only ever be returned to the
+// owning user (or via /v1/projects/mine).
+export const PUBLIC_STATUSES: ProjectStatus[] = ["published", "minted"];
+
 export async function listProjectsByHandle(
   db: D1Database,
   handle: string,
+  opts: { viewerUid?: number } = {},
 ): Promise<ProjectRow[]> {
+  // If the viewer is the owner, return everything (including drafts +
+  // archived). Otherwise, restrict to PUBLIC_STATUSES so an anonymous
+  // or third-party viewer can't enumerate work-in-progress.
   const result = await db
     .prepare(
       `SELECT p.* FROM projects p
        JOIN users u ON u.id = p.owner_id
-       WHERE u.handle = ?
+       WHERE u.handle = ?1
+         AND (u.id = ?2 OR p.status IN ('published','minted'))
        ORDER BY p.updated_at DESC`,
     )
-    .bind(handle)
+    .bind(handle, opts.viewerUid ?? -1)
     .all<ProjectRow>();
   return result.results ?? [];
 }

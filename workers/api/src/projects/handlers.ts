@@ -22,8 +22,10 @@ import {
   listProjectsByOwner,
   updateProject,
   publicProject,
+  PUBLIC_STATUSES,
 } from "../db/projects";
 import { getUserById } from "../db/users";
+import { maybeAuthUser } from "../users/handlers";
 import { checkRateLimit } from "../lib/rateLimit";
 
 const TITLE_MAX = 80;
@@ -128,11 +130,23 @@ export async function createProject(
   return c.json({ project: publicProject(project) }, 201);
 }
 
-export async function getProject(c: Context<{ Bindings: Env }>) {
+export async function getProject(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
   const id = parseInt(c.req.param("id") || "", 10);
   if (!id || Number.isNaN(id)) return badRequest(c, "invalid_id");
   const row = await getProjectById(c.env.DB, id);
   if (!row) return c.json({ error: "not_found" }, 404);
+
+  // `draft` and `archived` projects are owner-private. Anyone else
+  // (anonymous or a different signed-in user) gets a 404 — same shape
+  // as if the project never existed, to avoid leaking ownership info.
+  const viewer = await maybeAuthUser(c);
+  const isOwner = viewer?.uid === row.owner_id;
+  if (!isOwner && !PUBLIC_STATUSES.includes(row.status as ProjectStatus)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
   const owner = await getProjectOwner(c.env.DB, row.owner_id);
   return c.json({ project: publicProject(row), owner });
 }
@@ -242,9 +256,17 @@ export async function listMyProjects(
   return c.json({ projects: rows.map(publicProject) });
 }
 
-export async function listProjectsForHandle(c: Context<{ Bindings: Env }>) {
+export async function listProjectsForHandle(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+) {
   const handle = c.req.param("handle");
   if (!handle) return badRequest(c, "invalid_handle");
-  const rows = await listProjectsByHandle(c.env.DB, handle);
+  // Owner sees drafts + archived; everyone else only sees public
+  // statuses (published/minted). Filtering happens in SQL so a
+  // misbehaving client cannot bypass it.
+  const viewer = await maybeAuthUser(c);
+  const rows = await listProjectsByHandle(c.env.DB, handle, {
+    viewerUid: viewer?.uid,
+  });
   return c.json({ projects: rows.map(publicProject) });
 }

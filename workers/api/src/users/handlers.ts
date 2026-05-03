@@ -104,7 +104,7 @@ function publicUser(u: UserRow): PublicUser {
  * stay public but want to enrich the response with viewer context
  * (e.g. `is_following`).
  */
-async function maybeAuthUser(
+export async function maybeAuthUser(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
 ) {
   const token = getCookie(c, SESSION_COOKIE);
