@@ -1,0 +1,118 @@
+---
+layout: default
+permalink: /mint/
+title: "Mint — GeneratedArt"
+meta_title: "Mint — GeneratedArt"
+meta_description: |
+  Mint a token on a GeneratedArt project. Each token wraps a fresh seed
+  and resolves to a frozen IPFS bundle that renders the artwork.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% comment %}
+  Like /p/, /mint/ is a single static page that reads ?id=N and hydrates
+  from /v1/projects/:id and the on-chain contract. The 404.html SPA
+  fallback rewrites /mint/{id}/ -> /mint/?id=N so the canonical share
+  URL is /mint/{id}/.
+{% endcomment %}
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+    <div class="row gx-md-8 gy-8">
+      <div class="col-md-7">
+        <div id="ga-mint-art" class="ga-mint-art">
+          <div class="ga-mint-art-frame">
+            <iframe id="ga-mint-iframe" title="Project preview" loading="lazy"></iframe>
+            <p class="text-muted small ga-mint-art-fallback">Connect to render the artwork preview…</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-5">
+        <div id="ga-mint-root">
+          <p class="text-muted small">Loading project…</p>
+        </div>
+
+        <template id="ga-mint-tmpl">
+          <article class="ga-mint-detail">
+            <header class="mb-4">
+              <p class="overline mb-1 text-muted" data-ga-status></p>
+              <h1 class="display-7 mb-1" data-ga-title></h1>
+              <p class="lead small mb-0">
+                by <a data-ga-owner-link><span data-ga-owner-handle></span></a>
+              </p>
+            </header>
+
+            <p class="mb-4" data-ga-description></p>
+
+            <dl class="ga-mint-stats mb-5">
+              <div>
+                <dt>Network</dt>
+                <dd data-ga-chain>—</dd>
+              </div>
+              <div>
+                <dt>Contract</dt>
+                <dd><a data-ga-contract-link target="_blank" rel="noopener"><span data-ga-contract>—</span></a></dd>
+              </div>
+              <div>
+                <dt>Minted</dt>
+                <dd><span data-ga-minted>—</span></dd>
+              </div>
+              <div>
+                <dt>Royalty</dt>
+                <dd>5%</dd>
+              </div>
+            </dl>
+
+            <div data-ga-action-region>
+              <button type="button" class="btn btn-primary rounded" data-ga-connect>
+                Connect wallet
+              </button>
+              <button type="button" class="btn btn-soft-leaf rounded mt-2 d-none" data-ga-deploy>
+                Deploy contract (artist only)
+              </button>
+              <button type="button" class="btn btn-soft-leaf rounded mt-2 d-none" data-ga-lock>
+                Lock frozen CID (artist only)
+              </button>
+              <button type="button" class="btn btn-primary rounded mt-2 d-none" data-ga-mint>
+                Mint
+              </button>
+            </div>
+
+            <p class="small mt-3 mb-0" data-ga-feedback role="status" aria-live="polite"></p>
+            <p class="small mt-2 mb-0 d-none" data-ga-tx-region>
+              Transaction: <a data-ga-tx-link target="_blank" rel="noopener"><span data-ga-tx>—</span></a>
+            </p>
+          </article>
+        </template>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-mint-art-frame {
+    aspect-ratio: 1 / 1;
+    background: var(--ga-rule);
+    border: 1px solid var(--ga-rule);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ga-mint-art-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .ga-mint-art-frame iframe:not([src]) { display: none; }
+  .ga-mint-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .ga-mint-stats dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ga-mute); margin: 0; }
+  .ga-mint-stats dd { margin: 0; font-weight: 500; word-break: break-all; }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-mint.js' | relative_url }}"></script>

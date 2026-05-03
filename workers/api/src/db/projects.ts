@@ -172,7 +172,52 @@ export function publicProject(p: ProjectRow) {
     repo_url: p.repo_url,
     repo_full: p.repo_full,
     cover_url: p.cover_url,
+    contract_address: p.contract_address,
+    frozen_cid: p.frozen_cid,
+    deploy_tx_hash: p.deploy_tx_hash,
+    chain_id: p.chain_id,
     created_at: p.created_at,
     updated_at: p.updated_at,
   };
+}
+
+/// Persist the contract address + chain id + deploy tx for a project
+/// after the artist's wallet broadcasts the factory.createProject tx.
+export async function recordProjectDeploy(
+  db: D1Database,
+  id: number,
+  contractAddress: string,
+  chainId: number,
+  deployTxHash: string,
+): Promise<ProjectRow | null> {
+  return db
+    .prepare(
+      `UPDATE projects
+       SET contract_address = ?,
+           chain_id         = ?,
+           deploy_tx_hash   = ?,
+           status           = CASE WHEN status = 'draft' THEN 'published' ELSE status END,
+           updated_at       = ?
+       WHERE id = ? AND contract_address IS NULL
+       RETURNING *`,
+    )
+    .bind(contractAddress, chainId, deployTxHash, Math.floor(Date.now() / 1000), id)
+    .first<ProjectRow>();
+}
+
+/// Mark a project as minted (called after the artist locks the CID
+/// and the first token has been minted on-chain). Idempotent.
+export async function markProjectMinted(
+  db: D1Database,
+  id: number,
+): Promise<ProjectRow | null> {
+  return db
+    .prepare(
+      `UPDATE projects
+       SET status = 'minted', updated_at = ?
+       WHERE id = ? AND status IN ('draft','published')
+       RETURNING *`,
+    )
+    .bind(Math.floor(Date.now() / 1000), id)
+    .first<ProjectRow>();
 }

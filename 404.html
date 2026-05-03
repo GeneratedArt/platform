@@ -64,36 +64,36 @@ header_image: "/assets/images/art/bg31.webp"
 
 <script>
 (function () {
-  // Match `/p/{integer}` (with optional trailing slash) and treat it
-  // exactly like /p/?id=N. Anything else falls through to the
-  // static 404 message.
-  var m = location.pathname.match(/^\/p\/(\d+)\/?$/);
-  if (!m) {
+  // Match `/p/{integer}` and `/mint/{integer}` (with optional trailing
+  // slash) and rewrite to the corresponding ?id=N page. Anything else
+  // falls through to the static 404 message.
+  var pPath = location.pathname.match(/^\/p\/(\d+)\/?$/);
+  var mintPath = location.pathname.match(/^\/mint\/(\d+)\/?$/);
+  if (!pPath && !mintPath) {
     document.getElementById("ga-project-root").hidden = true;
     document.getElementById("ga-404-default").hidden = false;
     return;
   }
-  var projectId = m[1];
+  var projectId = (pPath || mintPath)[1];
+  var basePath = pPath ? "/p/" : "/mint/";
 
-  var params = new URLSearchParams(window.location.search);
-  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
-    ? "http://" + location.hostname + ":8787"
-    : "https://api.generatedart.com");
+  // Mint pages live in their own static doc; for /mint/{id} we redirect
+  // there so the page's own template + bundle (with iframe + buttons)
+  // takes over rather than reusing the project-detail layout.
+  if (mintPath) {
+    location.replace(basePath + "?id=" + projectId);
+    return;
+  }
 
-  // Rewrite the visible URL to /p/?id=N so refresh works without the
-  // 404 path and so the in-page back/forward stay clean. We use
-  // `replaceState` (not `pushState`) so back-button still goes to the
-  // referrer.
-  history.replaceState(null, "", "/p/?id=" + projectId);
-
-  // The TS bundle picks up `?id=` from window.location.search just like
-  // it does on /p/. We eagerly load it from the same asset path used
-  // by the /p/ page.
+  history.replaceState(null, "", basePath + "?id=" + projectId);
   var s = document.createElement("script");
   s.type = "module";
   s.src = "/assets/js/ga-project-detail.js";
   document.head.appendChild(s);
 
+  var apiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com";
   function tryMount() {
     if (!window.GAProjectDetail) return setTimeout(tryMount, 50);
     window.GAProjectDetail.mount({ apiBase: apiBase, rootEl: document.getElementById("ga-project-root") });

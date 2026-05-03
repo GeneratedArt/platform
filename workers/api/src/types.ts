@@ -17,6 +17,23 @@ export interface Env {
   // response advertises that the static page won't update until a
   // human commits the file.
   GITHUB_SITE_REPO?: string;
+  // --- Task #6: mint flow ---------------------------------------------------
+  // Address of the deployed GAProjectFactory on the configured chain.
+  // Worker only returns calldata; the user's wallet sends the tx.
+  GA_FACTORY_ADDRESS?: string;
+  // EIP-155 chain id; 84532 = Base Sepolia (hackathon), 8453 = Base mainnet.
+  GA_CHAIN_ID?: string;
+  // Public RPC URL surfaced to the client for read-only contract queries
+  // (totalMinted, isCIDLocked) so we don't need a hosted indexer for
+  // the hackathon demo.
+  GA_RPC_URL?: string;
+}
+
+export interface ProjectMintState {
+  contract_address: string | null;
+  frozen_cid: string | null;
+  deploy_tx_hash: string | null;
+  chain_id: number | null;
 }
 
 export interface ProjectRow {
@@ -31,6 +48,10 @@ export interface ProjectRow {
   repo_url: string | null;
   repo_full: string | null;
   cover_url: string | null;
+  contract_address: string | null;
+  frozen_cid: string | null;
+  deploy_tx_hash: string | null;
+  chain_id: number | null;
   created_at: number;
   updated_at: number;
 }

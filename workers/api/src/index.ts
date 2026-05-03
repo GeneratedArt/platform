@@ -13,6 +13,11 @@ import {
   listProjectsForHandle,
 } from "./projects/handlers";
 import {
+  prepareMint,
+  confirmDeploy,
+  confirmMint,
+} from "./projects/mint";
+import {
   getProjectFileHandler,
   commitProjectFileHandler,
   uploadCaptureHandler,
@@ -58,6 +63,13 @@ v1.get("/projects/:id{[0-9]+}/file", requireAuth, getProjectFileHandler);
 v1.post("/projects/:id{[0-9]+}/commit", requireAuth, commitProjectFileHandler);
 v1.post("/projects/:id{[0-9]+}/captures", requireAuth, uploadCaptureHandler);
 v1.get("/captures/:rest{.+}", getCaptureHandler);
+
+// Mint flow (Task #6). prepareMint returns calldata; the user's wallet
+// signs the tx. confirm-deploy / confirm-mint persist the result so
+// the dashboard and /p/{id} can render Basescan deep-links.
+v1.post("/projects/:id{[0-9]+}/mint/prepare", requireAuth, prepareMint);
+v1.post("/projects/:id{[0-9]+}/mint/confirm-deploy", requireAuth, confirmDeploy);
+v1.post("/projects/:id{[0-9]+}/mint/confirm-mint", requireAuth, confirmMint);
 
 // User profile + social graph
 v1.get("/users/:handle", getUserByHandleHandler);

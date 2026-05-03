@@ -115,6 +115,17 @@ CAPTURES_PUBLIC_BASE = "https://api.generatedart.com"
 # edits `_authors/{handle}.md` and pushes.
 GITHUB_SITE_REPO     = "generatedart/generatedart"
 
+# --- Task #6: mint flow on Base Sepolia -------------------------------------
+# GA_FACTORY_ADDRESS is filled in after running `forge script Deploy.s.sol`
+# against Base Sepolia; until it's set the Worker returns 503
+# `mint_unconfigured` for /v1/projects/:id/mint/prepare. Production swap to
+# Base mainnet flips GA_CHAIN_ID to 8453 and points GA_RPC_URL at the
+# mainnet RPC. The factory address itself is non-secret (it's published
+# on-chain) so it lives in [vars] rather than `wrangler secret`.
+GA_CHAIN_ID          = "84532"
+GA_RPC_URL           = "https://sepolia.base.org"
+# GA_FACTORY_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 # Zone bound at the route level above (zone_name = "generatedart.com").
 # CLOUDFLARE_ZONE_ID = "5f16e1194f7d4b9f508b955e49c7c6ad" lives in the
 # Cloudflare dashboard for this account; not needed in repo config.

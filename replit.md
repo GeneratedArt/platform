@@ -30,7 +30,7 @@ The architecture is deliberately minimal, focusing on:
 
 ### Key Features
 - **Generative Art Platform**: Supports p5.js, three.js, WebGL, GLSL.
-- **NFT Marketplace**: Planned integration for minting on Base Sepolia.
+- **NFT Marketplace**: ERC-721 + ERC-2981 mint flow on Base Sepolia. `GAProject` (per-project clone) + `GAProjectFactory` (EIP-1167 minimal proxies) live in `contracts/`. `/mint/{id}` UI walks artist (deploy + lock CID) and collector (mint) through their wallet; Worker is a thin coordinator returning calldata via `POST /v1/projects/:id/mint/{prepare,confirm-deploy,confirm-mint}`. `tokenURI` = `ipfs://{frozenCID}/?seed={32-byte hex}`. Royalty hardcoded at 5% (no `GASplits` yet).
 - **User Authentication**: Secure SIWE-based login with rate limiting.
 - **Project Creation & Management**: Users can create, update, and archive projects, each backed by a GitHub repository.
 - **Code Studio**: An in-browser editor for creative coding with live preview and direct commit functionality to GitHub.
