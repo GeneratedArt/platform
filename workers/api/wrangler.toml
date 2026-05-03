@@ -10,6 +10,14 @@ workers_dev = false
 [observability]
 enabled = true
 
+# Vendored runtimes for the freeze bundler. Loaded as raw text so the
+# bundler can inline them into the self-contained HTML it pins to
+# IPFS. Without this rule the import would fail at deploy time.
+[[rules]]
+type = "Text"
+globs = ["**/p5.min.js", "**/three.min.js"]
+fallthrough = true
+
 # ---------------------------------------------------------------------------
 # Local development bindings (used by `npx wrangler dev`).
 # Miniflare materialises these into a per-developer SQLite DB and KV stores

@@ -1,28 +1,24 @@
-// Task #15: dual-pin abstraction.
-//
-// `pin(blob)` fans out to web3.storage and Pinata. Either may be
-// unconfigured (missing token); a pin is considered successful if at
-// least one provider returns a CID. We always also compute a local
-// CIDv1-raw of the bytes so the row carries a stable identifier even
-// when both providers are unconfigured (mock-mode dev path), with
-// pinning_partial=true to make that state obvious to the UI.
+// Dual-pin abstraction. `pinBundle()` fans out to web3.storage and
+// Pinata. The result reports each provider's success independently
+// and the resolved CID (the first provider to return one). When no
+// provider returns a CID, `cid` is empty — the caller is responsible
+// for translating that into a clean error rather than persisting a
+// row whose CID resolves nowhere.
 //
 // Production deployments MUST set both `W3S_TOKEN` and `PINATA_JWT`
-// via `wrangler secret put`. The Worker logs (via console.error) the
-// per-provider failure reasons so wrangler tail surfaces them; we
-// also persist them in `frozen_versions.pin_errors` for the UI.
+// via `wrangler secret put`. Dev / determinism tests opt into
+// `PINNING_MOCK=1` to short-circuit the network calls.
 
 import type { Env } from "../types";
 
 export interface PinResult {
-  /// CID we ultimately stored. Provider-returned when at least one
-  /// succeeded; otherwise the local CIDv1-raw fallback.
+  /// Resolved CID. Empty string when neither provider returned one.
   cid: string;
   pinned_w3s: boolean;
   pinned_pinata: boolean;
-  /// True when at least one provider was either unconfigured or
-  /// failed. The freeze still returns success (provided we have *a*
-  /// CID), but the row gets flagged so the UI can offer "retry".
+  /// True when fewer than both providers succeeded (i.e. one or
+  /// both failed / unconfigured). The caller decides whether a
+  /// fully-failed pin should write a row or surface an error.
   partial: boolean;
   errors: Record<string, string>;
 }
@@ -30,16 +26,9 @@ export interface PinResult {
 export interface PinInput {
   bytes: Uint8Array;
   filename: string;
-  /// Local fallback CID computed by the bundler, used when both
-  /// providers are unconfigured / failed.
-  fallbackCid: string;
 }
 
 function isMockPin(env: Env): boolean {
-  // Mock mode: opt-in via PINNING_MOCK=1. In mock mode we synthesise
-  // pin success without network calls; the local fallback CID is the
-  // CID we report. Useful for dev / determinism tests where calling
-  // the real services would either rate-limit or be undesirable.
   return env.PINNING_MOCK === "1";
 }
 
@@ -48,8 +37,11 @@ export async function pinBundle(
   input: PinInput,
 ): Promise<PinResult> {
   if (isMockPin(env)) {
+    // Mock mode CID is computed by the caller and substituted in.
+    // We just report success against both providers without making
+    // any network calls.
     return {
-      cid: input.fallbackCid,
+      cid: "",
       pinned_w3s: true,
       pinned_pinata: true,
       partial: false,
@@ -58,16 +50,13 @@ export async function pinBundle(
   }
 
   const errors: Record<string, string> = {};
-  let cidW3s: string | null = null;
-  let cidPinata: string | null = null;
-
-  // Run providers in parallel. A slow provider should not delay the
-  // other; a failed provider should not poison the result.
   const [w3s, pin] = await Promise.allSettled([
     pinWeb3Storage(env, input),
     pinPinata(env, input),
   ]);
 
+  let cidW3s: string | null = null;
+  let cidPinata: string | null = null;
   if (w3s.status === "fulfilled") {
     cidW3s = w3s.value;
   } else {
@@ -81,12 +70,27 @@ export async function pinBundle(
     console.error("pin_pinata_failed", errors.pinata);
   }
 
-  const cid = cidW3s ?? cidPinata ?? input.fallbackCid;
+  const cid = cidW3s ?? cidPinata ?? "";
   const pinned_w3s = cidW3s !== null;
   const pinned_pinata = cidPinata !== null;
   const partial = !(pinned_w3s && pinned_pinata);
-
   return { cid, pinned_w3s, pinned_pinata, partial, errors };
+}
+
+/// Re-pin existing bytes to a single named provider. Used by the
+/// drift-recovery cron to top up a row after one provider drops the
+/// pin while the other still serves it.
+export async function repinTo(
+  env: Env,
+  provider: "w3s" | "pinata",
+  input: PinInput,
+): Promise<{ cid: string }> {
+  if (isMockPin(env)) return { cid: "" };
+  const cid =
+    provider === "w3s"
+      ? await pinWeb3Storage(env, input)
+      : await pinPinata(env, input);
+  return { cid };
 }
 
 async function pinWeb3Storage(
@@ -94,11 +98,11 @@ async function pinWeb3Storage(
   input: PinInput,
 ): Promise<string> {
   if (!env.W3S_TOKEN) throw new Error("w3s_unconfigured");
-  // web3.storage's old "API token" upload endpoint accepts a single
-  // file via multipart; the new w3up flow requires UCAN delegation
-  // which is heavyweight inside a Worker. We use the legacy upload
-  // endpoint here — it's still supported and matches the "single
-  // file, single CID" mental model the rest of the pipeline assumes.
+  // The legacy api.web3.storage Bearer-token upload endpoint accepts
+  // a single file via multipart and is materially simpler to call
+  // from a Worker than the new w3up UCAN flow. It is still
+  // operational at time of writing; if it's deprecated we'll need to
+  // swap to the w3up SDK.
   const form = new FormData();
   form.append(
     "file",
@@ -127,12 +131,7 @@ async function pinPinata(env: Env, input: PinInput): Promise<string> {
     new Blob([input.bytes], { type: "text/html" }),
     input.filename,
   );
-  // Tag with the filename so the Pinata dashboard shows something
-  // useful; pinataMetadata is opt-in.
-  form.append(
-    "pinataMetadata",
-    JSON.stringify({ name: input.filename }),
-  );
+  form.append("pinataMetadata", JSON.stringify({ name: input.filename }));
   const res = await fetch(
     "https://api.pinata.cloud/pinning/pinFileToIPFS",
     {
@@ -150,10 +149,6 @@ async function pinPinata(env: Env, input: PinInput): Promise<string> {
   return body.IpfsHash;
 }
 
-/// Cron-side health check: is the CID still pinned by the providers
-/// it was originally pinned by? Returns the providers that currently
-/// confirm the pin. We deliberately don't trust gateway HTTP HEAD
-/// (CDNs cache) — instead we hit each provider's pin-list endpoint.
 export interface PinHealth {
   pinned_w3s: boolean;
   pinned_pinata: boolean;

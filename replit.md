@@ -51,12 +51,18 @@ The architecture is deliberately minimal, focusing on:
 Every mintable project must resolve to an immutable, content-addressed bundle.
 The freeze pipeline:
 
-1. **Bundler** (`workers/api/src/lib/freeze.ts`) — fetches `sketch.js` from the
-   project's GitHub repo, wraps it in a canonical HTML template with
-   SRI-pinned p5/three runtime references, normalises line endings, and
-   computes a SHA-256 of the bundle bytes. Determinism is asserted by
-   `workers/api/test/freeze.determinism.test.mjs` (identical input → identical
-   bytes/hash/CID; one-byte change → different bytes/hash/CID).
+1. **Bundler** (`workers/api/src/lib/freeze.ts`) — walks the artist's GitHub
+   repo at the requested commit via the Git Trees API, filters out dev-only
+   files (`.git*`, `node_modules`, `package*.json`, lockfiles, README, etc.),
+   fetches every remaining blob, inlines `sketch.js` + the vendored p5/three
+   runtime + asset data-URIs into a canonical self-contained HTML page, and
+   computes `bundle_hash` as the SHA-256 of a sorted manifest of every input
+   (file blobs + synthetic `__meta__/*` entries for title, engine, project
+   id, resolved commit, runtime version). Determinism is asserted by
+   `workers/api/test/freeze.determinism.test.mjs`, which bundles the real
+   `freeze.ts` via esbuild and verifies that identical inputs produce
+   byte-identical output and that any single-character input change flips
+   both the manifest hash and the CID.
 2. **Dual pinning** (`workers/api/src/lib/pinning.ts`) — fans out to
    web3.storage and Pinata in parallel via `Promise.allSettled`, returns the
    first successful provider's CID, flags `pinning_partial=true` when only one
@@ -78,9 +84,12 @@ The freeze pipeline:
    when no active frozen version exists.
 6. **Nightly cron** (`workers/api/src/jobs/frozenAudit.ts`, scheduled handler
    in `index.ts`) — re-checks pin health for the oldest-checked rows daily
-   (4:00 UTC), updates `pinned_w3s` / `pinned_pinata` / `last_checked_at`.
-   Re-pin from drifted state is follow-up scope (would need to re-fetch the
-   bundle from R2 or rebuild from the same commit).
+   (4:00 UTC). When a previously-pinned provider has dropped the CID, the
+   cron rebuilds the bundle deterministically from `commit_sha`, verifies
+   the rebuild's `bundle_hash` matches the stored value (mismatch → log +
+   skip, never silently re-pin different bytes), and re-uploads to the
+   dropped provider. Updates `pinned_w3s` / `pinned_pinata` /
+   `last_checked_at` regardless of recovery outcome.
 7. **UI** — Freeze panel rendered into `/p/?id=N` for all viewers; "Freeze
    current commit" + per-row "Activate" buttons render only for the owner
    (probed via `/v1/me`).

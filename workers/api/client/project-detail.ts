@@ -246,7 +246,7 @@ async function mountFreezePanel(
       return;
     }
     listEl.innerHTML = r.versions
-      .map((v) => renderFrozenRow(v, isOwner, project.id))
+      .map((v) => renderFrozenRow(v, isOwner))
       .join("");
     listEl.querySelectorAll<HTMLButtonElement>("[data-activate]").forEach(
       (btn) => {
@@ -300,9 +300,7 @@ async function mountFreezePanel(
 function renderFrozenRow(
   v: FrozenVersion,
   isOwner: boolean,
-  projectId: number,
 ): string {
-  const _ = projectId; // referenced via dataset on the button only
   const sizeKB = (v.bytes / 1024).toFixed(1);
   const created = new Date(v.created_at * 1000).toLocaleString();
   const pinBadges = [

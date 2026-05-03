@@ -112,22 +112,13 @@ export async function prepareMint(
     }
   }
 
-  // Task #15 mint guard: every phase that ultimately leads to a
-  // token existing on-chain (deploy → lock_cid → mint) requires a
-  // resolvable frozen CID. We check at the start of every phase
-  // rather than only at lock_cid because (a) deploying a contract
-  // that can never be locked wastes gas, and (b) collectors hitting
-  // `mint` deserve a clean error instead of a confusing on-chain
-  // revert.
-  //
-  // Backward compatibility: a project that has projects.frozen_cid
-  // set directly (legacy / pre-Task #15) is grandfathered, so a
-  // partially-onboarded project doesn't get bricked the moment this
-  // ships. Going forward, activate() is the only path that writes
-  // projects.frozen_cid, so the two states stay in sync.
-  const activeCid =
-    (await activeFrozenCid(c.env, project.id)) ?? project.frozen_cid;
-  if (!activeCid) {
+  // Mint guard: every phase that ultimately leads to a token
+  // existing on-chain (deploy → lock_cid → mint) requires an active
+  // frozen_versions row. Checked at every phase rather than only at
+  // lock_cid because (a) deploying a contract that can never be
+  // locked wastes gas, and (b) collectors hitting `mint` deserve a
+  // clean error instead of a confusing on-chain revert.
+  if (!(await activeFrozenCid(c.env, project.id))) {
     return c.json({ error: "frozen_version_required" }, 422);
   }
 

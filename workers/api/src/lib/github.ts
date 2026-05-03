@@ -150,6 +150,91 @@ export async function generateRepoFromTemplate(
   return body;
 }
 
+export interface RepoTreeNode {
+  path: string;
+  type: "blob" | "tree";
+  sha: string;
+}
+
+export interface RepoTreeListing {
+  files: RepoTreeNode[];
+  /// Resolved HEAD commit sha when ref is undefined; otherwise the
+  /// caller-supplied ref.
+  headSha: string | null;
+}
+
+/// List every blob in the repo at `ref` (or the default branch HEAD
+/// when ref is undefined). Used by the freeze bundler to enumerate
+/// inputs deterministically. Mock mode returns whatever's in the
+/// isolate-local MOCK_FILES map for `fullName`.
+export async function listRepoTreeAtRef(
+  env: Env,
+  fullName: string,
+  ref?: string,
+): Promise<RepoTreeListing> {
+  if (isMockMode(env)) {
+    const files: RepoTreeNode[] = [];
+    for (const key of MOCK_FILES.keys()) {
+      const [name, path] = key.split("::");
+      if (name !== fullName) continue;
+      files.push({ path, type: "blob", sha: MOCK_FILES.get(key)!.sha });
+    }
+    if (files.length === 0) {
+      // Synthesise the starter sketch so a brand-new mock-mode repo
+      // still freezes successfully on first call.
+      files.push({ path: "sketch.js", type: "blob", sha: "" });
+    }
+    return { files, headSha: ref ?? "mock-head" };
+  }
+  if (!env.GITHUB_PAT) {
+    throw new GitHubError(
+      "github_pat_unconfigured",
+      503,
+      "GITHUB_PAT secret must be set",
+    );
+  }
+  // Resolve a ref to a tree SHA. When the caller passes a commit
+  // SHA we still go through the commits endpoint to extract the
+  // tree SHA (`/git/trees/{sha}?recursive=1` accepts a commit SHA
+  // directly via the `?recursive=1` shortcut).
+  const refOrHead = ref ?? "HEAD";
+  const url = `${GITHUB_API}/repos/${fullName}/git/trees/${encodeURIComponent(refOrHead)}?recursive=1`;
+  const res = await fetch(url, { headers: ghHeaders(env.GITHUB_PAT) });
+  if (!res.ok) {
+    let detail: unknown = await res.text();
+    try {
+      detail = JSON.parse(detail as string);
+    } catch {}
+    throw new GitHubError(
+      `github_tree_failed:${res.status}`,
+      res.status,
+      detail,
+    );
+  }
+  const body = (await res.json()) as {
+    tree: Array<{ path: string; type: string; sha: string }>;
+    sha: string;
+    truncated?: boolean;
+  };
+  if (body.truncated) {
+    throw new GitHubError(
+      "github_tree_truncated",
+      502,
+      "tree exceeded the 100k file / 7 MB GitHub API limit; freeze unsupported",
+    );
+  }
+  return {
+    files: body.tree
+      .filter((n) => n.type === "blob" || n.type === "tree")
+      .map((n) => ({
+        path: n.path,
+        type: n.type as "blob" | "tree",
+        sha: n.sha,
+      })),
+    headSha: body.sha,
+  };
+}
+
 export async function archiveRepo(
   env: Env,
   fullName: string,

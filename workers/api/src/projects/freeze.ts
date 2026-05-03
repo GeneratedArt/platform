@@ -24,15 +24,16 @@ import { pinBundle } from "../lib/pinning";
  * live via the activate endpoint, so a bad freeze doesn't silently
  * change what mints would lock.
  *
- * Behaviour when pinning is partially or fully unconfigured:
+ * Pinning policy:
  *   - Both providers unconfigured AND PINNING_MOCK!=1 → 503
- *     `pinning_unconfigured`. We refuse to write a row whose CID is
- *     only the local fallback in production, because a CID nobody
- *     can resolve is worse than no CID at all.
- *   - One provider unconfigured / failed → row stored with
- *     pinning_partial=1 and pin_errors populated.
- *   - PINNING_MOCK=1 → both providers reported as pinned for dev /
- *     determinism tests. Honest about being a mock via the env flag.
+ *     `pinning_unconfigured`. We refuse to start a freeze whose
+ *     pinned CID would only be a local fallback.
+ *   - Both providers configured but BOTH fail at runtime → 502
+ *     `pin_failed`, no row written. A frozen row that nothing on the
+ *     IPFS network can resolve is worse than no row.
+ *   - Exactly one provider succeeds → row written with
+ *     `pinning_partial=true` and `pin_errors` populated. The owner
+ *     can retry; the cron also reattempts the dropped provider.
  */
 export async function freezeProject(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -54,8 +55,6 @@ export async function freezeProject(
       ? body.commit.trim()
       : "latest";
 
-  // Refuse to freeze in prod when both providers are absent and the
-  // mock flag isn't set — see header comment.
   const noProviders = !c.env.W3S_TOKEN && !c.env.PINATA_JWT;
   const isMock = c.env.PINNING_MOCK === "1";
   if (noProviders && !isMock) {
@@ -82,8 +81,26 @@ export async function freezeProject(
   const pin = await pinBundle(c.env, {
     bytes: bundle.bytes,
     filename: `project-${project.id}-${bundle.bundle_hash.slice(0, 8)}.html`,
-    fallbackCid: bundle.local_cid,
   });
+
+  // Refuse to write a row when no provider returned a CID. The local
+  // fallback CID would resolve nowhere on the IPFS network, which
+  // is the exact failure mode this whole feature is preventing.
+  // Mock-mode (env.PINNING_MOCK=1) is the one exception — there we
+  // intentionally treat the local CID as canonical for dev/testing.
+  if (!pin.cid) {
+    if (isMock) {
+      pin.cid = bundle.local_cid;
+      pin.pinned_w3s = true;
+      pin.pinned_pinata = true;
+      pin.partial = false;
+    } else {
+      return c.json(
+        { error: "pin_failed", detail: pin.errors },
+        502,
+      );
+    }
+  }
 
   const row = await insertFrozenVersion(c.env.DB, {
     project_id: project.id,
@@ -150,9 +167,6 @@ export async function activateFrozen(
   if (!target || target.project_id !== project.id) {
     return c.json({ error: "frozen_not_found" }, 404);
   }
-  // Refuse to activate a fully-unpinned row — minting a CID that
-  // resolves nowhere is the exact failure mode this whole feature
-  // exists to prevent.
   if (!target.pinned_w3s && !target.pinned_pinata) {
     return c.json({ error: "frozen_not_pinned" }, 409);
   }
