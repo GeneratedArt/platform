@@ -306,11 +306,17 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
   const ALLOWED_WIDTHS = [240, 480, 800, 1200];
   const wRaw = c.req.query("w");
   const w = wRaw && /^\d+$/.test(wRaw) ? parseInt(wRaw, 10) : null;
-  const width = w && ALLOWED_WIDTHS.includes(w) ? w : null;
+  // OG-card preset: 1200x630 cover-cropped variant for social meta.
+  // Kept as a named preset (not free-form w+h) so the cache key space
+  // is bounded and we can't be tricked into oddball aspect ratios.
+  const ogPreset = c.req.query("og") === "1";
+  const width = ogPreset ? 1200 : w && ALLOWED_WIDTHS.includes(w) ? w : null;
+  const height = ogPreset ? 630 : null;
+  const fit = ogPreset ? "cover" : "scale-down";
 
   const cache = caches.default;
   const cacheUrl = new URL(c.req.url);
-  cacheUrl.search = width ? `?w=${width}` : "";
+  cacheUrl.search = ogPreset ? "?og=1" : width ? `?w=${width}` : "";
   const cacheReq = new Request(cacheUrl.toString(), { method: "GET" });
   const cached = await cache.match(cacheReq);
   if (cached) return cached;
@@ -324,7 +330,7 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
   if (width && c.env.IMAGES) {
     try {
       const transformed = await c.env.IMAGES.input(obj.body)
-        .transform({ width, fit: "scale-down" })
+        .transform(height ? { width, height, fit } : { width, fit })
         .output({ format: "image/webp", quality: 85 });
       const r = transformed.response();
       response = new Response(r.body, {

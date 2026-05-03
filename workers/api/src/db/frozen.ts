@@ -194,9 +194,17 @@ export async function activateFrozenVersion(
       .bind(fid),
     // Mirror the active CID into projects.frozen_cid so the existing
     // `lock_cid` mint phase keeps working without a schema change.
+    // Also snapshot the current last_capture_key into
+    // frozen_capture_key so the OG card pipeline has a stable
+    // pointer to the canonical image of the active frozen version
+    // (the frozen bundle CID itself addresses HTML/JS, not an image).
     db
       .prepare(
-        "UPDATE projects SET frozen_cid = ?, updated_at = ? WHERE id = ?",
+        `UPDATE projects
+            SET frozen_cid = ?,
+                frozen_capture_key = COALESCE(last_capture_key, frozen_capture_key),
+                updated_at = ?
+          WHERE id = ?`,
       )
       .bind(target.cid, Math.floor(Date.now() / 1000), projectId),
   ]);

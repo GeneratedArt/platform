@@ -198,9 +198,7 @@ const GAExplore = {
       });
     });
 
-    // Infinite scroll: trigger one page ahead of the sentinel using
-    // IntersectionObserver. Falls back to a manual "load more" if IO
-    // is unavailable (very old browser).
+    // Infinite scroll: trigger one page ahead of the sentinel.
     if ("IntersectionObserver" in window) {
       const io = new IntersectionObserver(
         (entries) => {

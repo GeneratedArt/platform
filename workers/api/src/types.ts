@@ -77,6 +77,7 @@ export interface ProjectRow {
   repo_full: string | null;
   cover_url: string | null;
   last_capture_key: string | null;
+  frozen_capture_key: string | null;
   contract_address: string | null;
   frozen_cid: string | null;
   deploy_tx_hash: string | null;

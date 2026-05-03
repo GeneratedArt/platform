@@ -23,21 +23,20 @@ function siteOrigin(env: Env): string {
 
 export function ogImageFor(env: Env, project: {
   status: string;
-  frozen_cid: string | null;
+  frozen_capture_key: string | null;
   last_capture_key: string | null;
   cover_url: string | null;
 }): string {
-  // Prefer the active frozen capture (IPFS-pinned, immutable) when the
-  // project is minted. Fall back to the most recent studio capture,
-  // then the artist-provided cover, then the site default.
-  if (project.frozen_cid && (project.status === "minted" || project.status === "published")) {
-    const gateway = (env.IPFS_GATEWAY || "https://w3s.link").replace(/\/$/, "");
-    return `${gateway}/ipfs/${project.frozen_cid}`;
-  }
-  if (project.last_capture_key) {
-    const base = (env.CAPTURES_PUBLIC_BASE || siteOrigin(env)).replace(/\/$/, "");
-    return `${base}/v1/captures/${project.last_capture_key}?w=1200`;
-  }
+  // og:image must be a real image. The frozen bundle CID points at
+  // the project's HTML/JS artifact, not a render, so we use the
+  // capture key snapshotted at freeze time (frozen_capture_key) for
+  // minted/frozen projects, falling back to the most recent studio
+  // capture, then the artist cover, then the site default. The
+  // captures endpoint serves a 1200x630 OG-shaped variant when the
+  // ?og=1 preset is set.
+  const captureBase = (env.CAPTURES_PUBLIC_BASE || siteOrigin(env)).replace(/\/$/, "");
+  const key = project.frozen_capture_key || project.last_capture_key;
+  if (key) return `${captureBase}/v1/captures/${key}?og=1`;
   if (project.cover_url) return project.cover_url;
   return `${siteOrigin(env)}${SITE_DEFAULT_OG}`;
 }
