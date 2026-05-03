@@ -51,18 +51,27 @@ The architecture is deliberately minimal, focusing on:
 Every mintable project must resolve to an immutable, content-addressed bundle.
 The freeze pipeline:
 
-1. **Bundler** (`workers/api/src/lib/freeze.ts`) — walks the artist's GitHub
-   repo at the requested commit via the Git Trees API, filters out dev-only
-   files (`.git*`, `node_modules`, `package*.json`, lockfiles, README, etc.),
-   fetches every remaining blob, inlines `sketch.js` + the vendored p5/three
-   runtime + asset data-URIs into a canonical self-contained HTML page, and
-   computes `bundle_hash` as the SHA-256 of a sorted manifest of every input
-   (file blobs + synthetic `__meta__/*` entries for title, engine, project
-   id, resolved commit, runtime version). Determinism is asserted by
-   `workers/api/test/freeze.determinism.test.mjs`, which bundles the real
-   `freeze.ts` via esbuild and verifies that identical inputs produce
-   byte-identical output and that any single-character input change flips
-   both the manifest hash and the CID.
+1. **Bundler** (`workers/api/src/lib/freeze.ts`) — when the artist freezes
+   "latest" the bundler first resolves the default branch HEAD to a real
+   commit SHA via the GitHub refs API, then anchors every subsequent read
+   to that immutable SHA so a push between "list tree" and "fetch blobs"
+   can't sneak in a non-atomic bundle. It walks the tree via Git Trees API,
+   filters dev-only files (`.git*`, `node_modules`, `package*.json`,
+   lockfiles, README, etc.), fetches each remaining blob's raw bytes via
+   the Git Blobs API (binary-safe — no UTF-8 round-trip), normalises line
+   endings on text files only, inlines `sketch.js` + the vendored p5/three
+   runtime + asset data-URIs into a canonical self-contained HTML page,
+   and computes `bundle_hash` as the SHA-256 of a sorted manifest of every
+   input (file blobs + synthetic `__meta__/*` entries for title, engine,
+   project id, resolved commit, runtime version). The HTML output also
+   contains a small boot shim that converts each inlined asset's data URI
+   to a blob URL and overrides `fetch` / `Image#src` / `Audio#src` so
+   common p5/three asset-loading patterns (`loadImage("assets/foo.png")`,
+   etc.) resolve from the embedded bytes without hitting the network.
+   Determinism is asserted by `workers/api/test/freeze.determinism.test.mjs`,
+   which bundles the real `freeze.ts` + a seeded mock GitHub repo via
+   esbuild and verifies byte-identical output for identical inputs and
+   different output for a single-byte sketch change.
 2. **Dual pinning** (`workers/api/src/lib/pinning.ts`) — fans out to
    web3.storage and Pinata in parallel via `Promise.allSettled`, returns the
    first successful provider's CID, flags `pinning_partial=true` when only one

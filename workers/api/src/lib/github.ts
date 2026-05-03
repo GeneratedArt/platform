@@ -59,6 +59,21 @@ function isMockMode(env: Env): boolean {
 // (mock OFF) hits the real Contents API.
 const MOCK_FILES = new Map<string, { content: string; sha: string }>();
 
+/// Test helper: seed the mock store. No-op outside mock mode (so a
+/// stray prod call can't pollute state).
+export function __setMockFile(
+  env: Env,
+  fullName: string,
+  path: string,
+  content: string,
+): void {
+  if (!isMockMode(env)) return;
+  MOCK_FILES.set(mockKey(fullName, path), {
+    content,
+    sha: syntheticSha(`${fullName}::${path}::${content}`),
+  });
+}
+
 function mockKey(fullName: string, path: string): string {
   return `${fullName}::${path}`;
 }
@@ -148,6 +163,89 @@ export async function generateRepoFromTemplate(
   }
   const body = (await res.json()) as GeneratedRepo;
   return body;
+}
+
+/// Resolve the default branch's HEAD commit SHA for a repo. The
+/// freeze pipeline calls this when the user freezes "latest" so the
+/// recorded `commit_sha` is a real commit (re-resolvable by the
+/// drift-recovery cron) rather than a tree SHA or blob SHA.
+export async function getDefaultBranchHeadCommit(
+  env: Env,
+  fullName: string,
+): Promise<{ sha: string; branch: string }> {
+  if (isMockMode(env)) {
+    return {
+      sha: syntheticSha(`head::${fullName}`),
+      branch: "main",
+    };
+  }
+  if (!env.GITHUB_PAT) {
+    throw new GitHubError("github_pat_unconfigured", 503, "");
+  }
+  const repoRes = await fetch(`${GITHUB_API}/repos/${fullName}`, {
+    headers: ghHeaders(env.GITHUB_PAT),
+  });
+  if (!repoRes.ok) {
+    throw new GitHubError(
+      `github_repo_${repoRes.status}`,
+      repoRes.status,
+      await repoRes.text().catch(() => ""),
+    );
+  }
+  const repo = (await repoRes.json()) as { default_branch: string };
+  const branch = repo.default_branch || "main";
+  const refRes = await fetch(
+    `${GITHUB_API}/repos/${fullName}/git/ref/heads/${encodeURIComponent(branch)}`,
+    { headers: ghHeaders(env.GITHUB_PAT) },
+  );
+  if (!refRes.ok) {
+    throw new GitHubError(
+      `github_ref_${refRes.status}`,
+      refRes.status,
+      await refRes.text().catch(() => ""),
+    );
+  }
+  const ref = (await refRes.json()) as { object: { sha: string } };
+  return { sha: ref.object.sha, branch };
+}
+
+/// Fetch a blob's raw bytes by sha. Uses the Git Blobs API so binary
+/// content (PNGs, fonts, audio) is preserved exactly — the Contents
+/// API path runs decoded base64 through a UTF-8 string round-trip
+/// which corrupts non-text bytes.
+export async function getRepoBlob(
+  env: Env,
+  fullName: string,
+  sha: string,
+): Promise<Uint8Array> {
+  if (isMockMode(env)) {
+    for (const [, file] of MOCK_FILES) {
+      if (file.sha === sha) return new TextEncoder().encode(file.content);
+    }
+    return new Uint8Array();
+  }
+  if (!env.GITHUB_PAT) {
+    throw new GitHubError("github_pat_unconfigured", 503, "");
+  }
+  const res = await fetch(
+    `${GITHUB_API}/repos/${fullName}/git/blobs/${encodeURIComponent(sha)}`,
+    { headers: ghHeaders(env.GITHUB_PAT) },
+  );
+  if (!res.ok) {
+    throw new GitHubError(
+      `github_blob_${res.status}`,
+      res.status,
+      await res.text().catch(() => ""),
+    );
+  }
+  const body = (await res.json()) as { content: string; encoding: string };
+  if (body.encoding !== "base64") {
+    throw new GitHubError("github_blob_encoding", 502, body.encoding);
+  }
+  const bin = atob(body.content.replace(/\n/g, ""));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }
 
 export interface RepoTreeNode {

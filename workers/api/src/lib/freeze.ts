@@ -9,7 +9,11 @@
 // HTML formatting drift.
 
 import type { Env } from "../types";
-import { listRepoTreeAtRef, getRepoFile } from "./github";
+import {
+  listRepoTreeAtRef,
+  getRepoBlob,
+  getDefaultBranchHeadCommit,
+} from "./github";
 import P5_SOURCE from "../../vendor/p5.min.js";
 import THREE_SOURCE from "../../vendor/three.min.js";
 
@@ -66,6 +70,27 @@ const DEV_FILE_RE =
   /^(package(-lock)?\.json|tsconfig.*|README.*|\.gitignore|\.editorconfig|\.prettier.*|\.eslint.*|LICENSE.*|CHANGELOG.*)$/i;
 const ALLOWED_TOP_LEVEL = new Set(["sketch.js", "assets"]);
 
+function isTextPath(path: string): boolean {
+  return /\.(js|json|css|html|svg|txt|md|frag|vert|glsl)$/i.test(path);
+}
+
+/// Replace CRLF / CR with LF in a byte stream without going through a
+/// UTF-8 string (so the function is safe on borderline-text inputs).
+function normaliseLineEndingsBytes(input: Uint8Array): Uint8Array {
+  const out = new Uint8Array(input.length);
+  let j = 0;
+  for (let i = 0; i < input.length; i++) {
+    const b = input[i];
+    if (b === 0x0d) {
+      out[j++] = 0x0a;
+      if (i + 1 < input.length && input[i + 1] === 0x0a) i++;
+    } else {
+      out[j++] = b;
+    }
+  }
+  return out.slice(0, j);
+}
+
 function isDevPath(path: string): boolean {
   if (DEV_DIR_RE.test(path)) return true;
   const top = path.split("/")[0];
@@ -100,34 +125,35 @@ export async function buildBundle(
     ];
     resolvedCommit = "no-source";
   } else {
-    const ref =
-      !input.commit || input.commit === "latest" ? undefined : input.commit;
-    const tree = await listRepoTreeAtRef(env, input.repoFull, ref);
-    // Fetch every non-dev file's content. Sequential is intentional —
-    // GitHub's secondary rate limit is sensitive to bursty parallel
-    // reads from a single PAT, and a typical sketch repo is < 20
-    // files anyway.
+    // Resolve "latest" to a real commit SHA up front. We do this
+    // BEFORE the tree listing so a push between "list tree" and
+    // "fetch blobs" can't sneak in: every blob read is anchored to
+    // a single immutable commit. The cron's drift-recovery path
+    // re-uses this same commit SHA verbatim.
+    if (!input.commit || input.commit === "latest") {
+      const head = await getDefaultBranchHeadCommit(env, input.repoFull);
+      resolvedCommit = head.sha;
+    } else {
+      resolvedCommit = input.commit;
+    }
+    const tree = await listRepoTreeAtRef(env, input.repoFull, resolvedCommit);
     entries = [];
     for (const node of tree.files) {
       if (node.type !== "blob") continue;
       if (isDevPath(node.path)) continue;
-      const file = await getRepoFile(env, input.repoFull, node.path, ref);
-      // Normalise text line endings so a Windows-authored file
-      // doesn't produce a different hash than an identical Unix one.
-      // Binary files (assets) are passed through untouched.
-      const isText = /\.(js|json|css|html|svg|txt|md)$/i.test(node.path);
-      const raw = isText
-        ? file.content.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-        : file.content;
-      entries.push({
-        path: node.path,
-        bytes: new TextEncoder().encode(raw),
-      });
-    }
-    if (input.commit && input.commit !== "latest") {
-      resolvedCommit = input.commit;
-    } else {
-      resolvedCommit = tree.headSha ?? "no-source";
+      // Read bytes directly via the Git Blobs API (binary-safe).
+      // Sequential is intentional — GitHub's secondary rate limit
+      // is sensitive to bursty parallel reads from a single PAT,
+      // and a typical sketch repo is < 20 files anyway.
+      const rawBytes = await getRepoBlob(env, input.repoFull, node.sha);
+      // Normalise line endings on text files so a Windows-authored
+      // file doesn't produce a different hash than an identical
+      // Unix one. Binary files (assets) are passed through bytewise
+      // unchanged so PNGs / WAVs / WASM remain valid.
+      const bytes = isTextPath(node.path)
+        ? normaliseLineEndingsBytes(rawBytes)
+        : rawBytes;
+      entries.push({ path: node.path, bytes });
     }
   }
 
@@ -243,6 +269,49 @@ function renderHtml(r: RenderInput): string {
       files: r.manifest,
     }),
   );
+  // Boot shim: convert each inlined asset's data URI to a blob URL
+  // and override `fetch` / `Image#src` / `Audio#src` so common
+  // p5/three asset-loading patterns (`loadImage("assets/foo.png")`,
+  // `<img src="assets/foo.png">`, etc.) resolve from the embedded
+  // bytes instead of hitting the network. Without this shim, a
+  // self-contained frozen bundle would render correctly only for
+  // sketches that generate every visual procedurally.
+  const bootShim = `(function(){
+  var assets=window.GA_ASSETS||{};
+  var blobs={};
+  for(var p in assets){
+    var m=/^data:([^;]+);base64,(.*)$/.exec(assets[p]);
+    if(!m)continue;
+    try{
+      var bin=atob(m[2]);
+      var buf=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
+      blobs[p]=URL.createObjectURL(new Blob([buf],{type:m[1]}));
+    }catch(e){}
+  }
+  function resolve(u){
+    if(typeof u!=="string")return u;
+    if(/^(https?:|data:|blob:)/i.test(u))return u;
+    var k=u.replace(/^\\.\\//,"").replace(/^\\//,"");
+    return blobs[k]||u;
+  }
+  var of=window.fetch;
+  window.fetch=function(input,init){
+    if(typeof input==="string")return of(resolve(input),init);
+    if(input&&input.url){var r=resolve(input.url);if(r!==input.url)return of(r,init);}
+    return of(input,init);
+  };
+  ["HTMLImageElement","HTMLAudioElement","HTMLVideoElement","HTMLSourceElement"].forEach(function(n){
+    var Ctor=window[n];if(!Ctor||!Ctor.prototype)return;
+    var d=Object.getOwnPropertyDescriptor(Ctor.prototype,"src");
+    if(!d||!d.set)return;
+    Object.defineProperty(Ctor.prototype,"src",{
+      configurable:true,get:d.get,
+      set:function(v){d.set.call(this,resolve(v));}
+    });
+  });
+  window.GA_RESOLVE=resolve;
+})();`;
   return `<!doctype html>
 <meta charset="utf-8">
 <title>${safeTitle}</title>
@@ -258,6 +327,7 @@ function renderHtml(r: RenderInput): string {
   catch(e){window.GA_ASSETS={};}
 })();
 </script>
+<script>${bootShim}</script>
 <script>${safeRuntime}</script>
 <script id="ga-sketch">${safeSketch}</script>
 `;

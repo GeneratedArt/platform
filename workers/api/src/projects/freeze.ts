@@ -83,29 +83,27 @@ export async function freezeProject(
     filename: `project-${project.id}-${bundle.bundle_hash.slice(0, 8)}.html`,
   });
 
-  // Refuse to write a row when no provider returned a CID. The local
-  // fallback CID would resolve nowhere on the IPFS network, which
-  // is the exact failure mode this whole feature is preventing.
-  // Mock-mode (env.PINNING_MOCK=1) is the one exception — there we
-  // intentionally treat the local CID as canonical for dev/testing.
-  if (!pin.cid) {
+  // Refuse to write a row when no provider returned a CID. The
+  // local fallback CID would resolve nowhere on the IPFS network,
+  // which is the exact failure mode this feature is preventing.
+  // Mock mode is the one exception — we substitute the locally
+  // computed CID so dev/CI flows remain testable end-to-end.
+  let resolvedCid = pin.cid;
+  if (!resolvedCid) {
     if (isMock) {
-      pin.cid = bundle.local_cid;
+      resolvedCid = bundle.local_cid;
       pin.pinned_w3s = true;
       pin.pinned_pinata = true;
       pin.partial = false;
     } else {
-      return c.json(
-        { error: "pin_failed", detail: pin.errors },
-        502,
-      );
+      return c.json({ error: "pin_failed", detail: pin.errors }, 502);
     }
   }
 
   const row = await insertFrozenVersion(c.env.DB, {
     project_id: project.id,
     commit_sha: bundle.commit_sha,
-    cid: pin.cid,
+    cid: resolvedCid,
     bundle_hash: bundle.bundle_hash,
     bytes: bundle.bytes.length,
     pinned_w3s: pin.pinned_w3s,
