@@ -49,6 +49,18 @@ export function installClientErrorReporter(cfg: ClientErrorReporterConfig): void
   });
 }
 
+// PII scrub: strip query string and hash from any URL we forward
+// so signed-upload tokens, ?email=, ?invite=, fragment-encoded
+// session bits, etc. never leave the browser. Also caps length.
+function scrubUrl(raw: string): string {
+  try {
+    const u = new URL(raw, location.origin);
+    return `${u.origin}${u.pathname}`.slice(0, 200);
+  } catch {
+    return raw.split("?")[0].split("#")[0].slice(0, 200);
+  }
+}
+
 async function report(message: string, stack: string): Promise<void> {
   if (!configured) return;
   // Per-page de-dupe + cap so a hot-loop error doesn't DoS the
@@ -67,7 +79,7 @@ async function report(message: string, stack: string): Promise<void> {
         message: String(message).slice(0, 500),
         stack: String(stack).slice(0, 4000),
         page: configured.page,
-        url: location.href.slice(0, 200),
+        url: scrubUrl(location.href),
         ts: Date.now(),
       }),
       keepalive: true,

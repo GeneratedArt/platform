@@ -165,6 +165,21 @@ UPTIME_PUBLIC_BASE   = "https://api.generatedart.com"
 UPTIME_PROJECT_PROBE_URL = "https://generatedart.com/projects/genesis/"
 SENTRY_ENVIRONMENT   = "production"
 
+# --- External log drain (deployment note) ---------------------------------
+# Workers' structured access lines (logAccess in lib/log.ts) and any
+# console output are emitted as JSON to stderr/stdout and shipped to
+# the chosen sink via Cloudflare's Logpush. Logpush is *not* declared
+# in wrangler.toml — it's account-scoped and configured from the
+# Cloudflare dashboard against this Worker's namespace, with a
+# Better Stack (Logflare) HTTP destination. To re-create the sink:
+#   1. Cloudflare Dashboard → Workers & Pages → generatedart-api → Logs
+#   2. Create Logpush job, dataset = "workers_trace_events"
+#   3. Destination = HTTP, URL = the Better Stack source HTTP endpoint,
+#      auth = Bearer <BETTERSTACK_TOKEN> (rotate via dashboard).
+# Sentry is the alerting sink (see SENTRY_DSN); the log drain above
+# is for searchable retention and is intentionally repo-external so
+# rotating the destination token does not require a redeploy.
+
 # --- Task #15: frozen artifact + provenance pipeline -----------------------
 # Pinning provider tokens. BOTH must be set in production via:
 #   wrangler secret put W3S_TOKEN  --env production
