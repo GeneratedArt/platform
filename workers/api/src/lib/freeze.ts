@@ -217,13 +217,8 @@ export async function buildBundle(
     assetMap[e.path] = bytesToDataUri(e.path, e.bytes);
   }
 
-  // First render with a placeholder hash so we can compute
-  // bundle_hash from the FINAL pinned bytes. The validator's
-  // critique was that a manifest hash separate from the pinned
-  // bytes lets the wrapper/template/boot-shim drift without
-  // failing the cron's mismatch guard. Hashing the actual bytes
-  // closes that gap: any change to template, runtime, sketch,
-  // assets, or meta inputs flips the hash.
+  // bundle_hash is sha256 of the exact bytes that get pinned, so
+  // any change to template/runtime/sketch/assets/meta flips it.
   const draftHtml = renderHtml({
     title: input.title,
     runtimeSource,
@@ -233,44 +228,17 @@ export async function buildBundle(
     commit: resolvedCommit,
     bundleHash: "PENDING",
   });
-  const draftBytes = new TextEncoder().encode(draftHtml);
-  const bundle_hash = await sha256Hex(draftBytes);
-  // Re-render with the real hash inlined into the manifest block
-  // so /v1/projects/:id/frozen rows can verify it offline. Note:
-  // bundle_hash is computed from `draftBytes` (PENDING placeholder),
-  // and the final `bytes` differ from `draftBytes` only by that
-  // 7-char swap. That's intentional — bundle_hash names "the bytes
-  // that, when re-rendered with PENDING, produce this hash", which
-  // the cron rebuild reproduces deterministically. local_cid is
-  // computed from the PENDING bytes too, so the two are consistent.
-  const html = renderHtml({
-    title: input.title,
-    runtimeSource,
-    sketchSource,
-    assetMap,
-    manifest,
-    commit: resolvedCommit,
-    bundleHash: bundle_hash,
-  });
-  const bytes = new TextEncoder().encode(html);
+  const bytes = new TextEncoder().encode(draftHtml);
   if (bytes.length > MAX_BUNDLE_BYTES) {
     throw new Error(
       `bundle_too_large:${bytes.length}>${MAX_BUNDLE_BYTES}`,
     );
   }
-  // local_cid is the canonical CIDv1-raw of the bytes that get
-  // pinned. It encodes the SAME sha256 as `bundle_hash`'s twin
-  // (draftBytes), but here we anchor it to the bytes we actually
-  // pin, so providers can be asked about it directly.
+  const bundle_hash = await sha256Hex(bytes);
   const local_cid = await cidV1Raw(bytes);
-  // Final-bytes hash too — useful for the cron drift check on the
-  // exact pinned payload. We expose `bundle_hash` as the canonical
-  // provenance hash; the `pinned_bytes_sha256` lets a verifier
-  // reproduce the bytes that landed on IPFS exactly.
-  const pinned_bytes_sha256 = await sha256Hex(bytes);
   return {
     bytes,
-    bundle_hash: pinned_bytes_sha256,
+    bundle_hash,
     local_cid,
     commit_sha: resolvedCommit,
     manifest,
