@@ -20,7 +20,7 @@ import {
 } from "../db/projects";
 import { activeFrozenCid } from "./freeze";
 import { recordEvent } from "../db/events";
-import { normaliseTraits, recordMintWithTraits } from "../db/mints";
+import { recordMintWithTraits } from "../db/mints";
 import {
   encodeCreateProjectCalldata,
   encodeSetBaseFrozenCIDCalldata,
@@ -292,7 +292,6 @@ export async function confirmDeploy(
 
 interface ConfirmMintBody {
   tx_hash?: unknown;
-  traits?: unknown;
 }
 
 /**
@@ -300,18 +299,14 @@ interface ConfirmMintBody {
  *
  * Verifies a Minted event was emitted by `project.contract_address`
  * in the receipt for `tx_hash`, persists the mint row (idempotent on
- * (chain_id, contract_address, token_id)), fans the trait map out to
- * `mint_traits`, and flips the project status → 'minted'. Public —
- * anyone who minted should be able to register their token, since
- * the proof lives on-chain.
+ * (chain_id, contract_address, token_id)) including the on-chain
+ * `seed`, and flips the project status → 'minted'. Public — anyone
+ * who minted should be able to register their token, since the proof
+ * lives on-chain.
  *
- * Traits are computed client-side in the studio preview iframe
- * (Workers don't have a JS runtime to execute arbitrary p5/three
- * sketches without Browser Rendering, which we don't depend on).
- * The Worker enforces shape (flat string→string ≤ 16 keys, ≤ 32-char
- * names, ≤ 64-char values) via `normaliseTraits` and silently drops
- * malformed maps — the mint row itself is still persisted so the
- * token isn't lost.
+ * Traits are NOT accepted from the client. See the long-form comment
+ * inside the function for the security rationale; trait fan-out is
+ * the responsibility of a trusted out-of-band indexer.
  */
 export async function confirmMint(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -366,17 +361,24 @@ export async function confirmMint(
     return c.json({ error: "rpc_unavailable" }, 503);
   }
 
-  // Persist a mint row + per-trait fan-out for every Minted event in
-  // the receipt. Each row is idempotent on
-  // (chain_id, contract_address, token_id) — re-posting the same
-  // tx_hash by another caller is a no-op. Traits validated by
-  // `normaliseTraits` are attached only to the *first* token in the
-  // batch (the one the client extracted features for); any extra
-  // tokens get null traits, which is the right outcome since the
-  // client never computed features for them.
-  const traits = normaliseTraits(body.traits);
-  for (let i = 0; i < mintEvents.length; i++) {
-    const ev = mintEvents[i];
+  // Persist a mint row for every Minted event in the receipt.
+  // Idempotent on (chain_id, contract_address, token_id) — re-posting
+  // the same tx_hash by another caller is a no-op.
+  //
+  // SECURITY (Task #18 review fix): traits are deliberately *not*
+  // accepted from the public confirm-mint body. Any caller who knows
+  // a valid mint tx_hash could otherwise forge a rare trait
+  // combination and poison rarity/marketplace metadata. Authoritative
+  // trait extraction must run server-side from the on-chain seed
+  // against the project's frozen bundle. This Worker can't execute
+  // arbitrary p5/three code (no Browser Rendering binding configured;
+  // V8 isolates disallow `eval`/`new Function` for dynamic code), so
+  // trait fan-out is performed out-of-band by a trusted indexer
+  // (tracked as follow-up #38 / #39). Mint rows ship with their
+  // bytes32 seed persisted; the indexer reads those and writes
+  // `mints.traits_json` + `mint_traits` rows after computing
+  // features deterministically from the seed.
+  for (const ev of mintEvents) {
     try {
       await recordMintWithTraits(c.env.DB, {
         projectId: project.id,
@@ -387,7 +389,7 @@ export async function confirmMint(
         txHash: body.tx_hash as string,
         mintedAt: Math.floor(Date.now() / 1000),
         seed: ev.seed,
-        traits: i === 0 ? traits : null,
+        traits: null,
       });
     } catch (e) {
       console.error("mint_persist_failed", e);

@@ -464,32 +464,23 @@ class MintController {
         if (minted) {
           this.swapPreviewSeed(minted.seed);
         }
-        // Task #18: extract generative traits from the freshly-minted
-        // seed via the studio preview iframe sandbox. The extractor
-        // is wall-clocked at 500ms — if the artist's $features()
-        // never runs, takes too long, or returns garbage, we still
-        // POST confirm-mint so the mint row is recorded; the Worker
-        // simply persists null traits.
-        let traits: Record<string, string> | null = null;
-        if (minted) {
-          traits = await this.extractFeaturesForSeed(minted.seed).catch(
-            () => null,
-          );
-        }
+        // Task #18: traits are NOT extracted client-side anymore —
+        // they would arrive at confirm-mint as untrusted user input
+        // and could be forged. The Worker persists the on-chain seed
+        // and a trusted indexer (out of band) computes features from
+        // it deterministically. Confirm-mint here just records the
+        // mint row and flips status; rarity/trait surfaces fill in
+        // once the indexer has run.
         await fetch(
           `${this.cfg.apiBase}/v1/projects/${this.projectId}/mint/confirm-mint`,
           {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tx_hash: txHash, traits }),
+            body: JSON.stringify({ tx_hash: txHash }),
           },
         );
-        this.feedback(
-          traits
-            ? `Minted! ${Object.keys(traits).length} traits captured.`
-            : "Minted! Token is in your wallet.",
-        );
+        this.feedback("Minted! Token is in your wallet.");
       }
 
       // Reload project + chain state so the UI advances to the next phase.
