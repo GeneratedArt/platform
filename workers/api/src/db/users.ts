@@ -1,8 +1,12 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { UserRow } from "../types";
 
+// Default handle on first SIWE sign-in. Must satisfy the profile
+// handle regex `^[a-z0-9][a-z0-9-]{1,30}$` (Task #5) so a freshly-created
+// user can save their profile without first changing their handle.
+// Earlier this used an underscore; the dash version is regex-compatible.
 function generateHandle(address: string): string {
-  return `artist_${address.slice(2, 8).toLowerCase()}`;
+  return `artist-${address.slice(2, 8).toLowerCase()}`;
 }
 
 export async function upsertUserByAddress(

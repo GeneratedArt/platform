@@ -1,5 +1,5 @@
 function i(t){return t.replace(/[&<>"']/g,o=>{switch(o){case"&":return"&amp;";case"<":return"&lt;";case">":return"&gt;";case'"':return"&quot;";default:return"&#39;"}})}async function f(t,o){let e=await fetch(t,{credentials:"include",...o});if(!e.ok){let n=null;try{n=await e.json()}catch{}return{__status:e.status,__body:n}}return await e.json()}function g(t){return typeof t=="object"&&t!==null&&"__status"in t}function w(t){let o=t.cover_url?`<img src="${i(t.cover_url)}" alt="${i(t.title)}" loading="lazy" />`:`<span class="ga-profile-card-cover-empty">${i(t.engine)}</span>`;return`
-    <a class="ga-profile-card" href="/p/?id=${t.id}">
+    <a class="ga-profile-card" href="/p/${t.id}/">
       <div class="ga-profile-card-cover">${o}</div>
       <div class="ga-profile-card-body">
         <h3>${i(t.title)}</h3>

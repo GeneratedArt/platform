@@ -68,8 +68,11 @@ function projectCard(p: ProjectSummary): string {
   const cover = p.cover_url
     ? `<img src="${escapeHtml(p.cover_url)}" alt="${escapeHtml(p.title)}" loading="lazy" />`
     : `<span class="ga-profile-card-cover-empty">${escapeHtml(p.engine)}</span>`;
+  // Pretty `/p/{id}/` URL — handled at runtime via 404.html SPA
+  // fallback (GH Pages serves /404.html for unknown paths and our
+  // 404.html detects `/p/{N}` and hydrates the same bundle as /p/).
   return `
-    <a class="ga-profile-card" href="/p/?id=${p.id}">
+    <a class="ga-profile-card" href="/p/${p.id}/">
       <div class="ga-profile-card-cover">${cover}</div>
       <div class="ga-profile-card-body">
         <h3>${escapeHtml(p.title)}</h3>

@@ -5,38 +5,52 @@ header_image: "/assets/images/art/bg31.webp"
 
 {% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
 
+{% comment %}
+  Liquid does NOT auto-escape interpolated variables. Every `{{ … }}`
+  rendered from author front-matter (which is a write-through cache of
+  user-controlled `PATCH /v1/me` input) is filtered through `| escape`
+  here to prevent stored XSS — a malicious bio or social URL must not
+  inject markup or `javascript:` handlers into the public page.
+
+  - Text contexts use `| escape` (HTML-entity-encodes &, <, >, ", ').
+  - URL contexts in `href`/`src` ALSO use `| escape` so a `"` inside
+    a URL can't break out of the attribute, and combine with a strict
+    rel="noopener". `javascript:` URLs are not auto-blocked by Liquid;
+    the worker validates `https:` only on PATCH, but the static
+    seeds + future migrations may contain anything, so the layout
+    treats author input as untrusted.
+  - The cover image is rendered as an `<img>` (not an inline
+    `background-image` style) so it gets the same attribute escaping
+    as other URL fields rather than CSS-context escaping (which Liquid
+    can't do correctly).
+{% endcomment %}
+
 <section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
   <div class="container py-10 py-md-12">
-    {% comment %}
-      Render static profile chrome from the `_authors/{handle}.md`
-      front-matter so the page is meaningful at first paint (good
-      Lighthouse, good OG previews). The follow button + projects
-      grid + counts then hydrate from `/v1/users/:handle` and
-      `/v1/users/:handle/projects` once the auth bundle has run.
-    {% endcomment %}
     <div id="ga-profile-root"
-         data-handle="{{ page.handle | default: page.slug }}"
+         data-handle="{{ page.handle | default: page.slug | escape }}"
          data-display-name="{{ page.display_name | default: page.title | escape }}">
 
       {% if page.cover_image %}
-      <div class="ga-profile-cover" role="img" aria-label="{{ page.display_name | default: page.title | escape }} cover image"
-           style="background-image: url('{{ page.cover_image }}');"></div>
+      <div class="ga-profile-cover">
+        <img src="{{ page.cover_image | escape }}" alt="" loading="lazy" />
+      </div>
       {% endif %}
 
       <header class="ga-profile-header">
         <div class="ga-profile-avatar">
           {% if page.avatar %}
-            <img src="{{ page.avatar }}" alt="{{ page.display_name | default: page.title }}" />
+            <img src="{{ page.avatar | escape }}" alt="{{ page.display_name | default: page.title | escape }}" />
           {% else %}
-            <span class="ga-profile-avatar-fallback" aria-hidden="true">{{ page.handle | default: page.slug | slice: 0, 2 | upcase }}</span>
+            <span class="ga-profile-avatar-fallback" aria-hidden="true">{{ page.handle | default: page.slug | slice: 0, 2 | upcase | escape }}</span>
           {% endif %}
         </div>
 
         <div class="ga-profile-meta">
-          <p class="ga-profile-handle">@{{ page.handle | default: page.slug }}</p>
-          <h1 class="ga-profile-name">{{ page.display_name | default: page.title }}</h1>
+          <p class="ga-profile-handle">@{{ page.handle | default: page.slug | escape }}</p>
+          <h1 class="ga-profile-name">{{ page.display_name | default: page.title | escape }}</h1>
           {% if page.bio %}
-            <p class="ga-profile-bio">{{ page.bio }}</p>
+            <p class="ga-profile-bio">{{ page.bio | escape | newline_to_br }}</p>
           {% endif %}
 
           <div class="ga-profile-stats">
@@ -48,7 +62,7 @@ header_image: "/assets/images/art/bg31.webp"
           {% if page.socials %}
           <ul class="ga-profile-socials">
             {% for s in page.socials %}
-              <li><a href="{{ s.url }}" rel="noopener me" target="_blank">{{ s.label }}</a></li>
+              <li><a href="{{ s.url | escape }}" rel="noopener nofollow ugc me" target="_blank">{{ s.label | escape }}</a></li>
             {% endfor %}
           </ul>
           {% endif %}
@@ -80,10 +94,11 @@ header_image: "/assets/images/art/bg31.webp"
   .ga-profile-cover {
     height: clamp(140px, 20vw, 240px);
     border: 1px solid var(--ga-rule);
-    background-size: cover;
-    background-position: center;
+    overflow: hidden;
     margin-bottom: 32px;
+    background: var(--ga-paper);
   }
+  .ga-profile-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .ga-profile-header {
     display: grid;
     grid-template-columns: 160px 1fr;
@@ -126,6 +141,7 @@ header_image: "/assets/images/art/bg31.webp"
     max-width: 60ch;
     color: var(--ga-mute);
     margin-bottom: 16px;
+    white-space: pre-wrap;
   }
   .ga-profile-stats {
     display: flex; gap: 24px;
