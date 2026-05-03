@@ -15,15 +15,32 @@ export async function statsHandler(
   const requestId = c.get("requestId");
   try {
     const snap = await readStats(c.env.DB);
-    let rate_limit_buckets = 0;
+    // Active client-error rate-limit buckets = number of distinct
+    // IPs that have reported in the *current* minute window. Earlier
+    // versions returned the count of every key in the namespace,
+    // which conflated keys across minutes (and across other prefixes
+    // if any are added later). Prefix-scope keeps it a meaningful
+    // gauge of current load against the 30/min/IP limit.
+    let rate_limit_buckets_now = 0;
+    let rate_limit_buckets_total = 0;
     try {
-      const list = await c.env.RATE_LIMIT.list({ limit: 1000 });
-      rate_limit_buckets = list.keys.length;
+      const minute = Math.floor(Date.now() / 60_000);
+      const nowList = await c.env.RATE_LIMIT.list({
+        prefix: `cerr:${minute}:`,
+        limit: 1000,
+      });
+      rate_limit_buckets_now = nowList.keys.length;
+      const allList = await c.env.RATE_LIMIT.list({
+        prefix: "cerr:",
+        limit: 1000,
+      });
+      rate_limit_buckets_total = allList.keys.length;
     } catch {
-      rate_limit_buckets = -1;
+      rate_limit_buckets_now = -1;
+      rate_limit_buckets_total = -1;
     }
     return c.json({
-      stats: { ...snap, rate_limit_buckets },
+      stats: { ...snap, rate_limit_buckets_now, rate_limit_buckets_total },
       env: {
         sentry_configured: Boolean(c.env.SENTRY_DSN),
         sentry_public_configured: Boolean(c.env.SENTRY_DSN_PUBLIC),
