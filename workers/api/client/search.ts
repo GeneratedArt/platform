@@ -66,7 +66,7 @@ function debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T {
 }
 
 function renderProject(p: SearchHitProject, apiBase: string): string {
-  const href = `${apiBase}/v1/og/projects/${p.id}`;
+  const href = `/p/?id=${p.id}`;
   return `
     <a class="ga-search-hit" href="${escapeHtml(href)}">
       <h4>${escapeHtml(p.title)}</h4>

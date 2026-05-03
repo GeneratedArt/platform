@@ -1,4 +1,4 @@
-function r(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}function j(e,a){let t;return((...n)=>{t!==void 0&&clearTimeout(t),t=setTimeout(()=>e(...n),a)})}function L(e,a){let t=`${a}/v1/og/projects/${e.id}`;return`
+function r(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}function j(e,a){let t;return((...n)=>{t!==void 0&&clearTimeout(t),t=setTimeout(()=>e(...n),a)})}function L(e,a){let t=`/p/?id=${e.id}`;return`
     <a class="ga-search-hit" href="${r(t)}">
       <h4>${r(e.title)}</h4>
       ${e.description?`<p>${r(e.description.slice(0,160))}</p>`:""}

@@ -81,17 +81,20 @@ function renderCard(c: ExploreCard, apiBase: string): string {
   } else {
     cover = `<span class="ga-explore-cover-empty">No capture yet</span>`;
   }
+  // Card-level <a> wraps everything, so the owner row stays as a
+  // span (nested anchors are invalid HTML and the artist link is
+  // available from the project detail page itself).
   const owner = c.owner.handle
-    ? `<a class="ga-explore-author" href="/@${escapeHtml(c.owner.handle)}/">@${escapeHtml(c.owner.handle)}</a>`
+    ? `<span class="ga-explore-author">@${escapeHtml(c.owner.handle)}</span>`
     : "";
   const mintBadge =
     c.mint_count > 0
       ? `<span class="ga-explore-mints">${c.mint_count} mint${c.mint_count === 1 ? "" : "s"}</span>`
       : "";
-  // Link via /v1/og/projects/:id so URL-bar share copies render rich
-  // OG previews on Twitter/Slack/Discord; humans hit a 0-second
-  // meta-refresh + JS replace to /p/?id=N.
-  const href = `${apiBase}/v1/og/projects/${c.id}`;
+  // Link directly to the canonical /p/?id=N page; the Pages Function
+  // injects project-specific OG meta there, so social crawlers and
+  // humans land on the same URL.
+  const href = `/p/?id=${c.id}`;
   return `
     <a class="ga-explore-card" href="${escapeHtml(href)}">
       <div class="ga-explore-cover">${cover}</div>
