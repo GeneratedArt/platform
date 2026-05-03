@@ -65,9 +65,10 @@ function debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T {
   }) as T;
 }
 
-function renderProject(p: SearchHitProject): string {
+function renderProject(p: SearchHitProject, apiBase: string): string {
+  const href = `${apiBase}/v1/og/projects/${p.id}`;
   return `
-    <a class="ga-search-hit" href="/p/?id=${p.id}">
+    <a class="ga-search-hit" href="${escapeHtml(href)}">
       <h4>${escapeHtml(p.title)}</h4>
       ${p.description ? `<p>${escapeHtml(p.description.slice(0, 160))}</p>` : ""}
       <p class="ga-search-meta">
@@ -160,7 +161,7 @@ const GASearch = {
         const dt = Math.round(performance.now() - t0);
         projectsEl.innerHTML =
           data.projects.length > 0
-            ? data.projects.map(renderProject).join("")
+            ? data.projects.map((p) => renderProject(p, apiBase)).join("")
             : `<p class="text-muted small">No matching projects.</p>`;
         artistsEl.innerHTML =
           data.artists.length > 0

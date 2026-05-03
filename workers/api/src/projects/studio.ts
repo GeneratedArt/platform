@@ -262,6 +262,18 @@ export async function uploadCaptureHandler(
     },
   });
 
+  // Record the latest capture key on the project so /v1/explore and
+  // /v1/og/projects/:id can build thumbnail URLs without an R2 list.
+  try {
+    await c.env.DB.prepare(
+      `UPDATE projects SET last_capture_key = ?, updated_at = ? WHERE id = ?`,
+    )
+      .bind(key, Math.floor(Date.now() / 1000), project.id)
+      .run();
+  } catch {
+    // Non-fatal: the upload itself succeeded.
+  }
+
   const base =
     c.env.CAPTURES_PUBLIC_BASE && c.env.CAPTURES_PUBLIC_BASE.length > 0
       ? c.env.CAPTURES_PUBLIC_BASE.replace(/\/$/, "")
@@ -291,23 +303,17 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
   if (!/^captures\/\d+\/[A-Za-z0-9._-]+\.png$/.test(key)) {
     return c.json({ error: "invalid_key" }, 400);
   }
-  // Task #16: edge resize via `?w=N`. Allowed widths are an explicit
-  // allowlist so an attacker can't cache-bomb the CDN with thousands
-  // of unique width keys. Width participates in the cache key via
-  // a `Vary`-equivalent (we serve the per-width object from the Cache
-  // API under a synthetic URL `${pathname}?w=${w}`).
+  // Width is allowlisted so the cache key can't be stuffed with
+  // arbitrary integers. Today this endpoint is a passthrough — the
+  // URL contract is forward-compatible and a future change will
+  // pipe the R2 body through `fetch(..., { cf: { image: {...} } })`
+  // against a non-Worker origin (or via the Image Resizing API) so
+  // the resize subrequest never re-enters this handler.
   const ALLOWED_WIDTHS = [240, 480, 800, 1200];
   const wRaw = c.req.query("w");
   const w = wRaw && /^\d+$/.test(wRaw) ? parseInt(wRaw, 10) : null;
   const width = w && ALLOWED_WIDTHS.includes(w) ? w : null;
 
-  // Cache API lookup. Cloudflare Image Resizing is not yet provisioned
-  // for this Worker plan, so today the resize is a passthrough — the
-  // URL contract is forward-compatible and the moment Image Resizing
-  // is enabled, the `cf.image` block below starts taking effect with
-  // no client changes. We still vary the cache key by `w` so a future
-  // upgrade doesn't return a stale full-size object to a `?w=480`
-  // request.
   const cache = caches.default;
   const cacheUrl = new URL(c.req.url);
   cacheUrl.search = width ? `?w=${width}` : "";
@@ -318,7 +324,7 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
   const obj = await c.env.CAPTURES.get(key);
   if (!obj) return c.json({ error: "not_found" }, 404);
 
-  let response = new Response(obj.body, {
+  const response = new Response(obj.body, {
     status: 200,
     headers: {
       "Content-Type": obj.httpMetadata?.contentType || "image/png",
@@ -326,42 +332,10 @@ export async function getCaptureHandler(c: Context<{ Bindings: Env }>) {
     },
   });
 
-  if (width) {
-    // When Cloudflare Image Resizing is on the plan, this subrequest
-    // re-fetches the URL with `cf.image` to produce a real resized
-    // PNG. The conditional avoids the recursion when cf.image isn't
-    // available (the subrequest would otherwise re-enter this handler).
-    try {
-      const resized = await fetch(cacheReq, {
-        cf: {
-          image: {
-            width,
-            fit: "scale-down",
-            format: "auto",
-          },
-        },
-      } as unknown as RequestInit);
-      // Only adopt the resized body if the resizer actually ran
-      // (Cloudflare returns the original on plans without the feature).
-      if (resized.ok && resized.headers.get("cf-resized")) {
-        response = new Response(resized.body, {
-          status: 200,
-          headers: {
-            "Content-Type": resized.headers.get("Content-Type") || "image/png",
-            "Cache-Control": "public, max-age=31536000, immutable",
-          },
-        });
-      }
-    } catch {
-      // Fall through with the original PNG; the URL contract still holds.
-    }
-  }
-
-  // Best-effort cache write so subsequent hits skip R2 entirely.
   try {
     c.executionCtx.waitUntil(cache.put(cacheReq, response.clone()));
   } catch {
-    // Some test runtimes don't expose executionCtx; that's fine.
+    // executionCtx isn't always available in test runtimes.
   }
   return response;
 }

@@ -1,24 +1,9 @@
-// OG-card landing for shared project links.
-//
-// Why this exists: /p/?id=N is fully client-rendered (Jekyll can't
-// generate one static page per integer id without a build-time
-// integration with D1). Social crawlers (Twitter, Farcaster, Discord,
-// Slack) don't run JS, so they'd see the generic site OG image on
-// every share. This handler returns server-rendered HTML with
-// project-specific OG meta + a canonical link to /p/?id=N + a
-// `<meta http-equiv="refresh">` so a human who lands here is
-// immediately redirected to the real page.
-//
-// The OG image points at the project's most recent capture (R2
-// `captures/{id}/…png`) resized to 1200×630 via the existing
-// captures resize pipeline (?w=1200). When no capture exists we
-// fall back to the site default OG image so links always render
-// SOMETHING rather than a broken preview.
+// Server-rendered OG card for shared project links. Crawlers parse the
+// meta tags; humans get redirected to /p/?id=N via meta-refresh + JS.
 
 import type { Context } from "hono";
 import type { Env } from "../types";
-import { getProjectById } from "../db/projects";
-import { getProjectOwner } from "../db/projects";
+import { getProjectById, getProjectOwner } from "../db/projects";
 
 const SITE_DEFAULT_OG = "/assets/images/og-default.png";
 
@@ -32,38 +17,15 @@ function escapeHtml(s: string): string {
 }
 
 function siteOrigin(env: Env): string {
-  // Prefer the first allowed origin (production canonical). Falls
-  // back to a sensible default for local dev.
   const first = env.ALLOWED_ORIGINS?.split(",")[0]?.trim();
   return first || "https://generatedart.com";
 }
 
-async function findLatestCaptureKey(
-  env: Env,
-  projectId: number,
-): Promise<string | null> {
-  if (!env.CAPTURES) return null;
-  // Captures are keyed `captures/{id}/{ts}-{seed}.png`. R2's `list`
-  // returns keys in ascending order, so we scan and pick the largest
-  // timestamp prefix manually. We cap at 100 to bound work.
-  const list = await env.CAPTURES.list({
-    prefix: `captures/${projectId}/`,
-    limit: 100,
-  });
-  if (!list.objects || list.objects.length === 0) return null;
-  let latest = list.objects[0];
-  for (const o of list.objects) {
-    if (o.uploaded > latest.uploaded) latest = o;
-  }
-  return latest.key;
+function captureUrl(env: Env, key: string, w: number): string {
+  const base = (env.CAPTURES_PUBLIC_BASE || siteOrigin(env)).replace(/\/$/, "");
+  return `${base}/v1/captures/${key}?w=${w}`;
 }
 
-/**
- * GET /v1/og/projects/:id
- *
- * Returns text/html with project-specific OG tags + meta-refresh to
- * /p/?id=N. Crawlers parse the OG; humans get redirected.
- */
 export async function projectOgHandler(c: Context<{ Bindings: Env }>) {
   const id = parseInt(c.req.param("id") || "", 10);
   if (!id || Number.isNaN(id)) return c.text("invalid id", 400);
@@ -76,18 +38,14 @@ export async function projectOgHandler(c: Context<{ Bindings: Env }>) {
   const origin = siteOrigin(c.env);
   const canonical = `${origin}/p/?id=${id}`;
 
-  let ogImage: string | null = project.cover_url ?? null;
-  if (!ogImage) {
-    const captureKey = await findLatestCaptureKey(c.env, project.id);
-    if (captureKey) {
-      // ?w=1200 lands on the captures handler which (when Cloudflare
-      // Image Resizing is provisioned) resizes; today it's a passthrough
-      // so the URL is forward-compatible without breaking now.
-      const base = c.env.CAPTURES_PUBLIC_BASE || origin;
-      ogImage = `${base.replace(/\/$/, "")}/v1/captures/${captureKey}?w=1200`;
-    }
+  let ogImage: string;
+  if (project.last_capture_key) {
+    ogImage = captureUrl(c.env, project.last_capture_key, 1200);
+  } else if (project.cover_url) {
+    ogImage = project.cover_url;
+  } else {
+    ogImage = `${origin}${SITE_DEFAULT_OG}`;
   }
-  if (!ogImage) ogImage = `${origin}${SITE_DEFAULT_OG}`;
 
   const title = project.title;
   const description =

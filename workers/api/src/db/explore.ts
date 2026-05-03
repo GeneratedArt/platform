@@ -1,11 +1,3 @@
-// Three SQL paths behind /v1/explore:
-//   * recent    — created_at DESC, cursor pagination (created_at, id)
-//   * trending  — 7-day weighted (mints*1.0 + views*0.1), offset pagination
-//   * featured  — admin-curated `featured_projects.position ASC`
-//
-// All three only return rows whose `status` is one of the public
-// statuses (`published`, `minted`); drafts and archives never leak.
-
 import type { D1Database } from "@cloudflare/workers-types";
 import type { ProjectRow } from "../types";
 
@@ -13,7 +5,6 @@ export interface ExploreRow extends ProjectRow {
   owner_handle: string | null;
   owner_display_name: string | null;
   owner_avatar_url: string | null;
-  cover_capture_key: string | null;
   mint_count: number;
   view_count_7d?: number;
   trend_score?: number;
@@ -23,24 +14,11 @@ const PUBLIC_STATUS_CLAUSE = `p.status IN ('published','minted')`;
 
 const BASE_SELECT = `
   p.*,
-  u.handle      AS owner_handle,
+  u.handle       AS owner_handle,
   u.display_name AS owner_display_name,
   u.avatar_url   AS owner_avatar_url,
-  (
-    SELECT 'captures/' || c.project_id || '/' ||
-           strftime('%s', 'now')   /* placeholder; real key joined below */
-    FROM mints c WHERE c.project_id = p.id LIMIT 0
-  ) AS cover_capture_key,
   (SELECT COUNT(*) FROM mints m WHERE m.project_id = p.id) AS mint_count
 `;
-
-// SQLite doesn't give us a clean way to inject the most-recent capture
-// R2 key from inside a query (we'd need a separate captures table).
-// We surface `cover_url` (set by the artist) as the primary cover and
-// let the client fall back to a placeholder; the OG card pipeline
-// resolves the actual capture via R2 list at render time. Keeping the
-// SELECT shape stable lets us upgrade to a captures index later
-// without changing this contract.
 
 export interface RecentCursor {
   created_at: number;
@@ -61,8 +39,6 @@ export async function listRecent(
 ): Promise<{ rows: ExploreRow[]; next: RecentCursor | null }> {
   const limit = clampLimit(opts.limit);
   const cur = opts.cursor;
-  // Tuple comparison gives a stable sort + cursor without needing
-  // a composite index — D1's SQLite handles the (created_at, id) pair.
   const sql = `
     SELECT ${BASE_SELECT}
     FROM projects p
@@ -95,17 +71,9 @@ export async function listTrending(
   const limit = clampLimit(opts.limit);
   const offset = Math.max(0, opts.offset ?? 0);
   const cutoff = Math.floor(Date.now() / 1000) - TRENDING_WINDOW_SECONDS;
-  // Score weights:
-  //   mints in window × 1.0  (a mint is the strongest signal we have)
-  //   views in window × 0.1  (cheap, abundant; lots of weight would
-  //                           let a single viewer game the ranking)
-  //
-  // Tie-break by created_at DESC then id DESC so the top of the
-  // grid is deterministic across page loads even when scores are 0
-  // (e.g. a fresh dev DB with no events).
+  // Score: mints*1.0 + views*0.1, tie-break by created_at then id.
   const sql = `
     SELECT ${BASE_SELECT},
-           COALESCE(m7.cnt, 0) AS mint7,
            COALESCE(v7.cnt, 0) AS view_count_7d,
            (COALESCE(m7.cnt,0)*1.0 + COALESCE(v7.cnt,0)*0.1) AS trend_score
     FROM projects p

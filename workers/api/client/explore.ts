@@ -55,10 +55,32 @@ function timeAgo(ts: number): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function renderCard(c: ExploreCard): string {
-  const cover = c.cover_url
-    ? `<img src="${escapeHtml(c.cover_url)}" alt="" loading="lazy" />`
-    : `<span class="ga-explore-cover-empty">No capture yet</span>`;
+function buildSrcset(coverUrl: string): string {
+  // Server returns a /v1/captures/...?w=480 URL. Build retina srcset by
+  // swapping the width param for 240/480/800.
+  try {
+    const u = new URL(coverUrl, location.origin);
+    if (!u.pathname.includes("/v1/captures/")) return "";
+    const make = (w: number) => {
+      u.searchParams.set("w", String(w));
+      return `${u.toString()} ${w}w`;
+    };
+    return [make(240), make(480), make(800)].join(", ");
+  } catch {
+    return "";
+  }
+}
+
+function renderCard(c: ExploreCard, apiBase: string): string {
+  let cover: string;
+  if (c.cover_url) {
+    const srcset = buildSrcset(c.cover_url);
+    cover = `<img src="${escapeHtml(c.cover_url)}"${
+      srcset ? ` srcset="${escapeHtml(srcset)}" sizes="(max-width: 600px) 100vw, 320px"` : ""
+    } alt="" loading="lazy" />`;
+  } else {
+    cover = `<span class="ga-explore-cover-empty">No capture yet</span>`;
+  }
   const owner = c.owner.handle
     ? `<a class="ga-explore-author" href="/@${escapeHtml(c.owner.handle)}/">@${escapeHtml(c.owner.handle)}</a>`
     : "";
@@ -66,8 +88,12 @@ function renderCard(c: ExploreCard): string {
     c.mint_count > 0
       ? `<span class="ga-explore-mints">${c.mint_count} mint${c.mint_count === 1 ? "" : "s"}</span>`
       : "";
+  // Link via /v1/og/projects/:id so URL-bar share copies render rich
+  // OG previews on Twitter/Slack/Discord; humans hit a 0-second
+  // meta-refresh + JS replace to /p/?id=N.
+  const href = `${apiBase}/v1/og/projects/${c.id}`;
   return `
-    <a class="ga-explore-card" href="/p/?id=${c.id}">
+    <a class="ga-explore-card" href="${escapeHtml(href)}">
       <div class="ga-explore-cover">${cover}</div>
       <div class="ga-explore-card-body">
         <h3>${escapeHtml(c.title)}</h3>
@@ -137,7 +163,7 @@ const GAExplore = {
                 ? "No trending activity yet — check back after a few mints."
                 : "No projects yet.";
         } else {
-          grid.insertAdjacentHTML("beforeend", data.cards.map(renderCard).join(""));
+          grid.insertAdjacentHTML("beforeend", data.cards.map((card) => renderCard(card, apiBase)).join(""));
           nextCursor = data.next_cursor;
           if (!nextCursor) {
             exhausted = true;
