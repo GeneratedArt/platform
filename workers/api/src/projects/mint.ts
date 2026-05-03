@@ -330,7 +330,11 @@ export async function confirmMint(
     return c.json({ error: "mint_unconfigured" }, 503);
   }
   const expectedProject = getAddress(project.contract_address as Hex);
-  let mintEvent: { tokenId: bigint; to: Hex; seed: Hex } | null = null;
+  // A single confirm-mint call can correspond to a tx that emitted
+  // multiple Minted events (e.g. a hypothetical `mintBatch` upgrade).
+  // We collect all of them and persist each; the very first survives
+  // for the downstream feed event payload below.
+  const mintEvents: { tokenId: bigint; to: Hex; seed: Hex }[] = [];
   try {
     const receipt = await publicClient(cfg.rpcUrl).getTransactionReceipt({
       hash: body.tx_hash,
@@ -346,42 +350,50 @@ export async function confirmMint(
         });
         if (d.eventName === "Minted") {
           const args = d.args as { tokenId: bigint; to: Hex; seed: Hex };
-          mintEvent = {
+          mintEvents.push({
             tokenId: args.tokenId,
             to: getAddress(args.to) as Hex,
             seed: args.seed,
-          };
-          break;
+          });
         }
       } catch {
         /* not our event */
       }
     }
-    if (!mintEvent) return badRequest(c, "event_not_found", 409);
+    if (mintEvents.length === 0) return badRequest(c, "event_not_found", 409);
   } catch (e) {
     console.error("confirm-mint verify failed", e);
     return c.json({ error: "rpc_unavailable" }, 503);
   }
 
-  // Persist the mint row + per-trait fan-out. Idempotent on
+  // Persist a mint row + per-trait fan-out for every Minted event in
+  // the receipt. Each row is idempotent on
   // (chain_id, contract_address, token_id) — re-posting the same
-  // tx_hash by another caller is a no-op.
+  // tx_hash by another caller is a no-op. Traits validated by
+  // `normaliseTraits` are attached only to the *first* token in the
+  // batch (the one the client extracted features for); any extra
+  // tokens get null traits, which is the right outcome since the
+  // client never computed features for them.
   const traits = normaliseTraits(body.traits);
-  try {
-    await recordMintWithTraits(c.env.DB, {
-      projectId: project.id,
-      contractAddress: expectedProject,
-      chainId: cfg.chainId,
-      tokenId: mintEvent.tokenId.toString(),
-      ownerAddress: mintEvent.to,
-      txHash: body.tx_hash as string,
-      mintedAt: Math.floor(Date.now() / 1000),
-      traits,
-    });
-  } catch (e) {
-    console.error("mint_persist_failed", e);
-    // Don't fail the request — markProjectMinted is still useful and
-    // the on-chain truth is intact. We log so ops can backfill.
+  for (let i = 0; i < mintEvents.length; i++) {
+    const ev = mintEvents[i];
+    try {
+      await recordMintWithTraits(c.env.DB, {
+        projectId: project.id,
+        contractAddress: expectedProject,
+        chainId: cfg.chainId,
+        tokenId: ev.tokenId.toString(),
+        ownerAddress: ev.to,
+        txHash: body.tx_hash as string,
+        mintedAt: Math.floor(Date.now() / 1000),
+        seed: ev.seed,
+        traits: i === 0 ? traits : null,
+      });
+    } catch (e) {
+      console.error("mint_persist_failed", e);
+      // Don't fail the request — markProjectMinted is still useful and
+      // the on-chain truth is intact. We log so ops can backfill.
+    }
   }
 
   const updated = await markProjectMinted(c.env.DB, id);

@@ -9,6 +9,7 @@ export interface MintRow {
   owner_address: string;
   tx_hash: string;
   minted_at: number;
+  seed: string | null;
   traits_json: string | null;
 }
 
@@ -21,6 +22,7 @@ export interface PublicMint {
   owner_address: string;
   tx_hash: string;
   minted_at: number;
+  seed: string | null;
   traits: Record<string, string> | null;
 }
 
@@ -48,6 +50,7 @@ export function publicMint(row: MintRow): PublicMint {
     owner_address: row.owner_address,
     tx_hash: row.tx_hash,
     minted_at: row.minted_at,
+    seed: row.seed,
     traits,
   };
 }
@@ -85,13 +88,23 @@ export function normaliseTraits(
 }
 
 /**
- * Idempotent INSERT for a mint row. Uses the (chain_id, contract_address,
- * token_id) UNIQUE constraint from 0001_init.sql to no-op on dupes. If
- * a row already exists, returns the existing row's id; if a fresh row
- * was inserted, also writes the per-trait fan-out to mint_traits.
+ * Idempotent INSERT for a mint row, race-safe against concurrent
+ * confirm-mint calls for the same (chain_id, contract_address,
+ * token_id) tuple.
  *
- * Returns null when neither path produced a row (which shouldn't
- * happen, but lets the caller recover instead of throwing).
+ * Strategy: `INSERT OR IGNORE … RETURNING *`. SQLite returns the new
+ * row when the insert succeeded; on conflict it skips the row and
+ * returns nothing — at which point we SELECT the winning row. Either
+ * way the caller gets back a non-null `row` and a boolean
+ * `inserted` flag that tells them whether *they* wrote it (and
+ * therefore whether they own emitting downstream events / fanning
+ * out trait rows).
+ *
+ * Trait fan-out only runs on the inserted branch — if another
+ * caller wrote the mint row, they are responsible for its traits.
+ * mint_traits has its own (mint_id, trait_name) PK, so even if both
+ * sides raced past the unique check, INSERT OR IGNORE on
+ * mint_traits would still produce the right end state.
  */
 export async function recordMintWithTraits(
   db: D1Database,
@@ -103,25 +116,16 @@ export async function recordMintWithTraits(
     ownerAddress: string;
     txHash: string;
     mintedAt: number;
+    seed: string | null;
     traits: Record<string, string> | null;
   },
 ): Promise<{ row: MintRow; inserted: boolean } | null> {
-  const existing = await db
-    .prepare(
-      `SELECT * FROM mints
-        WHERE chain_id = ? AND contract_address = ? AND token_id = ?`,
-    )
-    .bind(args.chainId, args.contractAddress, args.tokenId)
-    .first<MintRow>();
-  if (existing) {
-    return { row: existing, inserted: false };
-  }
   const inserted = await db
     .prepare(
-      `INSERT INTO mints
+      `INSERT OR IGNORE INTO mints
          (project_id, contract_address, chain_id, token_id,
-          owner_address, tx_hash, minted_at, traits_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          owner_address, tx_hash, minted_at, seed, traits_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING *`,
     )
     .bind(
@@ -132,23 +136,36 @@ export async function recordMintWithTraits(
       args.ownerAddress,
       args.txHash,
       args.mintedAt,
+      args.seed,
       args.traits ? JSON.stringify(args.traits) : null,
     )
     .first<MintRow>();
-  if (!inserted) return null;
-  if (args.traits) {
-    const stmts = Object.entries(args.traits).map(([n, v]) =>
-      db
-        .prepare(
-          `INSERT OR IGNORE INTO mint_traits
-             (mint_id, project_id, trait_name, trait_value)
-           VALUES (?, ?, ?, ?)`,
-        )
-        .bind(inserted.id, args.projectId, n, v),
-    );
-    if (stmts.length > 0) await db.batch(stmts);
+  if (inserted) {
+    if (args.traits) {
+      const stmts = Object.entries(args.traits).map(([n, v]) =>
+        db
+          .prepare(
+            `INSERT OR IGNORE INTO mint_traits
+               (mint_id, project_id, trait_name, trait_value)
+             VALUES (?, ?, ?, ?)`,
+          )
+          .bind(inserted.id, args.projectId, n, v),
+      );
+      if (stmts.length > 0) await db.batch(stmts);
+    }
+    return { row: inserted, inserted: true };
   }
-  return { row: inserted, inserted: true };
+  // Conflict path: another caller won the race. Look up the row
+  // they wrote so the caller still has a handle on it.
+  const existing = await db
+    .prepare(
+      `SELECT * FROM mints
+        WHERE chain_id = ? AND contract_address = ? AND token_id = ?`,
+    )
+    .bind(args.chainId, args.contractAddress, args.tokenId)
+    .first<MintRow>();
+  if (!existing) return null;
+  return { row: existing, inserted: false };
 }
 
 export async function getMintByTokenId(

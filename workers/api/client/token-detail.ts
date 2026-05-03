@@ -25,6 +25,7 @@ interface TokenResp {
     owner_address: string;
     tx_hash: string;
     minted_at: number;
+    seed: string | null;
     traits: Record<string, string> | null;
   };
   rarity_score: number | null;
@@ -58,12 +59,16 @@ function basescanBase(chainId: number | null): string {
   return "https://sepolia.basescan.org";
 }
 
-// The on-chain Minted event emits `seed` as bytes32 — but in the
-// confirm-mint flow we only persist `token_id`, not the seed.
-// The frozen bundle accepts either (?seed=0x…hex32 or ?token=N) and
-// derives an internal seed; we pass `?token=` to be explicit.
-function bundleUrl(cid: string, tokenId: string): string {
-  return `https://${cid}.ipfs.dweb.link/?token=${encodeURIComponent(tokenId)}`;
+// The frozen bundle is keyed off the bytes32 seed emitted by the
+// `Minted` event — that's what the studio preview iframe and the
+// mint client both use, so it's the only URL that reproduces the
+// exact art the collector minted. We persisted the seed in the mint
+// row at confirm-mint time. Older rows (pre-0015 migration) carry
+// null seed; we fall back to a deterministic seed derived from the
+// token id so they still render *something* instead of breaking.
+function bundleUrl(cid: string, tokenId: string, seed: string | null): string {
+  const effective = seed ?? "0x" + BigInt(tokenId).toString(16).padStart(64, "0");
+  return `https://${cid}.ipfs.dweb.link/?seed=${effective}`;
 }
 
 function renderError(cfg: TokenDetailConfig, msg: string) {
@@ -94,7 +99,7 @@ async function render(cfg: TokenDetailConfig, data: TokenResp) {
 
   const art = root.querySelector(".ga-token-art") as HTMLIFrameElement;
   if (data.project.frozen_cid) {
-    art.src = bundleUrl(data.project.frozen_cid, data.mint.token_id);
+    art.src = bundleUrl(data.project.frozen_cid, data.mint.token_id, data.mint.seed);
   } else {
     art.replaceWith(
       Object.assign(document.createElement("p"), {
