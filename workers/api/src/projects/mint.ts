@@ -348,3 +348,61 @@ export async function mintConfigHandler(
     rpc_url: cfg.rpcUrl || null,
   });
 }
+
+/**
+ * GET /v1/projects/:id/mint/state
+ *
+ * Reads the live contract state (cid_locked, total_minted, max_supply)
+ * from chain so the mint UI can render "5 / open" or "12 / 100" before
+ * the collector signs anything. Returns nulls for fields that don't
+ * apply yet (e.g. before deploy).
+ */
+export async function mintStateHandler(
+  c: Context<{ Bindings: Env }>,
+) {
+  const id = parseInt(c.req.param("id") || "", 10);
+  if (!id || Number.isNaN(id)) return badRequest(c, "invalid_id");
+  const project = await getProjectById(c.env.DB, id);
+  if (!project) return c.json({ error: "not_found" }, 404);
+
+  const cfg = chainConfig(c.env);
+  const base = {
+    contract_address: project.contract_address,
+    frozen_cid: project.frozen_cid,
+    chain_id: project.chain_id,
+    cid_locked: false as boolean,
+    total_minted: null as string | null,
+    max_supply: null as string | null,
+  };
+  if (!project.contract_address || !cfg.rpcUrl) return c.json(base);
+
+  try {
+    const client = publicClient(cfg.rpcUrl);
+    const [locked, totalMinted, maxSupply] = await Promise.all([
+      client.readContract({
+        address: project.contract_address as Hex,
+        abi: projectAbi,
+        functionName: "isCIDLocked",
+      }),
+      client.readContract({
+        address: project.contract_address as Hex,
+        abi: projectAbi,
+        functionName: "totalMinted",
+      }),
+      client.readContract({
+        address: project.contract_address as Hex,
+        abi: projectAbi,
+        functionName: "maxSupply",
+      }),
+    ]);
+    return c.json({
+      ...base,
+      cid_locked: Boolean(locked),
+      total_minted: (totalMinted as bigint).toString(),
+      max_supply: (maxSupply as bigint).toString(),
+    });
+  } catch (e) {
+    console.error("mint state read failed", e);
+    return c.json({ ...base, error: "rpc_unavailable" }, 200);
+  }
+}

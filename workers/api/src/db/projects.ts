@@ -124,6 +124,7 @@ interface UpdatableFields {
   description?: string | null;
   status?: ProjectStatus;
   cover_url?: string | null;
+  frozen_cid?: string | null;
 }
 
 export async function updateProject(
@@ -148,6 +149,10 @@ export async function updateProject(
   if (patch.cover_url !== undefined) {
     sets.push("cover_url = ?");
     binds.push(patch.cover_url);
+  }
+  if (patch.frozen_cid !== undefined) {
+    sets.push("frozen_cid = ?");
+    binds.push(patch.frozen_cid);
   }
   if (sets.length === 0) {
     return getProjectById(db, id);

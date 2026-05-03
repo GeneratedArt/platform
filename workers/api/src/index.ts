@@ -17,6 +17,7 @@ import {
   confirmDeploy,
   confirmMint,
   mintConfigHandler,
+  mintStateHandler,
 } from "./projects/mint";
 import {
   getProjectFileHandler,
@@ -70,6 +71,7 @@ v1.get("/captures/:rest{.+}", getCaptureHandler);
 // (deploy / lock_cid) inside the handler. confirm-deploy is owner-only;
 // confirm-mint is public + verified against an on-chain receipt.
 v1.get("/mint/config", mintConfigHandler);
+v1.get("/projects/:id{[0-9]+}/mint/state", mintStateHandler);
 v1.post("/projects/:id{[0-9]+}/mint/prepare", prepareMint);
 v1.post("/projects/:id{[0-9]+}/mint/confirm-deploy", requireAuth, confirmDeploy);
 v1.post("/projects/:id{[0-9]+}/mint/confirm-mint", confirmMint);

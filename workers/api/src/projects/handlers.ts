@@ -156,6 +156,17 @@ interface PatchBody {
   description?: unknown;
   status?: unknown;
   cover_url?: unknown;
+  frozen_cid?: unknown;
+}
+
+// CIDv1 base32: starts with 'b', then 1-2 multibase-encoded chars,
+// then a-z2-7 base32 payload. We only accept CIDv1 to keep storage
+// uniform; CIDv0 (Qm…) is allowed too because some pinning services
+// still emit it.
+function isValidCid(s: string): boolean {
+  if (s.length < 46 || s.length > 100) return false;
+  if (s.startsWith("Qm") && /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(s)) return true;
+  return /^b[a-z2-7]{45,99}$/.test(s);
 }
 
 export async function patchProject(
@@ -210,6 +221,22 @@ export async function patchProject(
       return badRequest(c, "invalid_cover_url");
     }
     patch.cover_url = body.cover_url == null ? null : String(body.cover_url);
+  }
+  if (body.frozen_cid !== undefined) {
+    // Once a project is deployed AND its CID is locked on-chain, the
+    // D1 row is read-only for this column — the contract is the source
+    // of truth and the artist can't rotate it. Before deploy/lock the
+    // artist can freely re-pin and overwrite the CID.
+    if (body.frozen_cid !== null && typeof body.frozen_cid !== "string") {
+      return badRequest(c, "invalid_frozen_cid");
+    }
+    if (typeof body.frozen_cid === "string" && !isValidCid(body.frozen_cid)) {
+      return badRequest(c, "invalid_frozen_cid");
+    }
+    if (existing.contract_address && existing.frozen_cid) {
+      return c.json({ error: "frozen_cid_locked" }, 409);
+    }
+    patch.frozen_cid = body.frozen_cid == null ? null : body.frozen_cid;
   }
 
   const updated = await updateProject(c.env.DB, id, patch);

@@ -87,6 +87,11 @@ class MintController {
   private connectedAddress: Address | null = null;
   private wallet: WalletClient | null = null;
   private node: HTMLElement | null = null;
+  private chainState: {
+    cid_locked: boolean;
+    total_minted: string | null;
+    max_supply: string | null;
+  } | null = null;
 
   constructor(cfg: MintConfig, root: HTMLElement, projectId: number) {
     this.cfg = cfg;
@@ -133,10 +138,37 @@ class MintController {
         };
         this.viewer = { uid: me.user.id, handle: me.user.handle };
       }
+      await this.loadChainState();
       this.render();
     } catch (e) {
       console.error(e);
       this.root.innerHTML = `<div class="alert alert-danger">Could not load project.</div>`;
+    }
+  }
+
+  private async loadChainState(): Promise<void> {
+    if (!this.project?.contract_address) {
+      this.chainState = null;
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${this.cfg.apiBase}/v1/projects/${this.projectId}/mint/state`,
+        { credentials: "include" },
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        cid_locked: boolean;
+        total_minted: string | null;
+        max_supply: string | null;
+      };
+      this.chainState = {
+        cid_locked: data.cid_locked,
+        total_minted: data.total_minted,
+        max_supply: data.max_supply,
+      };
+    } catch (e) {
+      console.warn("mint state fetch failed", e);
     }
   }
 
@@ -180,6 +212,28 @@ class MintController {
     } else {
       contractEl.textContent = "Not deployed";
       contractLink.removeAttribute("href");
+    }
+
+    // Live chain state — totalMinted / maxSupply / CID lock — read
+    // from the deployed clone via the Worker's /mint/state endpoint.
+    const mintedEl = node.querySelector(
+      "[data-ga-minted]",
+    ) as HTMLElement | null;
+    if (mintedEl) {
+      if (!this.chainState) {
+        mintedEl.textContent = this.project.contract_address ? "—" : "—";
+      } else {
+        const max = this.chainState.max_supply;
+        const supplyLabel = max && max !== "0" ? max : "open edition";
+        mintedEl.textContent = `${this.chainState.total_minted ?? "0"} / ${supplyLabel}`;
+      }
+    }
+    const lockedEl = node.querySelector(
+      "[data-ga-cid-locked]",
+    ) as HTMLElement | null;
+    if (lockedEl) {
+      lockedEl.textContent =
+        this.chainState?.cid_locked ? "locked" : "unlocked";
     }
 
     this.root.replaceChildren(node);
@@ -268,13 +322,25 @@ class MintController {
     const hasContract = !!this.project.contract_address;
     const connected = !!this.connectedAddress;
 
-    deploy.classList.toggle("d-none", !(owner && !hasContract));
-    lock.classList.toggle("d-none", !(owner && hasContract));
-    mint.classList.toggle("d-none", !(connected && hasContract));
+    const cidLocked = !!this.chainState?.cid_locked;
+    const lockable = !!this.project.frozen_cid;
 
-    if (!connected) {
-      mint.classList.add("d-none");
+    deploy.classList.toggle("d-none", !(owner && !hasContract));
+    lock.classList.toggle(
+      "d-none",
+      !(owner && hasContract && !cidLocked),
+    );
+    lock.disabled = !lockable;
+    if (owner && hasContract && !cidLocked && !lockable) {
+      // Surface why the lock button is disabled.
+      this.feedback(
+        "No frozen_cid set yet — pin a bundle to IPFS, then PATCH /v1/projects/{id} with frozen_cid before locking.",
+      );
     }
+    mint.classList.toggle(
+      "d-none",
+      !(connected && hasContract && cidLocked),
+    );
   }
 
   private async runPhase(
@@ -410,7 +476,7 @@ class MintController {
         this.feedback("Minted! Token is in your wallet.");
       }
 
-      // Reload project state so the UI advances to the next phase.
+      // Reload project + chain state so the UI advances to the next phase.
       const refreshed = await fetch(
         `${this.cfg.apiBase}/v1/projects/${this.projectId}`,
         { credentials: "include" },
@@ -422,6 +488,7 @@ class MintController {
         };
         this.project = data.project;
         this.owner = data.owner;
+        await this.loadChainState();
         this.render();
       }
     } catch (e) {
