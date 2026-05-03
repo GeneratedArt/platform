@@ -345,39 +345,42 @@ export async function confirmMint(
 
   const updated = await markProjectMinted(c.env.DB, id);
 
-  // Public-feed event for followers + a personal notification to the
-  // project owner ("your project was minted"). We don't try to derive
-  // who actually paid the gas — that's the calling wallet, not the
-  // SIWE session, and confirm-mint is intentionally unauthenticated.
-  // The actor for the public broadcast is therefore the project owner.
-  try {
-    await recordEvent(c.env.DB, {
-      kind: "mint",
-      actor_id: project.owner_id,
-      target_kind: "project",
-      target_id: project.id,
-      payload: {
-        title: project.title,
-        slug: project.slug,
-        contract_address: project.contract_address,
-        chain_id: project.chain_id,
-        tx_hash: body.tx_hash,
-      },
-    });
-    await recordEvent(c.env.DB, {
-      kind: "mint",
-      actor_id: project.owner_id,
-      target_kind: "project",
-      target_id: project.id,
-      recipient_id: project.owner_id,
-      payload: {
-        title: project.title,
-        slug: project.slug,
-        tx_hash: body.tx_hash,
-      },
-    });
-  } catch (e) {
-    console.error("event_mint_failed", e);
+  // Only emit feed events on the actual draft/published → minted
+  // state transition. confirm-mint is public, so re-posting the same
+  // (or any other historical) Minted tx hash would otherwise let
+  // anyone spam the owner's notifications and the public feed
+  // unboundedly. `markProjectMinted` returns null when the row was
+  // already minted, which is our idempotency signal.
+  if (updated) {
+    try {
+      await recordEvent(c.env.DB, {
+        kind: "mint",
+        actor_id: project.owner_id,
+        target_kind: "project",
+        target_id: project.id,
+        payload: {
+          title: project.title,
+          slug: project.slug,
+          contract_address: project.contract_address,
+          chain_id: project.chain_id,
+          tx_hash: body.tx_hash,
+        },
+      });
+      await recordEvent(c.env.DB, {
+        kind: "mint",
+        actor_id: project.owner_id,
+        target_kind: "project",
+        target_id: project.id,
+        recipient_id: project.owner_id,
+        payload: {
+          title: project.title,
+          slug: project.slug,
+          tx_hash: body.tx_hash,
+        },
+      });
+    } catch (e) {
+      console.error("event_mint_failed", e);
+    }
   }
   return c.json({ project: publicProject(updated ?? project) });
 }
