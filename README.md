@@ -85,7 +85,7 @@ platform/
 │   └── api/         Hono Worker — auth, projects, profiles, mint, briefs
 │       ├── src/     index.ts + auth/ + projects/ + users/ + briefs/ + db/ + lib/
 │       ├── client/  Vanilla TS bundles (esbuild → assets/js/ga-*.js)
-│       └── migrations/  D1 schema (0001..0006) + demo seeds (0004, opt-in 0007)
+│       └── migrations/  D1 schema (0001..0006) + demo seed (0004)
 ├── contracts/       Foundry — GAProject, GAProjectFactory (Base L2)
 ├── CNAME            generatedart.com
 └── .github/workflows/
