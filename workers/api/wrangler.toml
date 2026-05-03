@@ -159,6 +159,10 @@ GA_RPC_URL           = "https://sepolia.base.org"
 # code paths gate on truthy values.
 ADMIN_HANDLES        = ""
 UPTIME_PUBLIC_BASE   = "https://api.generatedart.com"
+# Third uptime probe — a known-public project page on the Jekyll
+# site so the cron also exercises the public, unauthenticated path
+# end to end. Update the slug if the canonical demo project moves.
+UPTIME_PROJECT_PROBE_URL = "https://generatedart.com/projects/genesis/"
 SENTRY_ENVIRONMENT   = "production"
 
 # --- Task #15: frozen artifact + provenance pipeline -----------------------

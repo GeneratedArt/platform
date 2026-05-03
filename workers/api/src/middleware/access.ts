@@ -98,7 +98,16 @@ export const accessMiddleware: MiddlewareHandler<{
     }
 
     if (!route.startsWith("/v1/internal/")) {
-      void safeBumpRequest(c.env, { route, status, latency_ms });
+      // Tie the metric write to the request lifecycle so CF doesn't
+      // cancel the D1 write once the response is flushed. Without
+      // waitUntil, bursty traffic silently drops counter rows and
+      // /v1/internal/stats under-reports.
+      const p = safeBumpRequest(c.env, { route, status, latency_ms });
+      try {
+        c.executionCtx.waitUntil(p);
+      } catch {
+        void p;
+      }
     }
   }
 };

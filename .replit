@@ -39,10 +39,6 @@ externalPort = 80
 localPort = 8000
 externalPort = 8000
 
-[[ports]]
-localPort = 8787
-externalPort = 3003
-
 [deployment]
 deploymentTarget = "static"
 build = ["bundle", "exec", "jekyll", "build"]

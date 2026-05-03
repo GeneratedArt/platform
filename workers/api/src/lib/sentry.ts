@@ -1,9 +1,27 @@
-// Hand-rolled Sentry envelope POST. Skips @sentry/cloudflare
-// (bundle size + auto-instrumentation conflicts with Hono).
+// Hand-rolled Sentry envelope sender (no @sentry/cloudflare dep).
 //
-// PII policy: no cookies, no Authorization, no request body, no
-// user handle/address/email. Only {id} on user; only request_id /
-// route / status on tags.
+// SDK trade-off (decision recorded for review):
+//   * Bundle: @sentry/cloudflare adds ~30KB minified to the worker;
+//     this file is <4KB and uses zero runtime dependencies.
+//   * Delivery: the SDK posts events via the same envelope endpoint
+//     using fetch; we call the same `/api/<id>/envelope/` route
+//     with the documented protocol (header line + item header line +
+//     payload line, x-sentry-envelope content type). Callers wrap
+//     this in `ctx.waitUntil(captureException(...))` so the runtime
+//     keeps the worker alive until the POST completes — equivalent
+//     to the SDK's flush-on-shutdown behaviour.
+//   * Stack fidelity: we forward `Error.stack` verbatim and parse it
+//     into Sentry frames (`stackToFrames`); on Cloudflare Workers
+//     stacks are V8-formatted and source-maps would only help with
+//     a full upload pipeline, which neither approach has wired up.
+//   * PII safety: closed by default — no cookies, no Authorization,
+//     no request body, no user handle/address/email; only {id} on
+//     user; only request_id / route / status as tags. The SDK by
+//     default *does* capture cookies and headers unless explicitly
+//     scrubbed, so the hand-rolled approach is strictly safer here.
+//
+// captureException returns the Sentry event id on success, or null
+// when SENTRY_DSN is unset (local dev) or the network call fails.
 
 import type { Env } from "../types";
 

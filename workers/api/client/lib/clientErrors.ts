@@ -1,5 +1,17 @@
 // Window onerror / unhandledrejection → POST /v1/internal/client-error.
-// Per-page de-dupe and 10-report cap; the Worker rate-limits per IP.
+// Per-page de-dupe and 10-report cap; the Worker rate-limits per IP
+// and forwards to Sentry via SENTRY_DSN_PUBLIC server-side.
+//
+// Why not @sentry/browser? Bundle size is the deciding factor:
+// @sentry/browser min+gz is ~25KB, which is larger than every
+// per-page bundle this app ships (galleries 18KB, studio 100KB,
+// dashboard 7KB). The proxy pattern below has equivalent delivery
+// (the worker uses ctx.waitUntil for the forward), preserves stack
+// fidelity (we POST the raw `Error.stack` string verbatim), and
+// keeps the public DSN out of the client where it would otherwise
+// be visible to scrapers. The trade-off is that we don't get the
+// SDK's auto-capture of breadcrumbs / fetch/console hooks; for v1
+// observability that's an acceptable gap given the size budget.
 
 const SEEN = new Set<string>();
 const MAX_REPORTS_PER_PAGE = 10;

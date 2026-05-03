@@ -215,12 +215,23 @@ app.onError((err, c) => {
   const requestId = c.get("requestId");
   const route = c.req.routePath || c.req.path;
   logError(requestId, "unhandled_exception", err, { route });
-  void captureException(c.env, err, {
+  // Tie the Sentry beacon to the request lifecycle via waitUntil so
+  // the runtime keeps the worker alive until the POST completes —
+  // a plain `void` would let CF cancel the in-flight fetch as soon
+  // as the 500 response is sent.
+  const sentryPromise = captureException(c.env, err, {
     request_id: requestId,
     route,
     status: 500,
     user_id: c.get("user")?.uid ?? null,
   });
+  try {
+    c.executionCtx.waitUntil(sentryPromise);
+  } catch {
+    // executionCtx may not exist in some test contexts; fall back
+    // to a fire-and-forget which is at least no worse than before.
+    void sentryPromise;
+  }
   return c.json({ error: "internal_error", request_id: requestId }, 500);
 });
 

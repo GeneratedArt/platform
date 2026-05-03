@@ -101,24 +101,25 @@ export async function clientErrorHandler(
 
   // Forward to a *separate* Sentry project via SENTRY_DSN_PUBLIC so
   // browser-side noise has its own quota / sampling and doesn't
-  // crowd out worker exceptions on SENTRY_DSN.
+  // crowd out worker exceptions on SENTRY_DSN. ctx.waitUntil keeps
+  // the runtime alive until the envelope POST completes.
   if (c.env.SENTRY_DSN_PUBLIC) {
+    const err = new Error(message);
+    if (stack) err.stack = stack;
+    const p = captureException(
+      { ...c.env, SENTRY_DSN: c.env.SENTRY_DSN_PUBLIC } as Env,
+      err,
+      {
+        request_id: requestId,
+        route: "client",
+        tags: { source: "client", page: page ?? "" },
+        user_id: session?.uid ?? null,
+      },
+    ).catch(() => null);
     try {
-      const err = new Error(message);
-      if (stack) err.stack = stack;
-      // captureException reads SENTRY_DSN; pass an env override.
-      await captureException(
-        { ...c.env, SENTRY_DSN: c.env.SENTRY_DSN_PUBLIC } as Env,
-        err,
-        {
-          request_id: requestId,
-          route: "client",
-          tags: { source: "client", page: page ?? "" },
-          user_id: session?.uid ?? null,
-        },
-      );
+      c.executionCtx.waitUntil(p);
     } catch {
-      // already logged structured above
+      void p;
     }
   }
   return c.json({ ok: true, request_id: requestId });
