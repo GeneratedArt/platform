@@ -11,6 +11,12 @@ export interface Env {
   GITHUB_TEMPLATE_REPO: string;
   GITHUB_MOCK: string;
   CAPTURES_PUBLIC_BASE?: string;
+  // Repo (owner/name) the platform commits author profile MDs into.
+  // When unset in non-mock mode, PATCH /v1/me still updates D1 but
+  // the GitHub mirror commit is skipped (best-effort) and the
+  // response advertises that the static page won't update until a
+  // human commits the file.
+  GITHUB_SITE_REPO?: string;
 }
 
 export interface ProjectRow {
@@ -35,6 +41,9 @@ export interface UserRow {
   handle: string;
   bio: string | null;
   avatar_url: string | null;
+  display_name: string | null;
+  socials: string | null;     // JSON-encoded array of {label,url}
+  cover_image: string | null;
   created_at: number;
   updated_at: number;
 }

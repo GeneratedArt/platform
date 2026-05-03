@@ -1,0 +1,115 @@
+---
+layout: default
+permalink: /p/
+title: "Project — GeneratedArt"
+meta_title: "Project — GeneratedArt"
+meta_description: |
+  A generative-art project on GeneratedArt. Each project is a real GitHub
+  repo in the GeneratedArt-artists org, owned by the artist.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% comment %}
+  Project IDs are auto-incremented by D1 and can't be statically routed
+  by Jekyll. We ship a single page that reads `?id=N` and hydrates
+  from `/v1/projects/:id`. Profile cards link here as `/p/?id=N`. A
+  follow-up may add per-slug pre-rendering during the Pages build for
+  better OG previews; today the OG meta is generic.
+{% endcomment %}
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+    <div id="ga-project-root">
+      <p class="text-muted small">Loading project…</p>
+    </div>
+
+    <template id="ga-project-tmpl">
+      <article class="ga-project-detail">
+        <header class="mb-4">
+          <p class="ga-project-byline">
+            By <a class="ga-project-author" href="#">@artist</a>
+            · <span class="ga-project-engine"></span>
+            · <span class="ga-project-license"></span>
+          </p>
+          <h1 class="ga-project-title h2 mb-2">Title</h1>
+          <p class="ga-project-status">
+            <span class="ga-badge ga-badge-published">Published</span>
+          </p>
+        </header>
+
+        <div class="ga-project-cover-wrap">
+          <div class="ga-project-cover">
+            <span class="ga-project-cover-empty">No capture yet</span>
+          </div>
+        </div>
+
+        <div class="row gx-lg-8 mt-4">
+          <div class="col-lg-8">
+            <h2 class="h5">About</h2>
+            <p class="ga-project-description text-muted"></p>
+          </div>
+          <aside class="col-lg-4">
+            <h2 class="h5">Source</h2>
+            <p class="small mb-2">
+              <a class="ga-project-repo" href="#" rel="noopener" target="_blank">View on GitHub →</a>
+            </p>
+            <p class="small text-muted ga-project-updated"></p>
+          </aside>
+        </div>
+      </article>
+    </template>
+  </div>
+</section>
+
+<style>
+  .ga-project-byline {
+    font-family: var(--ga-font-mono);
+    font-size: 13px;
+    color: var(--ga-mute);
+    margin: 0 0 8px;
+    letter-spacing: 0.04em;
+  }
+  .ga-project-byline a { color: var(--ga-ink); border-bottom: 1px solid var(--ga-rule); }
+  .ga-project-cover-wrap { border: 1px solid var(--ga-rule); }
+  .ga-project-cover {
+    aspect-ratio: 1 / 1;
+    background: #EEE;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ga-project-cover img { width: 100%; height: 100%; object-fit: contain; }
+  .ga-project-cover-empty {
+    font-family: var(--ga-font-mono);
+    font-size: 12px;
+    color: var(--ga-mute);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .ga-project-repo {
+    font-family: var(--ga-font-mono);
+    font-size: 14px;
+  }
+  .ga-badge { display:inline-block; padding: 2px 10px; border: 1px solid var(--ga-rule); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
+  .ga-badge-published { border-color: var(--ga-accent); color: var(--ga-accent); }
+  .ga-badge-minted { background: var(--ga-ink); color: var(--ga-paper); border-color: var(--ga-ink); }
+  .ga-badge-archived { opacity: .5; }
+  .ga-badge-draft { color: var(--ga-mute); }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-project-detail.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GAProjectDetail) return setTimeout(tryMount, 50);
+    window.GAProjectDetail.mount({ apiBase: apiBase, rootEl: document.getElementById("ga-project-root") });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

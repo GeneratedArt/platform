@@ -69,12 +69,24 @@ exclude:
 collections:
   authors:
     output: true
+    # Task #5: artist profile pages live at the pretty `/@{handle}/`
+    # route. Each `_authors/{handle}.md` is rendered by `_layouts/profile.html`.
+    # The legacy template's `_authors/sarah-wanderlust.md` doesn't carry a
+    # layout and gets the default below; its content is just a stub bio.
+    permalink: /@:slug/
   shop_items:
     output: true
     permalink: /shop/:name
   portfolio:
     output: true
     permalink: /portfolio/:name
+
+defaults:
+  - scope:
+      path: ""
+      type: authors
+    values:
+      layout: profile
 
 # Pagination (jekyll-paginate-v2)
 pagination:

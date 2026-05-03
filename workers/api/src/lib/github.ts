@@ -259,6 +259,201 @@ export async function getRepoFile(
   return { content: b64decode(body.content), sha: body.sha, path };
 }
 
+// In mock mode, deletes silently no-op. Production-only path is the
+// GitHub Contents API DELETE.
+export async function deleteRepoFile(
+  env: Env,
+  fullName: string,
+  args: { path: string; sha: string; message: string; branch?: string },
+): Promise<void> {
+  if (isMockMode(env)) {
+    MOCK_FILES.delete(mockKey(fullName, args.path));
+    return;
+  }
+  if (!env.GITHUB_PAT) {
+    throw new GitHubError(
+      "github_pat_unconfigured",
+      503,
+      "GITHUB_PAT secret must be set",
+    );
+  }
+  const url = `${GITHUB_API}/repos/${fullName}/contents/${encodeURIComponent(args.path)}`;
+  const body: Record<string, unknown> = {
+    message: args.message,
+    sha: args.sha,
+  };
+  if (args.branch) body.branch = args.branch;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: ghHeaders(env.GITHUB_PAT),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok && res.status !== 404) {
+    let detail: unknown = await res.text();
+    try {
+      detail = JSON.parse(detail as string);
+    } catch {}
+    throw new GitHubError(
+      `github_delete_file_failed:${res.status}`,
+      res.status,
+      detail,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Author profile mirror
+// ---------------------------------------------------------------------------
+//
+// PATCH /v1/me writes profile fields to D1, but the static `/@{handle}/`
+// page is rendered by Jekyll from `_authors/{handle}.md`. To keep the two
+// in sync without a Pages-side webhook we commit a freshly-rendered MD
+// to the site repo on every save. The site's GitHub Pages workflow
+// rebuilds and the static page picks up the new front-matter.
+//
+// In mock mode (or when GITHUB_SITE_REPO is unset) we no-op gracefully
+// and surface a `reason` so the editor can tell the user "static page
+// won't update until a human commits the file" without failing the save.
+
+export interface AuthorProfileInput {
+  handle: string;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  cover_image: string | null;
+  socials: Array<{ label: string; url: string }>;
+  address: string;
+  // When the handle changes, we delete the old MD so the old route
+  // 404s on the next build instead of serving stale data.
+  previousHandle?: string | null;
+}
+
+export interface AuthorProfileResult {
+  committed: boolean;
+  reason?: string;
+  commit_sha?: string;
+  html_url?: string | null;
+}
+
+// YAML scalar escaping for front-matter. We only ever produce
+// double-quoted scalars to keep escaping rules trivial: backslash and
+// double-quote are the only chars that need escaping inside `"…"`.
+function yamlString(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+// Block scalar with literal style for multi-line bios. Each line is
+// indented by 2 spaces under the key. An empty bio still emits a key
+// with `null` so the front-matter shape is uniform across users.
+function yamlBlock(s: string): string {
+  const lines = s.split("\n").map((l) => `  ${l}`);
+  return `|\n${lines.join("\n")}`;
+}
+
+export function renderAuthorProfileMd(input: AuthorProfileInput): string {
+  const lines: string[] = ["---"];
+  lines.push("layout: profile");
+  lines.push(`handle: ${yamlString(input.handle)}`);
+  lines.push(
+    `title: ${yamlString(input.display_name || input.handle)}`,
+  );
+  if (input.display_name) {
+    lines.push(`display_name: ${yamlString(input.display_name)}`);
+  }
+  if (input.avatar_url) {
+    lines.push(`avatar: ${yamlString(input.avatar_url)}`);
+  }
+  if (input.cover_image) {
+    lines.push(`cover_image: ${yamlString(input.cover_image)}`);
+  }
+  lines.push(`address: ${yamlString(input.address)}`);
+  if (input.bio) {
+    lines.push(`bio: ${yamlBlock(input.bio)}`);
+  }
+  if (input.socials.length > 0) {
+    lines.push("socials:");
+    for (const s of input.socials) {
+      lines.push(`  - label: ${yamlString(s.label)}`);
+      lines.push(`    url: ${yamlString(s.url)}`);
+    }
+  }
+  lines.push("---");
+  lines.push("");
+  return lines.join("\n");
+}
+
+export async function commitAuthorProfile(
+  env: Env,
+  input: AuthorProfileInput,
+): Promise<AuthorProfileResult> {
+  const siteRepo = env.GITHUB_SITE_REPO;
+  if (!siteRepo) {
+    return { committed: false, reason: "site_repo_unconfigured" };
+  }
+  if (isMockMode(env)) {
+    // Still exercise renderAuthorProfileMd via the mock store so dev
+    // can `wrangler tail`-style inspect what would land. But report
+    // committed=false so the UI reflects "no real commit happened".
+    const path = `_authors/${input.handle}.md`;
+    const content = renderAuthorProfileMd(input);
+    MOCK_FILES.set(mockKey(siteRepo, path), {
+      content,
+      sha: syntheticSha(`${siteRepo}::${path}:${content.length}`),
+    });
+    return { committed: false, reason: "mock_mode" };
+  }
+  if (!env.GITHUB_PAT) {
+    return { committed: false, reason: "github_pat_unconfigured" };
+  }
+
+  const path = `_authors/${input.handle}.md`;
+  const content = renderAuthorProfileMd(input);
+
+  // Look up the existing blob SHA so the PUT is a compare-and-swap.
+  // Missing file (first save) → empty SHA → CREATE semantics.
+  let existingSha: string | undefined;
+  try {
+    const existing = await getRepoFile(env, siteRepo, path);
+    existingSha = existing.sha || undefined;
+  } catch (err) {
+    // 404 from the helper returns sha:"" (CREATE), but other errors
+    // bubble up. Re-throw so the caller surfaces the GitHub error
+    // unchanged.
+    if (!(err instanceof GitHubError) || err.status !== 404) throw err;
+  }
+
+  const commit = await putRepoFile(env, siteRepo, {
+    path,
+    content,
+    sha: existingSha,
+    message: `profile: update ${input.handle}`,
+  });
+
+  // If the handle changed, drop the old MD so the old `/@old/` 404s
+  // on the next Pages build. Best-effort — a leftover file is a soft
+  // failure (the new page works either way).
+  if (input.previousHandle && input.previousHandle !== input.handle) {
+    try {
+      const old = await getRepoFile(env, siteRepo, `_authors/${input.previousHandle}.md`);
+      if (old.sha) {
+        await deleteRepoFile(env, siteRepo, {
+          path: `_authors/${input.previousHandle}.md`,
+          sha: old.sha,
+          message: `profile: rename ${input.previousHandle} → ${input.handle}`,
+        });
+      }
+    } catch (err) {
+      console.error("profile_rename_old_md_cleanup_failed", err);
+    }
+  }
+
+  return {
+    committed: true,
+    commit_sha: commit.commit_sha,
+    html_url: commit.html_url,
+  };
+}
+
 export async function putRepoFile(
   env: Env,
   fullName: string,

@@ -1,0 +1,124 @@
+---
+layout: default
+permalink: /dashboard/profile/
+title: "Edit profile — GeneratedArt"
+meta_title: "Edit profile — GeneratedArt"
+meta_description: |
+  Edit your GeneratedArt profile: handle, display name, bio, avatar,
+  social links. Saved through the platform API and committed back to the
+  static site so your `/@{handle}/` page reflects the change.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+    <div class="row gx-lg-8">
+      <div class="col-lg-8 mx-auto">
+        <header class="mb-6">
+          <h1 class="h2 mb-1">Edit profile</h1>
+          <p class="small text-muted mb-0">
+            Saved to the platform DB and committed to <code>_authors/{handle}.md</code> in the
+            site repo so your <a id="ga-profile-link" href="#" class="ga-mono">/@…/</a> page
+            updates on the next build.
+          </p>
+        </header>
+
+        <div id="ga-profile-editor-signed-out" class="d-none text-center py-10">
+          <h2 class="h4 mb-3">You need to sign in first.</h2>
+          <p class="mb-4 text-muted">Connect your wallet to edit your profile.</p>
+          <a href="/connect/" class="btn btn-accent rounded-0">Connect wallet</a>
+        </div>
+
+        <div id="ga-profile-editor" class="d-none">
+          <div id="ga-profile-error" class="alert alert-danger d-none small" role="alert"></div>
+          <div id="ga-profile-success" class="alert alert-success d-none small" role="status"></div>
+
+          <form id="ga-profile-form" class="ga-profile-form">
+            <div class="mb-4">
+              <label class="form-label small" for="ga-pf-handle">Handle</label>
+              <div class="input-group">
+                <span class="input-group-text rounded-0" style="border:1px solid var(--ga-rule); background:var(--ga-paper);">@</span>
+                <input type="text" id="ga-pf-handle" class="form-control rounded-0" maxlength="31" pattern="[a-z0-9][a-z0-9-]{1,30}" required />
+              </div>
+              <p class="form-text small text-muted">Lowercase letters, numbers, dashes. 2–31 chars. Becomes your URL: <code>/@…/</code></p>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small" for="ga-pf-display">Display name</label>
+              <input type="text" id="ga-pf-display" class="form-control rounded-0" maxlength="60" />
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small" for="ga-pf-bio">Bio</label>
+              <textarea id="ga-pf-bio" class="form-control rounded-0" rows="4" maxlength="500"></textarea>
+              <p class="form-text small text-muted"><span id="ga-pf-bio-count">0</span>/500</p>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small" for="ga-pf-avatar">Avatar URL</label>
+              <input type="url" id="ga-pf-avatar" class="form-control rounded-0" placeholder="https://…" maxlength="500" />
+              <p class="form-text small text-muted">Square image, hosted on an HTTPS URL.</p>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small" for="ga-pf-cover">Cover image URL</label>
+              <input type="url" id="ga-pf-cover" class="form-control rounded-0" placeholder="https://…" maxlength="500" />
+              <p class="form-text small text-muted">Wide banner shown at the top of your profile (HTTPS).</p>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small">Social links</label>
+              <div id="ga-pf-socials" class="d-flex flex-column gap-2"></div>
+              <button type="button" id="ga-pf-add-social" class="btn btn-link p-0 small mt-2">+ Add link</button>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-3" style="border-top: 1px solid var(--ga-rule);">
+              <a href="#" id="ga-pf-view" class="btn btn-link">View public page</a>
+              <button type="submit" class="btn btn-accent rounded-0">Save profile</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-pf-social {
+    display: grid;
+    grid-template-columns: 140px 1fr 32px;
+    gap: 8px;
+    align-items: center;
+  }
+  .ga-pf-social input { font-family: var(--ga-font-mono); font-size: 13px; }
+  .ga-pf-social .ga-pf-remove {
+    border: 1px solid var(--ga-rule);
+    background: transparent;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ga-mute);
+  }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-profile-editor.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GAProfileEditor) return setTimeout(tryMount, 50);
+    window.GAProfileEditor.mount({
+      apiBase: apiBase,
+      formEl: document.getElementById("ga-profile-editor"),
+      signedOutEl: document.getElementById("ga-profile-editor-signed-out"),
+    });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

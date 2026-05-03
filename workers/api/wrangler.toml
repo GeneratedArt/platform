@@ -109,6 +109,11 @@ ALLOWED_ORIGINS      = "https://generatedart.com,https://www.generatedart.com"
 # Worker route changes and so a future CDN/custom-domain swap is a
 # one-line edit.
 CAPTURES_PUBLIC_BASE = "https://api.generatedart.com"
+# Site repo PATCH /v1/me commits author profile MDs into. Must be set
+# in production for `/@{handle}/` to refresh from D1 on save; without
+# it, D1 still updates but the static page only changes when a human
+# edits `_authors/{handle}.md` and pushes.
+GITHUB_SITE_REPO     = "generatedart/generatedart"
 
 # Zone bound at the route level above (zone_name = "generatedart.com").
 # CLOUDFLARE_ZONE_ID = "5f16e1194f7d4b9f508b955e49c7c6ad" lives in the
