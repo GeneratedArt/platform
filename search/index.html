@@ -1,0 +1,77 @@
+---
+layout: default
+permalink: /search/
+title: "Search — GeneratedArt"
+meta_title: "Search GeneratedArt"
+meta_description: |
+  Full-text search across projects, artists, and open briefs on GeneratedArt.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12" style="max-width: 880px;">
+    <header class="mb-6">
+      <h1 class="h2 mb-2">Search</h1>
+      <p class="text-muted">One query across projects, artists, and briefs.</p>
+    </header>
+    <div id="ga-search-root"></div>
+  </div>
+</section>
+
+<style>
+  .ga-search-form { margin-bottom: 24px; }
+  .ga-search-form input {
+    font-family: var(--ga-font-mono);
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+  .ga-search-results section { margin-bottom: 32px; }
+  .ga-search-results h3 {
+    font-size: 14px;
+    font-family: var(--ga-font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ga-mute);
+    border-bottom: 1px solid var(--ga-rule);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+  .ga-search-list { display: grid; gap: 8px; }
+  .ga-search-hit {
+    display: block;
+    border: 1px solid var(--ga-rule);
+    padding: 12px 16px;
+    color: var(--ga-ink);
+    text-decoration: none;
+    background: var(--ga-paper);
+  }
+  .ga-search-hit:hover { border-color: var(--ga-ink); color: var(--ga-ink); text-decoration: none; }
+  .ga-search-hit h4 { font-size: 16px; margin: 0 0 4px; }
+  .ga-search-hit p { margin: 0; font-size: 14px; color: var(--ga-mute); }
+  .ga-search-meta {
+    font-family: var(--ga-font-mono);
+    font-size: 12px;
+    color: var(--ga-mute);
+    letter-spacing: 0.04em;
+    margin-top: 4px !important;
+  }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-search.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GASearch) return setTimeout(tryMount, 50);
+    window.GASearch.mount({ apiBase: apiBase, rootEl: document.getElementById("ga-search-root") });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

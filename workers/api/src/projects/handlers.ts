@@ -27,6 +27,7 @@ import {
 import { getUserById } from "../db/users";
 import { maybeAuthUser } from "../users/handlers";
 import { checkRateLimit } from "../lib/rateLimit";
+import { recordProjectView } from "../db/events";
 
 const TITLE_MAX = 80;
 const DESCRIPTION_MAX = 500;
@@ -148,6 +149,24 @@ export async function getProject(
   }
 
   const owner = await getProjectOwner(c.env.DB, row.owner_id);
+
+  // Task #16: record a view event for the trending score on /explore.
+  // Public-status projects only; owners viewing their own work shouldn't
+  // boost trending. Best-effort: a failure here mustn't break the read,
+  // and the IP-hash dedupe in recordProjectView keeps the increment
+  // honest even under refresh-spam.
+  if (!isOwner && PUBLIC_STATUSES.includes(row.status as ProjectStatus)) {
+    const ip =
+      c.req.header("CF-Connecting-IP") ||
+      c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ||
+      "unknown";
+    try {
+      await recordProjectView(c.env.DB, row.id, ip);
+    } catch (e) {
+      console.error("record_project_view_failed", row.id, e);
+    }
+  }
+
   return c.json({ project: publicProject(row), owner });
 }
 
