@@ -16,13 +16,13 @@ custom_color: red
     <p class="ga-eyebrow">v0.1.0 · hackathon · base sepolia</p>
     <h1>Code-based generative art, owned by the people who write it.</h1>
     <p class="ga-sub">
-      A community-run platform and on-chain marketplace for hand-written p5.js,
-      three.js, WebGL and GLSL. Mint editions on Base, run sketches in the browser,
-      bridge digital tokens to physical prints at the Geneva gallery.
+      Sketch in the browser. Commit to a real GitHub repo. Mint editions on Base.
+      Hand-written p5.js, three.js, WebGL and GLSL — no closed plugins, no ML
+      reproductions, no hidden middlemen.
     </p>
     <div class="ga-cta-row">
-      <a href="/projects/" class="btn ga-cta">Explore projects</a>
-      <a href="/studio/" class="btn btn-accent">Open studio</a>
+      <a href="/studio/" class="btn btn-accent">Start a sketch</a>
+      <a href="/projects/" class="btn ga-cta-quiet">Browse artists</a>
     </div>
   </div>
 </section>
@@ -33,17 +33,17 @@ custom_color: red
       <div class="col-md-4">
         <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">01 — Repo as project</p>
         <h3 style="font-size: var(--ga-type-xl);">Your GitHub repo is the canonical project.</h3>
-        <p>Submit a public repo URL, sign in with your wallet, and GA pins the source CID, computes a deterministic <span class="ga-mono">tokenId</span> from <span class="ga-mono">(repoOwner, repoName, commitSha)</span>, and renders a card on /projects.</p>
+        <p>Sign in with your wallet, name a project, and GA spins up a real public repo from a template under <span class="ga-mono">GeneratedArt-artists/</span>. Source CID is pinned at mint time so the on-chain <span class="ga-mono">tokenURI</span> resolves to the exact code that produced the edition.</p>
       </div>
       <div class="col-md-4">
         <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">02 — Studio in the browser</p>
-        <h3 style="font-size: var(--ga-type-xl);">Sketch directly. Hash, capture, mint.</h3>
-        <p>The on-site Studio runs your code with a deterministic <span class="ga-mono">seed</span>, captures the canvas, lets you tweak parameters and submit the resulting iteration as a candidate edition for any project you've created.</p>
+        <h3 style="font-size: var(--ga-type-xl);">Edit, capture, commit — in one tab.</h3>
+        <p>The on-site Studio runs your code in a sandboxed iframe with a deterministic <span class="ga-mono">seed</span>, captures the canvas to R2, and commits straight back to your repo. <span class="ga-mono">⌘S</span> to commit, <span class="ga-mono">⌘E</span> to export.</p>
       </div>
       <div class="col-md-4">
         <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">03 — Mint on Base</p>
-        <h3 style="font-size: var(--ga-type-xl);">Open editions. Patron splits. No middlemen.</h3>
-        <p>Editions mint to a fixed-supply ERC-721 on Base Sepolia. Royalties and patron splits are encoded on-chain via EIP-2981 and a project-level splitter. Source code is the asset; the chain is the ledger.</p>
+        <h3 style="font-size: var(--ga-type-xl);">Open editions, on-chain royalties.</h3>
+        <p>Each project deploys its own ERC-721 (EIP-1167 minimal proxy) on Base Sepolia with EIP-2981 royalties. The Worker is a thin coordinator; the wallet sends every transaction. <span class="ga-mono">tokenURI</span> = <span class="ga-mono">ipfs://{cid}/?seed={hex}</span>.</p>
       </div>
     </div>
   </div>
@@ -74,53 +74,53 @@ custom_color: red
   <div class="container inner">
     <div class="row">
       <div class="col-md-7 mx-auto text-center">
-        <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">Hackathon build · v0.1.0</p>
-        <h2 style="font-size: var(--ga-type-2xl);">Six surfaces, one weekend.</h2>
-        <p style="color: var(--ga-mute);">The 24-hour scope. Each link is a real hackathon task tracked in the project plan.</p>
+        <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">What's live · v0.1.0-hackathon</p>
+        <h2 style="font-size: var(--ga-type-2xl);">Six surfaces, all shipped.</h2>
+        <p style="color: var(--ga-mute);">Every link below is a real, live surface backed by the Worker, D1, and Base Sepolia.</p>
       </div>
     </div>
     <div class="space30"></div>
     <div class="row gutter-60">
       <div class="col-md-6 col-lg-4">
         <div style="border: var(--ga-border); padding: var(--ga-3);">
-          <p class="ga-mono" style="color: var(--ga-accent); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">T1 · DONE</p>
-          <h4>Brand pass</h4>
-          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Mono wordmark, single accent, hairline rules, paper-and-ink palette.</p>
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
+          <h4>Wallet sign-in</h4>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">SIWE on a Hono Worker, sessions in KV, rate-limited at the edge. <a href="/connect/">Connect wallet →</a></p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div style="border: var(--ga-border); padding: var(--ga-3);">
-          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">T2 · NEXT</p>
-          <h4>Worker + SIWE</h4>
-          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Hono Worker on Cloudflare. Sign-In-With-Ethereum, sessions in KV.</p>
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
+          <h4>Repo-as-project</h4>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">A real GitHub repo per project, created from a template via the central PAT. <a href="/dashboard/">Your dashboard →</a></p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div style="border: var(--ga-border); padding: var(--ga-3);">
-          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">T3 · QUEUED</p>
-          <h4>Repo as project</h4>
-          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Submit a GitHub repo, pin source to IPFS via Pinata, render /projects.</p>
-        </div>
-      </div>
-      <div class="col-md-6 col-lg-4">
-        <div style="border: var(--ga-border); padding: var(--ga-3);">
-          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">T4 · QUEUED</p>
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
           <h4>Sketch Studio</h4>
-          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">In-browser p5.js runner with deterministic seed and canvas capture.</p>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">CodeMirror 6 editor, sandboxed p5 preview, deterministic seed, canvas capture to R2. <a href="/studio/">Open studio →</a></p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div style="border: var(--ga-border); padding: var(--ga-3);">
-          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">T5 · QUEUED</p>
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
           <h4>Profile + follow</h4>
-          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Wallet-addressed profile pages, portfolio of minted iterations, follow graph.</p>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Wallet-addressed pages at <span class="ga-mono">/@handle/</span>, hydrated from D1 and the static site. <a href="/@ga-smoke/">Visit a profile →</a></p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div style="border: var(--ga-border); padding: var(--ga-3);">
-          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">T6 · QUEUED</p>
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
           <h4>Mint on Base</h4>
-          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">ERC-721 on Base Sepolia, EIP-2981 royalties, project-level splits.</p>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">ERC-721 + EIP-2981 on Base Sepolia, deployed per-project as an EIP-1167 clone. <a href="/projects/">Find a project →</a></p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div style="border: var(--ga-border); padding: var(--ga-3);">
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
+          <h4>Briefs board</h4>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Open commissions and collab calls. Filter by industry, post in markdown. <a href="/briefs/">See the board →</a></p>
         </div>
       </div>
     </div>

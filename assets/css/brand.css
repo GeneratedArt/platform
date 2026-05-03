@@ -116,6 +116,22 @@ hr, .border, .border-top, .border-bottom, .border-left, .border-right {
   text-decoration: none;
 }
 
+/* Quiet secondary CTA — paper-on-ink outline, no fill, used next to a primary
+   .btn-accent so the visual hierarchy reads as one primary + one secondary. */
+.ga-cta-quiet, .ga-cta-quiet:link {
+  background-color: transparent !important;
+  border: 1px solid var(--ga-ink) !important;
+  color: var(--ga-ink) !important;
+  text-decoration: none;
+}
+
+.ga-cta-quiet:hover, .ga-cta-quiet:focus {
+  background-color: var(--ga-ink) !important;
+  border-color: var(--ga-ink) !important;
+  color: var(--ga-paper) !important;
+  text-decoration: none;
+}
+
 .btn-accent:hover, .btn-accent:focus {
   background-color: var(--ga-accent) !important;
   border-color: var(--ga-accent) !important;
