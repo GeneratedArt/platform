@@ -3,11 +3,34 @@
 // /v1/internal/client-error — public, IP rate-limited client error sink.
 
 import type { Context } from "hono";
-import type { Env } from "../types";
+import { getCookie } from "hono/cookie";
+import type { Env, JwtPayload } from "../types";
 import type { AuthVariables } from "../auth/middleware";
 import { readStats } from "../lib/metrics";
 import { logError } from "../lib/log";
 import { captureException } from "../lib/sentry";
+import { SESSION_COOKIE } from "../lib/cookies";
+import { verifySession } from "../auth/jwt";
+
+// Opportunistic session resolution: returns the JWT payload if a
+// valid, non-revoked session cookie is present, else null. Used by
+// clientErrorHandler to enrich error reports with user_id when
+// available without ever rejecting an unauthenticated request.
+async function tryResolveSession(
+  c: Context<{ Bindings: Env; Variables: AuthVariables }>,
+): Promise<JwtPayload | null> {
+  try {
+    const token = getCookie(c, SESSION_COOKIE);
+    if (!token) return null;
+    const payload = await verifySession(c.env.JWT_SECRET, token);
+    if (!payload) return null;
+    const revoked = await c.env.SESSIONS.get(`revoked:${payload.jti}`);
+    if (revoked) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 export async function statsHandler(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
@@ -100,7 +123,11 @@ export async function clientErrorHandler(
   const stack = typeof b.stack === "string" ? b.stack.slice(0, 4000) : null;
   const page = typeof b.page === "string" ? b.page.slice(0, 200) : null;
   const ua = c.req.header("user-agent")?.slice(0, 200) ?? null;
-  const session = c.get("user");
+  // /v1/internal/client-error is intentionally public so error
+  // reporting still works for logged-out crashes. When a valid
+  // session cookie *is* present, attach user_id to the report so
+  // we can correlate browser exceptions to a uid in Sentry.
+  const session = await tryResolveSession(c);
 
   console.error(
     JSON.stringify({
