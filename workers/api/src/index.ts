@@ -32,6 +32,11 @@ import {
   listFollowersHandler,
   listFollowingHandler,
 } from "./users/handlers";
+import {
+  listBriefsHandler,
+  getBriefHandler,
+  createBriefHandler,
+} from "./briefs/handlers";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -83,6 +88,12 @@ v1.get("/users/:handle/followers", listFollowersHandler);
 v1.get("/users/:handle/following", listFollowingHandler);
 v1.post("/users/:handle/follow", requireAuth, followHandler);
 v1.delete("/users/:handle/follow", requireAuth, unfollowHandler);
+
+// Briefs board (Task #7). Listing + detail are public; posting requires auth
+// and is rate-limited to 5/address/day inside the handler.
+v1.get("/briefs", listBriefsHandler);
+v1.get("/briefs/:id{[0-9]+}", getBriefHandler);
+v1.post("/briefs", requireAuth, createBriefHandler);
 
 app.route("/v1", v1);
 

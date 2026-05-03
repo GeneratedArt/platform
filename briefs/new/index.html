@@ -1,0 +1,52 @@
+---
+layout: default
+permalink: /briefs/new/
+title: "Post a brief — GeneratedArt"
+meta_title: "Post a brief — GeneratedArt"
+meta_description: |
+  Post a commission or collaboration brief on GeneratedArt. Sign in,
+  pick an industry, write the brief in markdown, optionally set an ETH
+  budget and deadline.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-10 py-md-12">
+    <div class="row gx-lg-8">
+      <div class="col-lg-8 mx-auto">
+        <div id="ga-briefs-root">
+          <p class="text-muted small">Loading…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-mono { font-family: var(--ga-font-mono); }
+  .ga-brief-body :is(h3,h4,h5) { margin-top: 1.5rem; }
+  .ga-brief-body code { background: #f4f4f4; padding: 1px 6px; }
+  .ga-brief-body blockquote {
+    border-left: 3px solid var(--ga-rule);
+    margin: 1rem 0; padding: 4px 12px; color: var(--ga-mute);
+  }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-briefs.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GABriefs) return setTimeout(tryMount, 50);
+    window.GABriefs.mountNew({ apiBase: apiBase, rootEl: document.getElementById("ga-briefs-root") });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

@@ -69,21 +69,26 @@ header_image: "/assets/images/art/bg31.webp"
   // falls through to the static 404 message.
   var pPath = location.pathname.match(/^\/p\/(\d+)\/?$/);
   var mintPath = location.pathname.match(/^\/mint\/(\d+)\/?$/);
-  if (!pPath && !mintPath) {
+  var briefPath = location.pathname.match(/^\/briefs\/(\d+)\/?$/);
+  if (!pPath && !mintPath && !briefPath) {
     document.getElementById("ga-project-root").hidden = true;
     document.getElementById("ga-404-default").hidden = false;
     return;
   }
-  var projectId = (pPath || mintPath)[1];
-  var basePath = pPath ? "/p/" : "/mint/";
 
-  // Mint pages live in their own static doc; for /mint/{id} we redirect
-  // there so the page's own template + bundle (with iframe + buttons)
-  // takes over rather than reusing the project-detail layout.
-  if (mintPath) {
-    location.replace(basePath + "?id=" + projectId);
+  // Briefs and mints live in their own static docs; redirect to the
+  // canonical `?id=N` page so each page's own bundle takes over rather
+  // than reusing the project-detail template.
+  if (briefPath) {
+    location.replace("/briefs/show/?id=" + briefPath[1]);
     return;
   }
+  if (mintPath) {
+    location.replace("/mint/?id=" + mintPath[1]);
+    return;
+  }
+  var projectId = pPath[1];
+  var basePath = "/p/";
 
   history.replaceState(null, "", basePath + "?id=" + projectId);
   var s = document.createElement("script");
