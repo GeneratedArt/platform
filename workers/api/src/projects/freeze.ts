@@ -2,7 +2,11 @@ import type { Context } from "hono";
 import type { Env } from "../types";
 import type { AuthVariables } from "../auth/middleware";
 import { getAuthUser } from "../auth/middleware";
-import { getProjectById } from "../db/projects";
+import {
+  getProjectById,
+  PUBLIC_STATUSES,
+  type ProjectStatus,
+} from "../db/projects";
 import {
   insertFrozenVersion,
   listFrozenForProject,
@@ -120,23 +124,29 @@ export async function freezeProject(
     pin_errors: Object.keys(pin.errors).length > 0 ? pin.errors : null,
   });
 
-  try {
-    await recordEvent(c.env.DB, {
-      kind: "freeze",
-      actor_id: session.uid,
-      target_kind: "frozen",
-      target_id: row.id,
-      payload: {
-        project_id: project.id,
-        title: project.title,
-        slug: project.slug,
-        commit_sha: row.commit_sha,
-        cid: row.cid,
-        bundle_hash: row.bundle_hash,
-      },
-    });
-  } catch (e) {
-    console.error("event_freeze_failed", e);
+  // Same visibility rule as the commit event: the feed applies no
+  // status filter, so only broadcast for projects that are already
+  // public. Freezing a draft is a normal pre-release step and must not
+  // announce the title, slug, or CID of unreleased work to followers.
+  if (PUBLIC_STATUSES.includes(project.status as ProjectStatus)) {
+    try {
+      await recordEvent(c.env.DB, {
+        kind: "freeze",
+        actor_id: session.uid,
+        target_kind: "frozen",
+        target_id: row.id,
+        payload: {
+          project_id: project.id,
+          title: project.title,
+          slug: project.slug,
+          commit_sha: row.commit_sha,
+          cid: row.cid,
+          bundle_hash: row.bundle_hash,
+        },
+      });
+    } catch (e) {
+      console.error("event_freeze_failed", e);
+    }
   }
   try {
     const { safeBumpActivity } = await import("../lib/metrics");

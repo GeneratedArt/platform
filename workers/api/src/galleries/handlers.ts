@@ -35,6 +35,10 @@ function badRequest(c: Context, error: string, detail?: unknown) {
   return c.json({ error, detail }, 400);
 }
 
+// `null` means "no value" (absent, empty, or wrong type). Over-length is
+// a distinct outcome — see `checkedStr` — because collapsing the two made
+// a 300-character description on a 280-character field save as NULL
+// instead of returning 400, silently destroying what the curator typed.
 function clampStr(v: unknown, max: number): string | null {
   if (v === null || v === undefined || v === "") return null;
   if (typeof v !== "string") return null;
@@ -42,6 +46,15 @@ function clampStr(v: unknown, max: number): string | null {
   if (t.length === 0) return null;
   if (t.length > max) return null;
   return t;
+}
+
+const TOO_LONG = Symbol("too_long");
+
+/// Like clampStr, but distinguishes "too long" from "absent" so the
+/// caller can 400 instead of writing NULL over the user's input.
+function checkedStr(v: unknown, max: number): string | null | typeof TOO_LONG {
+  if (typeof v === "string" && v.trim().length > max) return TOO_LONG;
+  return clampStr(v, max);
 }
 
 function clampLatLon(
@@ -234,10 +247,22 @@ export async function createGalleryHandler(
 
   const title = clampStr(body.title, TITLE_MAX);
   if (!title) return badRequest(c, "invalid_title", { max: TITLE_MAX });
-  const description = clampStr(body.description, DESCRIPTION_MAX);
-  const bodyMd = clampStr(body.body_md, BODY_MAX);
-  const coverUrl = body.cover_url === null ? null : clampStr(body.cover_url, 500);
-  const location = clampStr(body.location, LOCATION_MAX);
+  const description = checkedStr(body.description, DESCRIPTION_MAX);
+  if (description === TOO_LONG) {
+    return badRequest(c, "description_too_long", { max: DESCRIPTION_MAX });
+  }
+  const bodyMd = checkedStr(body.body_md, BODY_MAX);
+  if (bodyMd === TOO_LONG) {
+    return badRequest(c, "body_md_too_long", { max: BODY_MAX });
+  }
+  const coverUrl = body.cover_url === null ? null : checkedStr(body.cover_url, 500);
+  if (coverUrl === TOO_LONG) {
+    return badRequest(c, "cover_url_too_long", { max: 500 });
+  }
+  const location = checkedStr(body.location, LOCATION_MAX);
+  if (location === TOO_LONG) {
+    return badRequest(c, "location_too_long", { max: LOCATION_MAX });
+  }
 
   const lat = clampLatLon(body.lat, 90);
   if (!lat.ok) return badRequest(c, "invalid_lat");
@@ -310,16 +335,28 @@ export async function patchGalleryHandler(
     patch.title = t;
   }
   if (body.description !== undefined) {
-    patch.description = body.description === null ? null : clampStr(body.description, DESCRIPTION_MAX);
+    const v = body.description === null ? null : checkedStr(body.description, DESCRIPTION_MAX);
+    if (v === TOO_LONG) {
+      return badRequest(c, "description_too_long", { max: DESCRIPTION_MAX });
+    }
+    patch.description = v;
   }
   if (body.body_md !== undefined) {
-    patch.bodyMd = body.body_md === null ? null : clampStr(body.body_md, BODY_MAX);
+    const v = body.body_md === null ? null : checkedStr(body.body_md, BODY_MAX);
+    if (v === TOO_LONG) return badRequest(c, "body_md_too_long", { max: BODY_MAX });
+    patch.bodyMd = v;
   }
   if (body.cover_url !== undefined) {
-    patch.coverUrl = body.cover_url === null ? null : clampStr(body.cover_url, 500);
+    const v = body.cover_url === null ? null : checkedStr(body.cover_url, 500);
+    if (v === TOO_LONG) return badRequest(c, "cover_url_too_long", { max: 500 });
+    patch.coverUrl = v;
   }
   if (body.location !== undefined) {
-    patch.location = body.location === null ? null : clampStr(body.location, LOCATION_MAX);
+    const v = body.location === null ? null : checkedStr(body.location, LOCATION_MAX);
+    if (v === TOO_LONG) {
+      return badRequest(c, "location_too_long", { max: LOCATION_MAX });
+    }
+    patch.location = v;
   }
   if (body.lat !== undefined) {
     const r = clampLatLon(body.lat, 90);

@@ -2,9 +2,26 @@ import type { D1Database } from "@cloudflare/workers-types";
 import type { UserRow } from "../types";
 
 // Must satisfy the profile handle regex `^[a-z0-9][a-z0-9-]{1,30}$`.
-function generateHandle(address: string): string {
-  return `artist-${address.slice(2, 8).toLowerCase()}`;
+//
+// `attempt` widens the address slice on each retry. `users.handle` is
+// UNIQUE, and six hex chars is only 16.7M values — by the birthday bound
+// two of a few thousand signups collide with better-than-even odds, and
+// the loser's very first sign-in would 500 forever on the constraint.
+// Widening to the full 40-char address makes a collision equivalent to an
+// address collision; the random suffix is the last-resort tiebreak for a
+// genuine race between two concurrent first-time sign-ins.
+function generateHandle(address: string, attempt: number): string {
+  const hex = address.replace(/^0x/, "").toLowerCase();
+  if (attempt === 0) return `artist-${hex.slice(0, 6)}`;
+  if (attempt === 1) return `artist-${hex.slice(0, 12)}`;
+  if (attempt === 2) return `artist-${hex.slice(0, 23)}`;
+  const suffix = Math.floor(Math.random() * 0xffffff)
+    .toString(16)
+    .padStart(6, "0");
+  return `artist-${hex.slice(0, 16)}-${suffix}`;
 }
+
+const HANDLE_ATTEMPTS = 6;
 
 export async function upsertUserByAddress(
   db: D1Database,
@@ -19,19 +36,40 @@ export async function upsertUserByAddress(
   if (existing) {
     return existing;
   }
-  const handle = generateHandle(normalized);
-  const result = await db
-    .prepare(
-      `INSERT INTO users (address, handle, created_at, updated_at)
-       VALUES (?, ?, ?, ?)
-       RETURNING *`,
-    )
-    .bind(normalized, handle, now, now)
-    .first<UserRow>();
-  if (!result) {
-    throw new Error("failed_to_insert_user");
+
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < HANDLE_ATTEMPTS; attempt++) {
+    const handle = generateHandle(normalized, attempt);
+    try {
+      const result = await db
+        .prepare(
+          `INSERT INTO users (address, handle, created_at, updated_at)
+           VALUES (?, ?, ?, ?)
+           RETURNING *`,
+        )
+        .bind(normalized, handle, now, now)
+        .first<UserRow>();
+      if (result) return result;
+      throw new Error("failed_to_insert_user");
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/UNIQUE|constraint/i.test(msg)) throw err;
+      // The address itself may have raced in from a concurrent sign-in;
+      // if so the row now exists and is the right answer.
+      const raced = await db
+        .prepare("SELECT * FROM users WHERE address = ?")
+        .bind(normalized)
+        .first<UserRow>();
+      if (raced) return raced;
+      // Otherwise it was the handle that collided — widen and retry.
+    }
   }
-  return result;
+  throw new Error(
+    `failed_to_insert_user:handle_exhausted:${
+      lastErr instanceof Error ? lastErr.message : String(lastErr)
+    }`,
+  );
 }
 
 export async function getUserById(

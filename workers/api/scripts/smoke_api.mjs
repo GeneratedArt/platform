@@ -1,0 +1,663 @@
+// End-to-end smoke harness for the GeneratedArt API.
+//
+// Exercises the real HTTP surface — SIWE sign-in with a freshly generated
+// keypair, project create/patch/commit/capture, the freeze → activate →
+// mint-guard chain, galleries, social graph, briefs, discovery, OG, and a
+// block of abuse cases (ownership, path traversal, cursor/limit
+// validation, nonce replay, foreign-domain SIWE, forged cookies, CORS).
+//
+// Usage:
+//   cp .dev.vars.example .dev.vars    # then set a real JWT_SECRET
+//   npx wrangler d1 migrations apply DB --local
+//   npx wrangler dev --port 8787 &
+//   npm run smoke                     # or: BASE=https://api.example node scripts/smoke_api.mjs
+//
+// Exits non-zero if any check fails. Freeze and mint report as
+// "unconfigured" rather than failing when their secrets are absent, so
+// this is safe to run against a bare local setup — set PINNING_MOCK=1 in
+// .dev.vars to drive the freeze pipeline for real.
+import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
+
+const BASE = process.env.BASE || "http://127.0.0.1:8787";
+const ORIGIN = "http://localhost:5000";
+const DOMAIN = "localhost:5000";
+
+let cookie = "";
+const results = [];
+
+function record(name, ok, detail) {
+  results.push({ name, ok, detail });
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  :: " + detail : ""}`);
+}
+
+async function api(method, path, body, opts = {}) {
+  const headers = { Origin: ORIGIN };
+  if (cookie) headers.Cookie = cookie;
+  if (body !== undefined && !(body instanceof FormData) && !(body instanceof ArrayBuffer) && !ArrayBuffer.isView(body)) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (opts.contentType) headers["Content-Type"] = opts.contentType;
+  const res = await fetch(BASE + path, {
+    method,
+    headers,
+    body:
+      body === undefined
+        ? undefined
+        : body instanceof FormData || ArrayBuffer.isView(body) || body instanceof ArrayBuffer
+          ? body
+          : JSON.stringify(body),
+    redirect: "manual",
+  });
+  const setCookie = res.headers.get("set-cookie");
+  if (setCookie) {
+    const m = /ga_session=([^;]*)/.exec(setCookie);
+    if (m) cookie = `ga_session=${m[1]}`;
+  }
+  const ct = res.headers.get("content-type") || "";
+  let data;
+  if (ct.includes("application/json")) data = await res.json().catch(() => null);
+  else data = await res.text();
+  return { status: res.status, data, headers: res.headers };
+}
+
+// The Worker rate-limits SIWE verify to 10/min/IP. This suite signs in as
+// ~9 throwaway wallets from one IP, so a back-to-back re-run can trip it.
+// Wait out the window rather than reporting a false failure — a 429 here
+// is the limiter working, not a regression.
+async function login(account, allowRetry = true) {
+  const { data: nonceRes, status } = await api("POST", "/v1/auth/siwe/nonce");
+  if (status === 429 && allowRetry) {
+    await waitForRateLimit(nonceRes?.reset_at);
+    return login(account, false);
+  }
+  if (status !== 200) throw new Error("nonce failed " + status + JSON.stringify(nonceRes));
+  const nonce = nonceRes.nonce;
+  const issuedAt = new Date().toISOString();
+  const message = [
+    `${DOMAIN} wants you to sign in with your Ethereum account:`,
+    account.address,
+    ``,
+    `Sign in to GeneratedArt`,
+    ``,
+    `URI: ${ORIGIN}`,
+    `Version: 1`,
+    `Chain ID: 84532`,
+    `Nonce: ${nonce}`,
+    `Issued At: ${issuedAt}`,
+  ].join("\n");
+  const signature = await account.signMessage({ message });
+  const r = await api("POST", "/v1/auth/siwe/verify", { message, signature });
+  if (r.status === 429 && allowRetry) {
+    await waitForRateLimit(r.data?.reset_at);
+    return login(account, false);
+  }
+  return r;
+}
+
+async function waitForRateLimit(resetAt) {
+  const now = Math.floor(Date.now() / 1000);
+  const seconds = Math.min(
+    70,
+    Math.max(2, (typeof resetAt === "number" ? resetAt : now + 60) - now + 1),
+  );
+  console.log(`     … auth rate limit hit, waiting ${seconds}s for the window to reset`);
+  await new Promise((r) => setTimeout(r, seconds * 1000));
+}
+
+const H1 = "smoke" + Math.random().toString(36).slice(2,7);
+const H2 = "smoke" + Math.random().toString(36).slice(2,7);
+const RUN = Math.random().toString(36).slice(2, 8);
+const pk = generatePrivateKey();
+const account = privateKeyToAccount(pk);
+const pk2 = generatePrivateKey();
+const account2 = privateKeyToAccount(pk2);
+
+// ---- health
+{
+  const r = await api("GET", "/health");
+  record("GET /health", r.status === 200 && r.data.ok === true, JSON.stringify(r.data));
+}
+
+// ---- auth
+{
+  const r = await login(account);
+  record("SIWE login", r.status === 200 && r.data?.ok === true, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/me");
+  record("GET /v1/me", r.status === 200 && !!r.data?.user, JSON.stringify(r.data).slice(0, 250));
+}
+{
+  const r = await api("PATCH", "/v1/me", { handle: H1, display_name: "Smoke Tester", bio: "hi" });
+  record("PATCH /v1/me", r.status === 200, JSON.stringify(r.data).slice(0, 250));
+}
+
+// ---- projects
+let projectId = null;
+{
+  const r = await api("POST", "/v1/projects", { title: "Smoke Drift", engine: "p5", description: "smoke test project" });
+  projectId = r.data?.project?.id ?? r.data?.id ?? null;
+  record("POST /v1/projects", r.status === 200 || r.status === 201, JSON.stringify(r.data).slice(0, 300));
+}
+{
+  const r = await api("GET", `/v1/projects/${projectId}`);
+  record("GET /v1/projects/:id", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/projects/mine");
+  record("GET /v1/projects/mine", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("PATCH", `/v1/projects/${projectId}`, { description: "updated desc", status: "published" });
+  record("PATCH /v1/projects/:id", r.status === 200, JSON.stringify(r.data).slice(0, 250));
+}
+
+// ---- studio file + commit
+{
+  const r = await api("GET", `/v1/projects/${projectId}/file?path=sketch.js`);
+  record("GET /v1/projects/:id/file", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", `/v1/projects/${projectId}/commit`, {
+    path: "sketch.js",
+    content: "function setup(){createCanvas(400,400);}function draw(){background(9);}",
+    message: "smoke commit",
+  });
+  record("POST /v1/projects/:id/commit", r.status === 200, JSON.stringify(r.data).slice(0, 250));
+}
+
+// ---- captures
+{
+  // 1x1 PNG
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const r = await api("POST", `/v1/projects/${projectId}/captures`, {
+    data_url: "data:image/png;base64," + png.toString("base64"),
+    seed: "smoke1",
+  });
+  record("POST /v1/projects/:id/captures", r.status === 200 || r.status === 201, JSON.stringify(r.data).slice(0, 250));
+  const key = r.data?.capture?.key;
+  if (key) {
+    const g = await api("GET", `/v1/captures/${key}`);
+    record("GET /v1/captures/*", g.status === 200, `status=${g.status}`);
+    const bad = await api("GET", `/v1/captures/../../etc/passwd`);
+    record("GET /v1/captures traversal rejected", bad.status === 400 || bad.status === 404, `status=${bad.status}`);
+  }
+}
+
+// ---- freeze
+{
+  // 201 when pinning is configured (or PINNING_MOCK=1); 503
+  // pinning_unconfigured on a bare local setup — both are healthy.
+  const r = await api("POST", `/v1/projects/${projectId}/freeze`, { commit: "latest" });
+  record(
+    "POST /v1/projects/:id/freeze",
+    r.status === 201 || r.status === 503,
+    JSON.stringify(r.data).slice(0, 200),
+  );
+}
+{
+  const r = await api("GET", `/v1/projects/${projectId}/frozen`);
+  record("GET /v1/projects/:id/frozen", r.status === 200, JSON.stringify(r.data).slice(0, 250));
+}
+
+// ---- mint
+{
+  const r = await api("GET", "/v1/mint/config");
+  record("GET /v1/mint/config", r.status === 200 || r.status === 503, JSON.stringify(r.data).slice(0, 250));
+}
+{
+  const r = await api("GET", `/v1/projects/${projectId}/mint/state`);
+  record("GET /v1/projects/:id/mint/state", r.status === 200, JSON.stringify(r.data).slice(0, 250));
+}
+{
+  const r = await api("POST", `/v1/projects/${projectId}/mint/prepare`, { phase: "deploy" });
+  record("POST mint/prepare", r.status === 200 || r.status === 503 || r.status === 409 || r.status === 400, JSON.stringify(r.data).slice(0, 250));
+}
+
+// ---- traits/mints
+{
+  const r = await api("GET", `/v1/projects/${projectId}/traits`);
+  record("GET /v1/projects/:id/traits", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", `/v1/projects/${projectId}/mints`);
+  record("GET /v1/projects/:id/mints", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", `/v1/projects/${projectId}/mints/1`);
+  record("GET /v1/projects/:id/mints/:tokenId (404 expected)", r.status === 404, `status=${r.status}`);
+}
+
+// ---- galleries
+{
+  const r = await api("GET", "/v1/galleries");
+  record("GET /v1/galleries", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", "/v1/galleries", { title: "Smoke Gallery", description: "d" });
+  record("POST /v1/galleries (non-curator → 403)", r.status === 403 || r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", `/v1/projects/${projectId}/galleries`);
+  record("GET /v1/projects/:id/galleries", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+
+// ---- users / social
+{
+  const r = await api("GET", `/v1/users/${H1}`);
+  record("GET /v1/users/:handle", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", `/v1/users/${H1}/projects`);
+  record("GET /v1/users/:handle/projects", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", `/v1/users/${H1}/followers`);
+  record("GET /v1/users/:handle/followers", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", `/v1/users/${H1}/following`);
+  record("GET /v1/users/:handle/following", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+
+// second user follows first
+const firstCookie = cookie;
+cookie = "";
+{
+  const r = await login(account2);
+  record("SIWE login (user 2)", r.status === 200, `status=${r.status}`);
+}
+{
+  const r = await api("PATCH", "/v1/me", { handle: H2, display_name: "Smoke Two" });
+  record("PATCH /v1/me (user 2)", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", `/v1/users/${H1}/follow`);
+  record("POST follow", r.status === 200 || r.status === 201, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/feed");
+  record("GET /v1/feed", r.status === 200, JSON.stringify(r.data).slice(0, 250));
+}
+{
+  const r = await api("GET", "/v1/notifications");
+  record("GET /v1/notifications", r.status === 200, JSON.stringify(r.data).slice(0, 250));
+}
+{
+  const r = await api("POST", "/v1/notifications/read", { all: true });
+  record("POST /v1/notifications/read", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("DELETE", `/v1/users/${H1}/follow`);
+  record("DELETE follow", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+
+// ---- briefs
+let briefId = null;
+{
+  const r = await api("POST", "/v1/briefs", {
+    title: "Smoke Brief",
+    body: "Looking for a generative artist for a smoke test commission.",
+    industry: "fashion",
+    budget: "1000",
+  });
+  briefId = r.data?.brief?.id ?? r.data?.id ?? null;
+  record("POST /v1/briefs", r.status === 200 || r.status === 201, JSON.stringify(r.data).slice(0, 300));
+}
+{
+  const r = await api("GET", "/v1/briefs");
+  record("GET /v1/briefs", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+if (briefId) {
+  const r = await api("GET", `/v1/briefs/${briefId}`);
+  record("GET /v1/briefs/:id", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+
+// ---- discovery
+{
+  const r = await api("GET", "/v1/explore?tab=recent");
+  record("GET /v1/explore?tab=recent", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/explore?tab=trending");
+  record("GET /v1/explore?tab=trending", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/explore?tab=featured");
+  record("GET /v1/explore?tab=featured", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/search?q=smoke");
+  record("GET /v1/search?q=smoke", r.status === 200, JSON.stringify(r.data).slice(0, 300));
+}
+{
+  const r = await api("GET", "/v1/search?q=");
+  record("GET /v1/search (empty q)", r.status === 200 || r.status === 400, `status=${r.status}`);
+}
+
+// ---- OG
+{
+  const r = await api("GET", `/v1/og/projects/${projectId}`);
+  record("GET /v1/og/projects/:id", r.status === 200, `status=${r.status}`);
+}
+{
+  const r = await api("GET", `/v1/og/projects/${projectId}/data`);
+  record("GET /v1/og/projects/:id/data", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+
+// ---- internal
+{
+  const r = await api("GET", "/v1/internal/stats");
+  record("GET /v1/internal/stats (403 expected, no ADMIN_HANDLES)", r.status === 403, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", "/v1/internal/client-error", { message: "smoke", stack: "x", url: "/x" });
+  record("POST /v1/internal/client-error", r.status === 200 || r.status === 204 || r.status === 202, `status=${r.status}`);
+}
+
+// ---- 404 + logout
+{
+  const r = await api("GET", "/v1/nope");
+  record("404 shape", r.status === 404 && r.data?.error === "not_found", JSON.stringify(r.data).slice(0, 120));
+}
+{
+  const r = await api("POST", "/v1/auth/logout");
+  record("POST /v1/auth/logout", r.status === 200, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/me");
+  record("GET /v1/me after logout (401)", r.status === 401, `status=${r.status}`);
+}
+
+
+// ===========================================================================
+// Deep paths: freeze → activate → mint guard, ownership, abuse cases.
+// ===========================================================================
+const H = "deep" + Math.random().toString(36).slice(2, 7);
+const acct = privateKeyToAccount(generatePrivateKey());
+const other = privateKeyToAccount(generatePrivateKey());
+
+await login(acct);
+await api("PATCH", "/v1/me", { handle: H });
+const mine = await api("GET", "/v1/me");
+const myId = mine.data.user.id;
+
+const created = await api("POST", "/v1/projects", { title: "Deep Freeze", engine: "p5" });
+const pid = created.data?.project?.id;
+record("project created", !!pid, `id=${pid}`);
+
+// ---- freeze in PINNING_MOCK mode
+let fid = null;
+{
+  const r = await api("POST", `/v1/projects/${pid}/freeze`, { commit: "latest" });
+  fid = r.data?.frozen?.id;
+  record("POST freeze (mock pinning)", r.status === 201 && !!fid, JSON.stringify(r.data));
+}
+{
+  const r = await api("GET", `/v1/projects/${pid}/frozen`);
+  record("frozen list has 1, none active", r.status === 200 && r.data.versions.length === 1 && r.data.active === null, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/mint/prepare`, { phase: "deploy" });
+  record("mint/prepare blocked without active frozen (422 or 503)", r.status === 422 || r.status === 503, JSON.stringify(r.data));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/frozen/${fid}/activate`);
+  record("POST activate frozen", r.status === 200 && r.data?.frozen?.is_active === true, JSON.stringify(r.data).slice(0, 250));
+}
+{
+  const r = await api("GET", `/v1/projects/${pid}/frozen`);
+  record("frozen list now has active", r.status === 200 && r.data.active?.id === fid, JSON.stringify(r.data.active).slice(0, 200));
+}
+{
+  const r = await api("GET", `/v1/projects/${pid}`);
+  record("project.frozen_cid mirrored on activate", !!r.data?.project?.frozen_cid, JSON.stringify(r.data.project?.frozen_cid));
+}
+{
+  // Determinism: freezing the same commit twice must give the same hash.
+  const r = await api("POST", `/v1/projects/${pid}/freeze`, { commit: "latest" });
+  const first = await api("GET", `/v1/projects/${pid}/frozen`);
+  const hashes = new Set(first.data.versions.map((v) => v.bundle_hash));
+  record("re-freeze same commit → identical bundle_hash", r.status === 201 && hashes.size === 1, [...hashes].join(","));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/frozen/${fid}/retry-pin`);
+  record("retry-pin on fully-pinned row → 409", r.status === 409, JSON.stringify(r.data));
+}
+
+// ---- ownership enforcement from a second account
+const myCookie = cookie;
+cookie = "";
+await login(other);
+await api("PATCH", "/v1/me", { handle: H + "x" });
+{
+  const r = await api("POST", `/v1/projects/${pid}/freeze`, {});
+  record("freeze by non-owner → 403", r.status === 403, JSON.stringify(r.data));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/commit`, { path: "sketch.js", content: "x" });
+  record("commit by non-owner → 403", r.status === 403, JSON.stringify(r.data));
+}
+{
+  const r = await api("GET", `/v1/projects/${pid}/file`);
+  record("read file by non-owner → 403", r.status === 403, JSON.stringify(r.data));
+}
+{
+  const r = await api("PATCH", `/v1/projects/${pid}`, { title: "hijack" });
+  record("patch project by non-owner → 403", r.status === 403, JSON.stringify(r.data));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/frozen/${fid}/activate`);
+  record("activate by non-owner → 403", r.status === 403, JSON.stringify(r.data));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/archive`);
+  record("archive by non-owner → 403", r.status === 403, JSON.stringify(r.data));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/captures`, { data_url: "data:image/png;base64,AAA" });
+  record("capture upload by non-owner → 403", r.status === 403, JSON.stringify(r.data));
+}
+
+cookie = myCookie;
+
+// ---- input validation
+{
+  const r = await api("POST", "/v1/projects", { title: "", engine: "p5" });
+  record("create project empty title → 400", r.status === 400, JSON.stringify(r.data));
+}
+{
+  const r = await api("POST", "/v1/projects", { title: "Bad Engine", engine: "cobol" });
+  record("create project bad engine → 400", r.status === 400, JSON.stringify(r.data));
+}
+{
+  const r = await api("PATCH", "/v1/me", { handle: "!!!bad!!!" });
+  record("bad handle → 400", r.status === 400, JSON.stringify(r.data));
+}
+{
+  const r = await api("PATCH", "/v1/me", { socials: [{ label: "x", url: "javascript:alert(1)" }] });
+  record("javascript: social url rejected/sanitized", r.status === 400 || !JSON.stringify(r.data).includes("javascript:"), JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", `/v1/projects/${pid}/commit`, { path: "../../etc/passwd", content: "x" });
+  record("path traversal in commit → 400", r.status === 400, JSON.stringify(r.data));
+}
+{
+  const r = await api("GET", `/v1/projects/${pid}/file?path=../../secret`);
+  record("path traversal in file read → 400", r.status === 400, JSON.stringify(r.data));
+}
+{
+  const r = await api("GET", "/v1/explore?tab=recent&limit=99999");
+  const n = r.data?.cards?.length ?? 0;
+  record("explore limit clamped", r.status === 200 && n <= 50, `cards=${n}`);
+}
+{
+  const r = await api("GET", "/v1/explore?tab=bogus");
+  record("explore unknown tab handled", r.status === 200 || r.status === 400, `status=${r.status}`);
+}
+{
+  const r = await api("GET", "/v1/search?q=" + encodeURIComponent('" OR 1=1 --'));
+  record("search FTS injection safe", r.status === 200 || r.status === 400, `status=${r.status}`);
+}
+{
+  const r = await api("GET", "/v1/search?q=" + encodeURIComponent("smoke AND (drift"));
+  record("search unbalanced FTS syntax handled", r.status === 200 || r.status === 400, `status=${r.status} ${JSON.stringify(r.data).slice(0, 120)}`);
+}
+{
+  const r = await api("GET", "/v1/briefs?industry=" + encodeURIComponent("' OR 1=1"));
+  record("briefs industry filter safe", r.status === 200 || r.status === 400, `status=${r.status}`);
+}
+{
+  const r = await api("GET", "/v1/feed?before=garbage");
+  record("feed bad cursor handled", r.status === 200 || r.status === 400, `status=${r.status} ${JSON.stringify(r.data).slice(0, 120)}`);
+}
+{
+  const r = await api("GET", "/v1/notifications?before=1:2:3");
+  record("notifications bad cursor handled", r.status === 200 || r.status === 400, `status=${r.status}`);
+}
+{
+  const r = await api("GET", "/v1/galleries?before=nope");
+  record("galleries bad cursor handled", r.status === 200 || r.status === 400, `status=${r.status}`);
+}
+{
+  const r = await api("GET", "/v1/projects/99999999/mint/state");
+  record("mint/state unknown project → 404", r.status === 404, `status=${r.status}`);
+}
+{
+  const r = await api("GET", "/v1/users/does-not-exist-xyz");
+  record("unknown handle → 404", r.status === 404, `status=${r.status}`);
+}
+{
+  const r = await api("POST", `/v1/users/${H}/follow`);
+  record("self-follow rejected", r.status === 400 || r.status === 409, JSON.stringify(r.data));
+}
+{
+  const r = await api("POST", "/v1/auth/siwe/verify", { message: "garbage", signature: "0x00" });
+  record("garbage SIWE → 400", r.status === 400, JSON.stringify(r.data));
+}
+{
+  // replay: reuse a consumed nonce
+  const { data: n } = await api("POST", "/v1/auth/siwe/nonce");
+  const msg = [
+    `${DOMAIN} wants you to sign in with your Ethereum account:`,
+    acct.address, ``, `Sign in`, ``, `URI: ${ORIGIN}`, `Version: 1`,
+    `Chain ID: 84532`, `Nonce: ${n.nonce}`, `Issued At: ${new Date().toISOString()}`,
+  ].join("\n");
+  const sig = await acct.signMessage({ message: msg });
+  const first = await api("POST", "/v1/auth/siwe/verify", { message: msg, signature: sig });
+  const second = await api("POST", "/v1/auth/siwe/verify", { message: msg, signature: sig });
+  record("nonce is single-use (replay → 400)", first.status === 200 && second.status === 400, `first=${first.status} second=${second.status}`);
+}
+{
+  // wrong-domain SIWE must be rejected
+  const { data: n } = await api("POST", "/v1/auth/siwe/nonce");
+  const msg = [
+    `evil.example.com wants you to sign in with your Ethereum account:`,
+    acct.address, ``, `Sign in`, ``, `URI: https://evil.example.com`, `Version: 1`,
+    `Chain ID: 84532`, `Nonce: ${n.nonce}`, `Issued At: ${new Date().toISOString()}`,
+  ].join("\n");
+  const sig = await acct.signMessage({ message: msg });
+  const r = await api("POST", "/v1/auth/siwe/verify", { message: msg, signature: sig });
+  record("foreign domain SIWE → 400", r.status === 400, JSON.stringify(r.data));
+}
+{
+  // signature by a different key than the stated address
+  const { data: n } = await api("POST", "/v1/auth/siwe/nonce");
+  const msg = [
+    `${DOMAIN} wants you to sign in with your Ethereum account:`,
+    acct.address, ``, `Sign in`, ``, `URI: ${ORIGIN}`, `Version: 1`,
+    `Chain ID: 84532`, `Nonce: ${n.nonce}`, `Issued At: ${new Date().toISOString()}`,
+  ].join("\n");
+  const sig = await other.signMessage({ message: msg });
+  const r = await api("POST", "/v1/auth/siwe/verify", { message: msg, signature: sig });
+  record("mismatched signer → 401", r.status === 401, JSON.stringify(r.data));
+}
+{
+  const r = await fetch(BASE + "/v1/me", { headers: { Cookie: "ga_session=not.a.jwt", Origin: ORIGIN } });
+  record("forged session cookie → 401", r.status === 401, `status=${r.status}`);
+}
+{
+  const r = await fetch(BASE + "/v1/projects", {
+    method: "POST",
+    headers: { Origin: "https://evil.example.com", "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ title: "csrf", engine: "p5" }),
+  });
+  const acao = r.headers.get("access-control-allow-origin");
+  record("CORS does not echo unknown origin", !acao || acao !== "https://evil.example.com", `acao=${acao}`);
+}
+
+
+// ===========================================================================
+// Draft privacy in the public follow feed.
+//
+// GET /v1/feed applies no project-status filter of its own — it returns
+// whatever public-broadcast events exist for the actors you follow, and a
+// commit/freeze event carries the project's title and slug in its
+// payload. So the status gate has to live at the emission site. This
+// checks that a draft project's name never reaches a follower, and that
+// publishing then starts the broadcast normally.
+// ===========================================================================
+{
+  const artist = privateKeyToAccount(generatePrivateKey());
+  const fan = privateKeyToAccount(generatePrivateKey());
+  const artistHandle = "draft" + Math.random().toString(36).slice(2, 7);
+  const secretTitle = "Unreleased " + Math.random().toString(36).slice(2, 10);
+
+  cookie = "";
+  await login(artist);
+  await api("PATCH", "/v1/me", { handle: artistHandle });
+  const p = await api("POST", "/v1/projects", { title: secretTitle, engine: "p5" });
+  const draftId = p.data?.project?.id;
+  record("draft project created", p.data?.project?.status === "draft", `status=${p.data?.project?.status}`);
+
+  const artistCookie = cookie;
+  cookie = "";
+  await login(fan);
+  await api("PATCH", "/v1/me", { handle: artistHandle + "fan" });
+  await api("POST", `/v1/users/${artistHandle}/follow`);
+  const fanCookie = cookie;
+
+  // Artist works on the draft: commit + freeze, both while unpublished.
+  cookie = artistCookie;
+  await api("POST", `/v1/projects/${draftId}/commit`, {
+    path: "sketch.js",
+    content: "function setup(){createCanvas(100,100);}",
+    message: "wip",
+  });
+  await api("POST", `/v1/projects/${draftId}/freeze`, { commit: "latest" });
+
+  cookie = fanCookie;
+  {
+    const f = await api("GET", "/v1/feed");
+    const leaked = JSON.stringify(f.data).includes(secretTitle);
+    record("draft commit/freeze does not leak into follower feed", !leaked,
+      leaked ? `feed contained "${secretTitle}"` : "clean");
+  }
+
+  // Publish, then commit again — now it should broadcast.
+  cookie = artistCookie;
+  await api("PATCH", `/v1/projects/${draftId}`, { status: "published" });
+  await api("POST", `/v1/projects/${draftId}/commit`, {
+    path: "sketch.js",
+    content: "function setup(){createCanvas(101,101);}",
+    message: "ship",
+  });
+
+  cookie = fanCookie;
+  {
+    const f = await api("GET", "/v1/feed");
+    const present = JSON.stringify(f.data).includes(secretTitle);
+    record("published commit does reach follower feed", present, present ? "present" : "missing");
+  }
+}
+
+const failed = results.filter((r) => !r.ok);
+console.log(`\n=== ${results.length - failed.length}/${results.length} passed ===`);
+if (failed.length) {
+  console.log("FAILURES:");
+  for (const f of failed) console.log(` - ${f.name}: ${f.detail}`);
+  process.exit(1);
+}

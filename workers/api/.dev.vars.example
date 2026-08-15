@@ -34,3 +34,37 @@ GITHUB_TEMPLATE_REPO="GeneratedArt-artists/template-sketch"
 # mode; in non-mock mode the Worker fails closed with 503
 # `github_pat_unconfigured`. Production must NEVER set GITHUB_MOCK.
 GITHUB_MOCK="1"
+
+# --- Task #15: frozen artifact + IPFS pinning ------------------------------
+# Production sets BOTH of these as wrangler secrets:
+#   wrangler secret put W3S_TOKEN  --env production
+#   wrangler secret put PINATA_JWT --env production
+# With neither set (and PINNING_MOCK off) POST /v1/projects/:id/freeze
+# fails closed with 503 `pinning_unconfigured` rather than writing a row
+# whose CID resolves nowhere on the IPFS network.
+W3S_TOKEN=""
+PINATA_JWT=""
+
+# OPT-IN ONLY. When exactly "1", pinBundle()/repinTo() report both
+# providers as pinned without any network call and the locally computed
+# CID is adopted. This is what makes the freeze → activate → mint-guard
+# chain exercisable on a laptop; without it every local freeze 503s.
+# Production must NEVER set PINNING_MOCK.
+PINNING_MOCK="1"
+
+# --- Task #6: mint flow ----------------------------------------------------
+# Until GA_FACTORY_ADDRESS is set, /v1/projects/:id/mint/prepare returns
+# 503 `mint_unconfigured` and /v1/mint/config reports configured:false.
+# Fill these in after deploying the factory to Base Sepolia.
+GA_CHAIN_ID="84532"
+GA_RPC_URL="https://sepolia.base.org"
+GA_FACTORY_ADDRESS=""
+
+# --- Task #20: observability (all optional; unset = the surface no-ops) ----
+# ADMIN_HANDLES gates /v1/internal/*; empty means those routes 403 with
+# `admin_unconfigured`. Set it to your own handle to use /v1/internal/stats
+# locally.
+ADMIN_HANDLES=""
+SENTRY_DSN=""
+SENTRY_DSN_PUBLIC=""
+SLACK_WEBHOOK_URL=""
