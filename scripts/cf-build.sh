@@ -22,12 +22,13 @@ echo "cf-build: starting in $ROOT_DIR"
 echo "cf-build: ruby=$(ruby --version)"
 echo "cf-build: bundler=$(bundle --version)"
 
-if ! ruby -e 'require "csv"; puts "csv=#{CSV::VERSION}"'; then
-  echo "cf-build: csv is unavailable; run bundle install with the committed Gemfile.lock" >&2
+bundle check || bundle install --jobs 4 --retry 3
+if ! bundle exec ruby -e 'require "csv"; require "base64"; puts "csv=#{CSV::VERSION} base64=available"'; then
+  echo "cf-build: required Ruby default gems are unavailable from the bundle" >&2
   exit 1
 fi
 
-bundle check || bundle install --jobs 4 --retry 3
+export JEKYLL_ENV="${JEKYLL_ENV:-production}"
 bundle exec jekyll build
 
 test -f "_site/index.html"
