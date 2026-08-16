@@ -8,6 +8,10 @@ source "https://rubygems.org"
 # This will help ensure the proper Jekyll version is running.
 # Happy Jekylling!
 gem 'jekyll', '~>4.3.2'
+# Ruby 3.4 no longer ships csv as an implicitly loadable standard library.
+# Jekyll requires it during startup, so declare it explicitly for Cloudflare
+# Pages/Workers Builds and other clean Ruby environments.
+gem "csv", "~> 3.3"
 # This is the default theme for new Jekyll sites. You may change this to anything you like.
 # gem "minima", "~> 2.5.1"
 # If you want to use GitHub Pages, remove the "gem "jekyll"" above and
