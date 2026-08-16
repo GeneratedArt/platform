@@ -1,0 +1,46 @@
+# Cloudflare Worker for the STATIC SITE (script name: `generatedart`).
+#
+# This file exists so the Workers Builds Git integration attached to this
+# repo can deploy. It builds the Jekyll site and serves `_site/` as static
+# assets. It is NOT the API — that lives in `workers/api/wrangler.toml` as
+# a separate Worker named `generatedart-api`, deployed independently.
+#
+# Why this file is necessary
+# --------------------------
+# The Workers Builds project runs its deploy command with root directory
+# `/`. With no wrangler config here, wrangler 4 falls back to its
+# auto-config wizard, which auto-answers "yes" in CI, detects Jekyll, and
+# then invokes the build it guessed as `npx bundle exec jekyll build`.
+# That always fails — `bundle` is a Ruby executable, not an npm package:
+#
+#   [build] Running: npx bundle exec jekyll build
+#   [build] npm error could not determine executable to run
+#   ✘ [ERROR] Running custom build `npx bundle exec jekyll build` failed.
+#
+# A `[build] command` here is run through the shell with no `npx` prefix
+# (verified: wrangler logs `[custom build] Running: <command>`), so the
+# Ruby toolchain the build image already installs is used directly.
+#
+# Requires the Workers Builds project's deploy command to be
+# `npx wrangler deploy` and its root directory to be `/` — both already set.
+
+name = "generatedart"
+compatibility_date = "2026-08-01"
+
+# The build image detects Ruby from the Gemfile and runs `bundle install`
+# before this hook, so `bundle exec` resolves. JEKYLL_ENV=production turns
+# on the production-only bits of the templates.
+[build]
+command = "JEKYLL_ENV=production bundle exec jekyll build"
+
+# Jekyll's output. Gitignored and built fresh on every deploy.
+[assets]
+directory = "./_site"
+# The site is a directory tree of .html files; serve /about/ from
+# /about/index.html and fall through to the 404 page the repo already
+# ships at /404.html.
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+
+[observability]
+enabled = true
