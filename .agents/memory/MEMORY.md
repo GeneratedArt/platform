@@ -1,0 +1,1 @@
+- [Cloudflare production setup](cloudflare-production-setup.md) — Pages and DNS are live; reconcile the legacy D1 schema before deploying newer Worker code.
