@@ -28,10 +28,18 @@ name = "generatedart"
 compatibility_date = "2026-08-01"
 
 # The build image detects Ruby from the Gemfile and runs `bundle install`
-# before this hook, so `bundle exec` resolves. JEKYLL_ENV=production turns
+# before this hook, so the bundle is present. JEKYLL_ENV=production turns
 # on the production-only bits of the templates.
+#
+# `bundle binstubs` first, rather than a plain `bundle exec jekyll build`:
+# a successful `bundle install` does not guarantee the jekyll gem's
+# executable is resolvable on PATH. On an image whose gem bindir isn't
+# populated, `bundle exec jekyll` exits 127 with
+# `bundler: command not found: jekyll` even though `bundle list` shows
+# jekyll installed. Generating the binstub into ./bin and invoking it by
+# path removes that dependency on how the image lays out gem executables.
 [build]
-command = "JEKYLL_ENV=production bundle exec jekyll build"
+command = "bundle binstubs jekyll --force && JEKYLL_ENV=production bundle exec bin/jekyll build"
 
 # Jekyll's output. Gitignored and built fresh on every deploy.
 [assets]
