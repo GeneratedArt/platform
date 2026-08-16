@@ -421,22 +421,7 @@ $(document).ready(function() {
 	/*-----------------------------------------------------------------------------------*/
 	/*	SLIDER REVOLUTION
 	/*-----------------------------------------------------------------------------------*/
-	// Slider Revolution (ThemePunch) is a commercial plugin that is NOT
-	// bundled with this repo — nothing under assets/js/ provides it and no
-	// layout or include loads an rs6/themepunch script. Every one of the 16
-	// calls below therefore threw "$(...).revolution is not a function".
-	//
-	// Because these calls sit in the middle of the main init function, that
-	// first exception aborted everything after it — Plyr, the circle info
-	// boxes, and the rest of the page's JS never initialised. That is what
-	// crashed the Replit preview, and it broke far more than the sliders.
-	//
-	// Guarding the whole block skips the sliders (there is no plugin to run
-	// them) and lets the rest of the page boot. If Slider Revolution is ever
-	// licensed and added, this guard becomes a no-op and the sliders work
-	// again with no further change.
-	if ($.fn.revolution) {
-	$('#slider').revolution({
+	if ($.fn.revolution) { $('#slider').revolution({
 		sliderType: "standard",
 		sliderLayout: "fullscreen",
 		spinner: "spinner",
@@ -1004,8 +989,7 @@ $(document).ready(function() {
 				enable: false
 			}
 		}
-	});
-	} // end if ($.fn.revolution) — see the SLIDER REVOLUTION note above
+	}); } // end if ($.fn.revolution)
 	/*-----------------------------------------------------------------------------------*/
 	/*	PLYR
 	/*-----------------------------------------------------------------------------------*/
