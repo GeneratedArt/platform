@@ -39,7 +39,7 @@ compatibility_date = "2026-08-01"
 # jekyll installed. Generating the binstub into ./bin and invoking it by
 # path removes that dependency on how the image lays out gem executables.
 [build]
-command = "bundle binstubs jekyll --force && JEKYLL_ENV=production bundle exec bin/jekyll build"
+command = "JEKYLL_ENV=production bundle exec jekyll build || { bundle binstubs jekyll --force && JEKYLL_ENV=production bundle exec bin/jekyll build; }"
 
 # Jekyll's output. Gitignored and built fresh on every deploy.
 [assets]
