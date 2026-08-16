@@ -60,6 +60,22 @@ GA_CHAIN_ID="84532"
 GA_RPC_URL="https://sepolia.base.org"
 GA_FACTORY_ADDRESS=""
 
+# --- Render-token service ---------------------------------------------
+# Address that receives ETH for token-pack purchases. Reuses the
+# GA_CHAIN_ID / GA_RPC_URL above. Until set,
+# POST /v1/tokens/purchase/confirm returns 503 purchase_unconfigured.
+TOKEN_TREASURY_ADDRESS=""
+
+# Claude API key for the `anthropic` render-model provider. Production:
+#   wrangler secret put ANTHROPIC_API_KEY --env production
+ANTHROPIC_API_KEY=""
+
+# OPT-IN ONLY. When exactly "1", runInference() returns deterministic
+# canned output with no network call, so the render pipeline is
+# exercisable without an Anthropic key or a Workers AI binding.
+# Production must NEVER set RENDER_MOCK.
+RENDER_MOCK="1"
+
 # --- Task #20: observability (all optional; unset = the surface no-ops) ----
 # ADMIN_HANDLES gates /v1/internal/*; empty means those routes 403 with
 # `admin_unconfigured`. Set it to your own handle to use /v1/internal/stats

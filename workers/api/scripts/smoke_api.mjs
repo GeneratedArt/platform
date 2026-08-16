@@ -231,6 +231,163 @@ let projectId = null;
   record("GET /v1/projects/:id/mints/:tokenId (404 expected)", r.status === 404, `status=${r.status}`);
 }
 
+// ---- render-token service (user 1, still signed in from above)
+// Render jobs report as succeeding when RENDER_MOCK=1 is set in
+// .dev.vars, or 503 provider_unconfigured otherwise (no live
+// Anthropic key / Workers AI binding in a bare local setup) — both are
+// accepted, same "unconfigured is fine" posture as freeze/mint above.
+{
+  const r = await api("GET", "/v1/tokens/account");
+  record(
+    "GET /v1/tokens/account (signup grant applied)",
+    r.status === 200 && r.data?.balance === 200,
+    JSON.stringify(r.data),
+  );
+}
+{
+  const r = await api("GET", "/v1/tokens/ledger");
+  record(
+    "GET /v1/tokens/ledger (signup grant entry present)",
+    r.status === 200 && Array.isArray(r.data?.entries) && r.data.entries.some((e) => e.kind === "grant"),
+    JSON.stringify(r.data).slice(0, 200),
+  );
+}
+{
+  const r = await api("GET", "/v1/tokens/packs");
+  record(
+    "GET /v1/tokens/packs (seeded packs visible)",
+    r.status === 200 && Array.isArray(r.data?.packs) && r.data.packs.length >= 3,
+    JSON.stringify(r.data).slice(0, 200),
+  );
+}
+{
+  const r = await api("POST", "/v1/tokens/purchase/confirm", { pack_id: 1, tx_hash: "0x" + "1".repeat(64) });
+  record(
+    "POST /v1/tokens/purchase/confirm without treasury configured → 503",
+    r.status === 503,
+    JSON.stringify(r.data),
+  );
+}
+
+let modelSlug = null;
+{
+  const r = await api("POST", "/v1/models", {
+    title: `Smoke Model ${RUN}`,
+    kind: "code",
+    provider: "anthropic",
+    visibility: "public",
+  });
+  modelSlug = r.data?.model?.slug ?? null;
+  record("POST /v1/models", r.status === 201 && !!modelSlug, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", "/v1/models", {
+    title: "Bad combo",
+    kind: "image",
+    provider: "anthropic",
+  });
+  record(
+    "POST /v1/models rejects provider/kind mismatch",
+    r.status === 400 && r.data?.error === "provider_not_allowed_for_kind",
+    JSON.stringify(r.data),
+  );
+}
+{
+  const r = await api("GET", "/v1/models/mine");
+  record(
+    "GET /v1/models/mine",
+    r.status === 200 && Array.isArray(r.data?.models) && r.data.models.some((m) => m.slug === modelSlug),
+    JSON.stringify(r.data).slice(0, 200),
+  );
+}
+{
+  const r = await api("POST", `/v1/models/${modelSlug}/versions`, {
+    provider_model_id: "claude-opus-5",
+    system_prompt: "You write playful p5.js sketches.",
+    price_tokens: 10,
+  });
+  record(
+    "POST /v1/models/:slug/versions",
+    r.status === 201 && r.data?.version?.version === 1,
+    JSON.stringify(r.data).slice(0, 200),
+  );
+}
+{
+  const r = await api("GET", `/v1/models/${modelSlug}`);
+  record(
+    "GET /v1/models/:slug (owner sees system_prompt, latest version listed)",
+    r.status === 200 && r.data?.versions?.[0]?.system_prompt === "You write playful p5.js sketches.",
+    JSON.stringify(r.data).slice(0, 250),
+  );
+}
+{
+  const r = await api("GET", "/v1/models?kind=code");
+  record(
+    "GET /v1/models?kind=code (public catalogue)",
+    r.status === 200 && r.data?.models?.some((m) => m.slug === modelSlug),
+    JSON.stringify(r.data).slice(0, 200),
+  );
+}
+let renderJobId = null;
+{
+  const r = await api("POST", `/v1/models/${modelSlug}/render`, {
+    prompt: "a field of drifting particles",
+    seed: "smoke-seed-1",
+  });
+  renderJobId = r.data?.job?.id ?? null;
+  record(
+    "POST /v1/models/:slug/render (mock success or provider_unconfigured)",
+    (r.status === 201 && r.data?.job?.status === "succeeded") || (r.status === 503 && r.data?.error === "provider_unconfigured"),
+    JSON.stringify(r.data).slice(0, 250),
+  );
+}
+{
+  // Same idempotency_key twice must not double-charge. The first call
+  // creates the job (201); the replay returns the SAME job unchanged
+  // (200, replayed:true — it isn't a new creation, so a different
+  // status code here is correct REST, not a bug).
+  const key = "smoke-idem-" + RUN;
+  const before = await api("GET", "/v1/tokens/account");
+  const first = await api("POST", `/v1/models/${modelSlug}/render`, { prompt: "p", idempotency_key: key });
+  const second = await api("POST", `/v1/models/${modelSlug}/render`, { prompt: "p", idempotency_key: key });
+  const after = await api("GET", "/v1/tokens/account");
+  const sameJob = first.data?.job?.id && first.data.job.id === second.data?.job?.id;
+  const balanceMovedOnce =
+    typeof before.data?.balance === "number" &&
+    typeof after.data?.balance === "number" &&
+    before.data.balance - after.data.balance === (first.data?.job?.price_tokens ?? 0);
+  record(
+    "POST render with repeated idempotency_key replays instead of double-charging",
+    first.status === 201 && second.status === 200 && second.data?.replayed === true && sameJob && balanceMovedOnce,
+    `first=${first.status} second=${second.status} replayed=${second.data?.replayed} before=${before.data?.balance} after=${after.data?.balance} price=${first.data?.job?.price_tokens}`,
+  );
+}
+if (renderJobId) {
+  const r = await api("GET", `/v1/jobs/${renderJobId}`);
+  record("GET /v1/jobs/:id (owner)", r.status === 200 && r.data?.job?.id === renderJobId, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("GET", "/v1/jobs");
+  record("GET /v1/jobs (mine)", r.status === 200 && Array.isArray(r.data?.jobs), JSON.stringify(r.data).slice(0, 200));
+}
+{
+  // Draining the balance below the model's price must fail closed with
+  // 402 and refund nothing — never silently go negative.
+  const cheapPrompt = { prompt: "x" };
+  let last = null;
+  for (let i = 0; i < 25; i++) {
+    last = await api("POST", `/v1/models/${modelSlug}/render`, cheapPrompt);
+    if (last.status === 402) break;
+  }
+  record(
+    "render debits stop at 402 insufficient_balance rather than going negative",
+    last && (last.status === 402 || last.status === 503),
+    `status=${last?.status} body=${JSON.stringify(last?.data).slice(0, 150)}`,
+  );
+  const acct = await api("GET", "/v1/tokens/account");
+  record("balance never goes negative", acct.status === 200 && acct.data?.balance >= 0, JSON.stringify(acct.data));
+}
+
 // ---- galleries
 {
   const r = await api("GET", "/v1/galleries");

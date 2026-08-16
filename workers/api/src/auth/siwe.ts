@@ -6,6 +6,14 @@ import { checkRateLimit } from "../lib/rateLimit";
 import { upsertUserByAddress } from "../db/users";
 import { issueSession, SESSION_TTL_SECONDS } from "./jwt";
 import { setSessionCookie } from "../lib/cookies";
+import { applyLedgerEntry } from "../db/tokens";
+
+// Free render-token allowance granted on signup, so a new creative coder
+// can try the render service before paying for a pack. Idempotency key
+// is keyed on the user id, not the sign-in event, so this call is safe
+// to make on every sign-in — it applies exactly once and no-ops (via
+// `replayed`) on every sign-in after the first.
+const SIGNUP_BONUS_TOKENS = 200;
 
 const NONCE_TTL_SECONDS = 5 * 60;
 
@@ -160,6 +168,23 @@ export async function verifyHandler(c: Context<{ Bindings: Env }>) {
   }
 
   const user = await upsertUserByAddress(c.env.DB, siwe.address);
+
+  try {
+    await applyLedgerEntry(c.env.DB, {
+      userId: user.id,
+      delta: SIGNUP_BONUS_TOKENS,
+      kind: "grant",
+      idempotencyKey: `signup:${user.id}`,
+      refKind: "signup",
+      memo: "Welcome grant",
+    });
+  } catch (e) {
+    // Best-effort, same as recordEvent elsewhere: a missed bonus grant
+    // is recoverable (an admin can re-grant); sign-in must not fail
+    // because of it.
+    console.error("signup_bonus_failed", e);
+  }
+
   const { token, jti } = await issueSession(c.env.JWT_SECRET, user.id, user.address);
 
   setSessionCookie(c, token, c.env.COOKIE_DOMAIN, SESSION_TTL_SECONDS);
