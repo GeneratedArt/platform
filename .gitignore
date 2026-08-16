@@ -21,7 +21,12 @@ _site/
 .sass-cache/
 .jekyll-cache/
 .jekyll-metadata
-vendor/
+# Bundler installs gems into the repo-root vendor/ tree. Anchored with a
+# leading slash so it does NOT swallow workers/api/vendor/, which holds the
+# pinned p5/three runtimes the freeze bundler inlines at build time. Without
+# the anchor those two files never get committed and `wrangler deploy` fails
+# on a fresh clone with "ENOENT: vendor/p5.min.js".
+/vendor/
 
 # Cloudflare Workers / Wrangler
 .wrangler/

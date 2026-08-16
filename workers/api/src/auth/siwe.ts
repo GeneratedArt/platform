@@ -46,6 +46,53 @@ interface VerifyBody {
   signature: string;
 }
 
+export type SiweBindingResult =
+  | "ok"
+  | "domain_not_allowed"
+  | "invalid_siwe_uri"
+  | "uri_domain_mismatch";
+
+/**
+ * Bind a signed SIWE message to one of the deployment's configured origins.
+ *
+ * A SIWE message carries `domain` as a bare authority ("host[:port]"); the
+ * `scheme` field is optional and our own client (client/auth.ts) sends
+ * `window.location.host` without one. Reconstructing an origin by assuming
+ * "https://" therefore rejected every http:// entry in ALLOWED_ORIGINS,
+ * which made sign-in impossible against a local dev origin. Compare
+ * authorities instead, and require the message's `uri` to name the same
+ * authority so a signature minted for one deployment can't be replayed
+ * against another that shares the allowlist.
+ *
+ * Exported for unit tests — this is the whole of the origin check.
+ */
+export function checkSiweBinding(
+  allowedOrigins: string,
+  msg: { domain: string; uri?: string | null },
+): SiweBindingResult {
+  const allowedHosts = new Set<string>();
+  for (const entry of allowedOrigins.split(",").map((s) => s.trim())) {
+    if (!entry) continue;
+    try {
+      allowedHosts.add(new URL(entry).host);
+    } catch {
+      // Entry configured as a bare host rather than a full origin.
+      allowedHosts.add(entry);
+    }
+  }
+  if (!allowedHosts.has(msg.domain)) return "domain_not_allowed";
+  if (msg.uri) {
+    let uriHost: string;
+    try {
+      uriHost = new URL(msg.uri).host;
+    } catch {
+      return "invalid_siwe_uri";
+    }
+    if (uriHost !== msg.domain) return "uri_domain_mismatch";
+  }
+  return "ok";
+}
+
 export async function verifyHandler(c: Context<{ Bindings: Env }>) {
   const ip = clientIp(c);
   const rl = await checkRateLimit(c.env.RATE_LIMIT, {
@@ -80,10 +127,17 @@ export async function verifyHandler(c: Context<{ Bindings: Env }>) {
     return c.json({ error: "unknown_or_expired_nonce" }, 400);
   }
 
-  const allowed = c.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim());
-  const origin = `${siwe.scheme || "https"}://${siwe.domain}`;
-  if (!allowed.includes(origin) && !allowed.includes(siwe.domain)) {
-    return c.json({ error: "domain_not_allowed", domain: siwe.domain }, 400);
+  const bind = checkSiweBinding(c.env.ALLOWED_ORIGINS, {
+    domain: siwe.domain,
+    uri: siwe.uri,
+  });
+  if (bind !== "ok") {
+    return c.json(
+      bind === "domain_not_allowed"
+        ? { error: bind, domain: siwe.domain }
+        : { error: bind },
+      400,
+    );
   }
 
   let verification;

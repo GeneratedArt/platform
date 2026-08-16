@@ -2,7 +2,11 @@ import type { Context } from "hono";
 import type { Env } from "../types";
 import type { AuthVariables } from "../auth/middleware";
 import { getAuthUser } from "../auth/middleware";
-import { getProjectById } from "../db/projects";
+import {
+  getProjectById,
+  PUBLIC_STATUSES,
+  type ProjectStatus,
+} from "../db/projects";
 import { recordEvent } from "../db/events";
 import { getRepoFile, putRepoFile, GitHubError } from "../lib/github";
 import { checkRateLimit } from "../lib/rateLimit";
@@ -164,21 +168,30 @@ export async function commitProjectFileHandler(
     // Public-feed event for followers. We embed the commit SHA + a
     // tiny title slice so the renderer can show "shipped to <title>"
     // without an extra projects round-trip.
-    try {
-      await recordEvent(c.env.DB, {
-        kind: "commit",
-        actor_id: session.uid,
-        target_kind: "project",
-        target_id: project.id,
-        payload: {
-          title: project.title,
-          slug: project.slug,
-          commit_sha: result.commit_sha ?? null,
-          path,
-        },
-      });
-    } catch (e) {
-      console.error("event_commit_failed", e);
+    //
+    // Only for projects that are already publicly visible. `draft` and
+    // `archived` are owner-private (GET /v1/projects/:id 404s them for
+    // everyone else), but the feed carries the title and slug in its
+    // payload and applies no status filter of its own — broadcasting a
+    // draft commit would leak the name of unreleased work to every
+    // follower and deep-link them to a page they'd get a 404 from.
+    if (PUBLIC_STATUSES.includes(project.status as ProjectStatus)) {
+      try {
+        await recordEvent(c.env.DB, {
+          kind: "commit",
+          actor_id: session.uid,
+          target_kind: "project",
+          target_id: project.id,
+          payload: {
+            title: project.title,
+            slug: project.slug,
+            commit_sha: result.commit_sha ?? null,
+            path,
+          },
+        });
+      } catch (e) {
+        console.error("event_commit_failed", e);
+      }
     }
     try {
       const { safeBumpActivity } = await import("../lib/metrics");

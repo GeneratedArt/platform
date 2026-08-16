@@ -177,13 +177,32 @@ export async function checkPinHealth(
   env: Env,
   cid: string,
 ): Promise<PinHealth> {
+  return checkPinHealthByProvider(env, { w3s: cid, pinata: cid });
+}
+
+/**
+ * Ask each provider about *its own* CID. web3.storage and Pinata wrap
+ * single-file uploads differently, so a row can legitimately carry two
+ * different CIDs and each must be checked against the service that
+ * issued it.
+ *
+ * The audit previously achieved this by calling `checkPinHealth` twice
+ * — once per CID — and keeping one field from each result. That worked,
+ * but it asked both providers about both CIDs: four API calls per row
+ * instead of two, and it filled `errors` with a pinata failure for the
+ * w3s CID (and vice versa) that no caller could act on.
+ */
+export async function checkPinHealthByProvider(
+  env: Env,
+  cids: { w3s: string; pinata: string },
+): Promise<PinHealth> {
   if (isMockPin(env)) {
     return { pinned_w3s: true, pinned_pinata: true, errors: {} };
   }
   const errors: Record<string, string> = {};
   const [w3s, pin] = await Promise.allSettled([
-    checkW3s(env, cid),
-    checkPinata(env, cid),
+    checkW3s(env, cids.w3s),
+    checkPinata(env, cids.pinata),
   ]);
   let pinned_w3s = false;
   let pinned_pinata = false;

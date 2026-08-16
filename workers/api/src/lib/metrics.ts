@@ -228,7 +228,16 @@ export async function pruneOldMetrics(db: D1Database): Promise<void> {
 
 const ROUTE_ALLOWED = /^[a-z0-9_:./-]+$/i;
 
-function sanitizeRoute(route: string): string {
-  const clipped = route.slice(0, 120);
+export function sanitizeRoute(route: string): string {
+  // Hono's `routePath` echoes the registered pattern *including* any
+  // inline regex constraint — `/v1/projects/:id{[0-9]+}`. Those braces
+  // and brackets fail ROUTE_ALLOWED, which used to collapse every
+  // parameterised route (projects, mint, freeze, galleries, captures —
+  // i.e. the whole core of the API) into a single `_invalid` bucket in
+  // /v1/internal/stats. Strip the constraint and keep the readable
+  // `/v1/projects/:id` label; the allowlist then only has to guard
+  // against a genuinely unexpected path.
+  const normalised = route.replace(/\{[^}]*\}/g, "");
+  const clipped = normalised.slice(0, 120);
   return ROUTE_ALLOWED.test(clipped) ? clipped : "_invalid";
 }

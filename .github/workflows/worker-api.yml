@@ -1,0 +1,73 @@
+name: Worker API
+
+# Verification gate for workers/api. Runs on every PR that touches the
+# Worker, and on main after merge.
+#
+# The build step is not decoration: the vendored p5/three runtimes that
+# src/lib/freeze.ts inlines were once excluded by a .gitignore rule, and
+# every `wrangler deploy` failed on a fresh clone with
+# `ENOENT: .../vendor/p5.min.js` for weeks without anything catching it.
+# A dry-run build against the production config reproduces that class of
+# failure in CI instead of at deploy time.
+
+on:
+  pull_request:
+    paths:
+      - "workers/api/**"
+      - ".github/workflows/worker-api.yml"
+  push:
+    branches: [main]
+    paths:
+      - "workers/api/**"
+      - ".github/workflows/worker-api.yml"
+
+concurrency:
+  group: worker-api-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: typecheck · test · build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: workers/api/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit + bundler-determinism tests
+        run: npm test
+
+      # No Cloudflare credentials needed — --dry-run builds and reports the
+      # binding set without touching the account.
+      - name: Build Worker (production config)
+        run: npx wrangler deploy --env production --dry-run --outdir "$RUNNER_TEMP/worker-build"
+
+      # Guards the specific regression above: these two files are imported
+      # as text by the freeze bundler and must be present in a clean
+      # checkout, not just on a developer's disk.
+      - name: Assert vendored runtimes are committed
+        run: |
+          for f in vendor/p5.min.js vendor/three.min.js; do
+            if [ ! -s "$f" ]; then
+              echo "::error file=workers/api/$f::missing or empty — the freeze bundler imports it at build time (see workers/api/vendor/README.md)"
+              exit 1
+            fi
+            echo "ok: $f ($(wc -c < "$f") bytes)"
+          done

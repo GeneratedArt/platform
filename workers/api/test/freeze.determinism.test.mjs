@@ -17,9 +17,14 @@
 import { build } from "esbuild";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { join, resolve, dirname } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
+
+// Resolve the sources relative to THIS file, not to process.cwd() —
+// the test must pass whether it's invoked from the repo root or from
+// workers/api/.
+const srcDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "src");
 
 const tmp = mkdtempSync(join(tmpdir(), "ga-freeze-"));
 const outFile = join(tmp, "bundle.mjs");
@@ -31,8 +36,8 @@ const outFile = join(tmp, "bundle.mjs");
 const entry = join(tmp, "entry.ts");
 writeFileSync(
   entry,
-  `export { buildBundle } from "${process.cwd()}/workers/api/src/lib/freeze";
-export { __setMockFile } from "${process.cwd()}/workers/api/src/lib/github";
+  `export { buildBundle } from ${JSON.stringify(join(srcDir, "lib", "freeze"))};
+export { __setMockFile } from ${JSON.stringify(join(srcDir, "lib", "github"))};
 `,
 );
 

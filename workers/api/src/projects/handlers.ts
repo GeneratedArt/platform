@@ -31,6 +31,9 @@ import { recordProjectView } from "../db/events";
 
 const TITLE_MAX = 80;
 const DESCRIPTION_MAX = 500;
+// Mirrors HANDLE_RE in users/handlers.ts — kept local to avoid an import
+// cycle (users/handlers imports from this module's sibling db layer).
+const HANDLE_RE = /^[a-z0-9][a-z0-9-]{1,30}$/;
 
 interface CreateBody {
   title?: unknown;
@@ -305,8 +308,12 @@ export async function listMyProjects(
 export async function listProjectsForHandle(
   c: Context<{ Bindings: Env; Variables: AuthVariables }>,
 ) {
-  const handle = c.req.param("handle");
-  if (!handle) return badRequest(c, "invalid_handle");
+  // Normalise before the lookup. Handles are stored lower-case and every
+  // other /v1/users/:handle route lower-cases its param; without this,
+  // `/v1/users/Alice` resolved a profile while
+  // `/v1/users/Alice/projects` silently returned an empty list.
+  const handle = (c.req.param("handle") || "").toLowerCase();
+  if (!HANDLE_RE.test(handle)) return badRequest(c, "invalid_handle");
   // Owner sees drafts + archived; everyone else only sees public
   // statuses (published/minted). Filtering happens in SQL so a
   // misbehaving client cannot bypass it.

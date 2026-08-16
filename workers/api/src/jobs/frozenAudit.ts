@@ -18,7 +18,7 @@ import {
   type FrozenVersionRow,
 } from "../db/frozen";
 import { getProjectById } from "../db/projects";
-import { checkPinHealth, repinTo } from "../lib/pinning";
+import { checkPinHealthByProvider, repinTo } from "../lib/pinning";
 import { buildBundle } from "../lib/freeze";
 
 interface RebuildResult {
@@ -61,17 +61,10 @@ async function auditOne(
 ): Promise<void> {
   // Each provider has its own CID — we have to ask each one about
   // its own CID, not a shared "primary".
-  const cidForW3s = row.cid_w3s ?? row.cid;
-  const cidForPinata = row.cid_pinata ?? row.cid;
-  const [hW3s, hPinata] = await Promise.all([
-    checkPinHealth(env, cidForW3s),
-    checkPinHealth(env, cidForPinata),
-  ]);
-  const health = {
-    pinned_w3s: hW3s.pinned_w3s,
-    pinned_pinata: hPinata.pinned_pinata,
-    errors: { ...hW3s.errors, ...hPinata.errors },
-  };
+  const health = await checkPinHealthByProvider(env, {
+    w3s: row.cid_w3s ?? row.cid,
+    pinata: row.cid_pinata ?? row.cid,
+  });
   const wasPinnedW3s = row.pinned_w3s === 1;
   const wasPinnedPinata = row.pinned_pinata === 1;
   const driftedW3s = wasPinnedW3s && !health.pinned_w3s;
