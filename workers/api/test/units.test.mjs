@@ -32,7 +32,7 @@ export { buildFtsQuery } from ${JSON.stringify(join(srcDir, "db", "search"))};
 export { parseAllowlist } from ${JSON.stringify(join(srcDir, "auth", "admin"))};
 export { parseFeedCursor, encodeFeedCursor } from ${JSON.stringify(join(srcDir, "db", "events"))};
 export { lifetimeDeltas } from ${JSON.stringify(join(srcDir, "db", "tokens"))};
-export { providerAllowedForKind } from ${JSON.stringify(join(srcDir, "db", "render"))};
+export { providerAllowedForKind, isTrainingMethod } from ${JSON.stringify(join(srcDir, "db", "render"))};
 `,
 );
 
@@ -327,8 +327,25 @@ test("providerAllowedForKind: code models accept anthropic and mock only", () =>
   assert.equal(m.providerAllowedForKind("code", "workers_ai"), false);
 });
 
-test("providerAllowedForKind: image models accept workers_ai and mock only", () => {
+test("providerAllowedForKind: image models accept workers_ai, fal_custom, and mock", () => {
   assert.equal(m.providerAllowedForKind("image", "workers_ai"), true);
+  assert.equal(m.providerAllowedForKind("image", "fal_custom"), true);
   assert.equal(m.providerAllowedForKind("image", "mock"), true);
   assert.equal(m.providerAllowedForKind("image", "anthropic"), false);
+});
+
+// fal_custom is the creator-trained-model lane (fine-tune/LoRA on a
+// diffusion base) — see migrations/0019_custom_model_provider.sql for
+// why it can't run through Workers AI.
+test("providerAllowedForKind: code models still reject fal_custom", () => {
+  assert.equal(m.providerAllowedForKind("code", "fal_custom"), false);
+});
+
+test("isTrainingMethod: accepts the four documented methods only", () => {
+  assert.equal(m.isTrainingMethod("lora"), true);
+  assert.equal(m.isTrainingMethod("dreambooth"), true);
+  assert.equal(m.isTrainingMethod("full_finetune"), true);
+  assert.equal(m.isTrainingMethod("prompt_recipe"), true);
+  assert.equal(m.isTrainingMethod("magic"), false);
+  assert.equal(m.isTrainingMethod(undefined), false);
 });

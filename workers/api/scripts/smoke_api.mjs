@@ -32,7 +32,11 @@ function record(name, ok, detail) {
 
 async function api(method, path, body, opts = {}) {
   const headers = { Origin: ORIGIN };
-  if (cookie) headers.Cookie = cookie;
+  // opts.anon: skip the session cookie even though a global `cookie` is
+  // set — lets a still-logged-in suite probe how a public endpoint
+  // renders for an unauthenticated viewer without a full logout/login
+  // round-trip.
+  if (cookie && !opts.anon) headers.Cookie = cookie;
   if (body !== undefined && !(body instanceof FormData) && !(body instanceof ArrayBuffer) && !ArrayBuffer.isView(body)) {
     headers["Content-Type"] = "application/json";
   }
@@ -328,6 +332,60 @@ let modelSlug = null;
     JSON.stringify(r.data).slice(0, 200),
   );
 }
+
+// fal_custom — the creator-trained-model lane (see
+// migrations/0019_custom_model_provider.sql). Registration and publish
+// validation are exercised for real here even though the actual render
+// still runs mocked (no live FAL_KEY in CI).
+let falModelSlug = null;
+{
+  const r = await api("POST", "/v1/models", {
+    title: `Smoke Custom Model ${RUN}`,
+    kind: "image",
+    provider: "fal_custom",
+    visibility: "public",
+  });
+  falModelSlug = r.data?.model?.slug ?? null;
+  record("POST /v1/models (fal_custom)", r.status === 201 && !!falModelSlug, JSON.stringify(r.data).slice(0, 200));
+}
+{
+  const r = await api("POST", `/v1/models/${falModelSlug}/versions`, {
+    provider_model_id: "fal-ai/flux-lora",
+    price_tokens: 25,
+  });
+  record(
+    "POST /v1/models/:slug/versions (fal_custom) rejects missing weights_ref",
+    r.status === 400 && r.data?.error === "weights_ref_required_for_fal_custom",
+    JSON.stringify(r.data),
+  );
+}
+{
+  const r = await api("POST", `/v1/models/${falModelSlug}/versions`, {
+    provider_model_id: "fal-ai/flux-lora",
+    price_tokens: 25,
+    training_method: "lora",
+    base_model: "FLUX.1 [dev]",
+    dataset_note: "2,400 hand-collected botanical scans, own photography",
+    weights_ref: "smoke-test/botanical-lora-v1",
+  });
+  record(
+    "POST /v1/models/:slug/versions (fal_custom) accepts training lineage + weights_ref",
+    r.status === 201 && r.data?.version?.training_method === "lora" && r.data?.version?.weights_ref === "smoke-test/botanical-lora-v1",
+    JSON.stringify(r.data).slice(0, 250),
+  );
+}
+{
+  // Public listing surfaces the provenance disclosure (training_method,
+  // base_model, dataset_note) but never the owner-only weights_ref.
+  const r = await api("GET", `/v1/models/${falModelSlug}`, undefined, { anon: true });
+  const v0 = r.data?.versions?.[0];
+  record(
+    "GET /v1/models/:slug (anon) shows provenance, hides weights_ref",
+    r.status === 200 && v0?.dataset_note?.includes("botanical") && v0?.weights_ref === undefined,
+    JSON.stringify(r.data).slice(0, 250),
+  );
+}
+
 let renderJobId = null;
 {
   const r = await api("POST", `/v1/models/${modelSlug}/render`, {

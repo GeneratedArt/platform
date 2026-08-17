@@ -11,6 +11,7 @@ import {
   isModelKind,
   isModelProvider,
   isModelVisibility,
+  isTrainingMethod,
   providerAllowedForKind,
   uniqueModelSlug,
   insertModel,
@@ -248,7 +249,18 @@ interface PublishVersionBody {
   system_prompt?: unknown;
   params_schema?: unknown;
   price_tokens?: unknown;
+  // Training lineage — see migrations/0019_custom_model_provider.sql.
+  // Only meaningful (and, for weights_ref, required) when the model's
+  // provider is `fal_custom`.
+  training_method?: unknown;
+  base_model?: unknown;
+  dataset_note?: unknown;
+  weights_ref?: unknown;
 }
+
+const BASE_MODEL_MAX = 100;
+const DATASET_NOTE_MAX = 2000;
+const WEIGHTS_REF_MAX = 300;
 
 /** POST /v1/models/:slug/versions — owner-only, append-only publish. */
 export async function publishVersionHandler(
@@ -301,12 +313,54 @@ export async function publishVersionHandler(
     return badRequest(c, "invalid_price_tokens", { max: PRICE_MAX });
   }
 
+  let trainingMethod: string | null = null;
+  if (body.training_method !== undefined && body.training_method !== null) {
+    if (!isTrainingMethod(body.training_method)) {
+      return badRequest(c, "invalid_training_method");
+    }
+    trainingMethod = body.training_method;
+  }
+
+  let baseModel: string | null = null;
+  if (body.base_model !== undefined && body.base_model !== null) {
+    if (typeof body.base_model !== "string" || body.base_model.length > BASE_MODEL_MAX) {
+      return badRequest(c, "invalid_base_model", { max: BASE_MODEL_MAX });
+    }
+    baseModel = body.base_model.trim() || null;
+  }
+
+  let datasetNote: string | null = null;
+  if (body.dataset_note !== undefined && body.dataset_note !== null) {
+    if (typeof body.dataset_note !== "string" || body.dataset_note.length > DATASET_NOTE_MAX) {
+      return badRequest(c, "invalid_dataset_note", { max: DATASET_NOTE_MAX });
+    }
+    datasetNote = body.dataset_note.trim() || null;
+  }
+
+  let weightsRef: string | null = null;
+  if (body.weights_ref !== undefined && body.weights_ref !== null) {
+    if (typeof body.weights_ref !== "string" || body.weights_ref.length > WEIGHTS_REF_MAX) {
+      return badRequest(c, "invalid_weights_ref", { max: WEIGHTS_REF_MAX });
+    }
+    weightsRef = body.weights_ref.trim() || null;
+  }
+  // fal_custom has no catalogue fallback the way `provider_model_id`
+  // alone works for anthropic/workers_ai — without a weights pointer
+  // the version would publish successfully and then fail every render.
+  if (model.provider === "fal_custom" && !weightsRef) {
+    return badRequest(c, "weights_ref_required_for_fal_custom");
+  }
+
   const version = await insertModelVersion(c.env.DB, {
     modelId: model.id,
     providerModelId,
     systemPrompt,
     paramsSchemaJson,
     priceTokens,
+    trainingMethod,
+    baseModel,
+    datasetNote,
+    weightsRef,
   });
   return c.json({ version: publicModelVersion(version, true) }, 201);
 }
@@ -466,6 +520,7 @@ export async function renderHandler(
       prompt,
       params,
       seed,
+      weightsRef: version.weights_ref,
     });
 
     let outputKey: string | null = null;

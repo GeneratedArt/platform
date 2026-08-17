@@ -77,6 +77,13 @@ export interface Env {
   AI?: {
     run(model: string, input: Record<string, unknown>): Promise<unknown>;
   };
+  // fal.ai API key for the `fal_custom` render-model provider —
+  // creator-trained custom art models (fine-tune / LoRA on a diffusion
+  // base) that Workers AI can't host, since its LoRA fine-tuning only
+  // covers text model_types. Set via `wrangler secret put FAL_KEY
+  // --env production`. Unset: jobs against a `fal_custom` model fail
+  // with 503 `provider_unconfigured`.
+  FAL_KEY?: string;
   // Address that receives ETH for token-pack purchases. Non-secret (an
   // on-chain address is public by nature) so it lives in [vars]. Until
   // set, POST /v1/tokens/purchase/confirm returns 503

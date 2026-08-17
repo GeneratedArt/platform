@@ -70,10 +70,17 @@ TOKEN_TREASURY_ADDRESS=""
 #   wrangler secret put ANTHROPIC_API_KEY --env production
 ANTHROPIC_API_KEY=""
 
+# fal.ai API key for the `fal_custom` render-model provider — creator-
+# trained custom art models (fine-tune / LoRA on a diffusion base).
+# Workers AI can't host these: its LoRA fine-tuning only covers text
+# model_types. Production:
+#   wrangler secret put FAL_KEY --env production
+FAL_KEY=""
+
 # OPT-IN ONLY. When exactly "1", runInference() returns deterministic
 # canned output with no network call, so the render pipeline is
-# exercisable without an Anthropic key or a Workers AI binding.
-# Production must NEVER set RENDER_MOCK.
+# exercisable without an Anthropic key, a Workers AI binding, or a
+# fal.ai key. Production must NEVER set RENDER_MOCK.
 RENDER_MOCK="1"
 
 # --- Task #20: observability (all optional; unset = the surface no-ops) ----

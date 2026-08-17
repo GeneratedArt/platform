@@ -13,8 +13,33 @@ import { slugify } from "../lib/slug";
 export const MODEL_KINDS = ["code", "image"] as const;
 export type ModelKind = (typeof MODEL_KINDS)[number];
 
-export const MODEL_PROVIDERS = ["anthropic", "workers_ai", "mock"] as const;
+// `fal_custom` — a creator-trained custom art model (fine-tuned
+// checkpoint or LoRA on a diffusion base), run through fal.ai's private-
+// model inference. This is the platform's Refik-Anadol-style lane: a
+// bespoke model trained on a curated dataset, distinct from prompting a
+// fixed catalogue model. See migrations/0019_custom_model_provider.sql
+// for why Workers AI can't host it (its LoRA fine-tuning is text-only).
+export const MODEL_PROVIDERS = [
+  "anthropic",
+  "workers_ai",
+  "fal_custom",
+  "mock",
+] as const;
 export type ModelProvider = (typeof MODEL_PROVIDERS)[number];
+
+export const TRAINING_METHODS = [
+  "prompt_recipe",
+  "lora",
+  "dreambooth",
+  "full_finetune",
+] as const;
+export type TrainingMethod = (typeof TRAINING_METHODS)[number];
+
+export function isTrainingMethod(v: unknown): v is TrainingMethod {
+  return (
+    typeof v === "string" && (TRAINING_METHODS as readonly string[]).includes(v)
+  );
+}
 
 export const MODEL_VISIBILITIES = ["public", "unlisted", "private"] as const;
 export type ModelVisibility = (typeof MODEL_VISIBILITIES)[number];
@@ -52,7 +77,7 @@ export function isModelVisibility(v: unknown): v is ModelVisibility {
  */
 export const PROVIDERS_BY_KIND: Record<ModelKind, readonly ModelProvider[]> = {
   code: ["anthropic", "mock"],
-  image: ["workers_ai", "mock"],
+  image: ["workers_ai", "fal_custom", "mock"],
 };
 
 export function providerAllowedForKind(
@@ -85,6 +110,12 @@ export interface ModelVersionRow {
   params_schema_json: string | null;
   price_tokens: number;
   created_at: number;
+  // Training lineage — see migrations/0019_custom_model_provider.sql.
+  // Null for anthropic/workers_ai versions; populated for fal_custom.
+  training_method: string | null;
+  base_model: string | null;
+  dataset_note: string | null;
+  weights_ref: string | null;
 }
 
 export interface ModelListItem extends ModelRow {
@@ -296,6 +327,10 @@ export async function insertModelVersion(
     systemPrompt: string | null;
     paramsSchemaJson: string | null;
     priceTokens: number;
+    trainingMethod?: string | null;
+    baseModel?: string | null;
+    datasetNote?: string | null;
+    weightsRef?: string | null;
   },
 ): Promise<ModelVersionRow> {
   const now = Math.floor(Date.now() / 1000);
@@ -303,11 +338,12 @@ export async function insertModelVersion(
     .prepare(
       `INSERT INTO render_model_versions
          (model_id, version, provider_model_id, system_prompt,
-          params_schema_json, price_tokens, created_at)
+          params_schema_json, price_tokens, training_method, base_model,
+          dataset_note, weights_ref, created_at)
        SELECT ?,
               COALESCE((SELECT MAX(version) FROM render_model_versions
                          WHERE model_id = ?), 0) + 1,
-              ?, ?, ?, ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?, ?
        RETURNING *`,
     )
     .bind(
@@ -317,6 +353,10 @@ export async function insertModelVersion(
       input.systemPrompt,
       input.paramsSchemaJson,
       input.priceTokens,
+      input.trainingMethod ?? null,
+      input.baseModel ?? null,
+      input.datasetNote ?? null,
+      input.weightsRef ?? null,
       now,
     )
     .first<ModelVersionRow>();
@@ -405,6 +445,16 @@ export function publicModelVersion(v: ModelVersionRow, includePrompt = false) {
       ? safeParse(v.params_schema_json)
       : null,
     price_tokens: v.price_tokens,
+    // Training lineage is the provenance disclosure for a custom model
+    // (the Anadol-style "what this was trained on") — shown to every
+    // viewer, same as a project's frozen CID. `weights_ref` is the
+    // pointer to the actual trained weights at the provider; gated
+    // owner-only like system_prompt, since it's what another creator
+    // would need to clone the model outright.
+    training_method: v.training_method,
+    base_model: v.base_model,
+    dataset_note: v.dataset_note,
+    weights_ref: includePrompt ? v.weights_ref : undefined,
     created_at: v.created_at,
   };
 }

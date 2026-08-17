@@ -22,6 +22,12 @@ export interface InferenceInput {
   params: Record<string, unknown> | null;
   /** Deterministic seed threaded into the provider call where supported. */
   seed: string;
+  /**
+   * fal_custom only: the trained model/LoRA identifier at the provider
+   * (render_model_versions.weights_ref). Absent for every other
+   * provider.
+   */
+  weightsRef?: string | null;
 }
 
 export interface InferenceOutput {
@@ -203,6 +209,84 @@ async function runWorkersAi(
   };
 }
 
+/**
+ * fal.ai — creator-trained custom art models (fine-tune / LoRA on a
+ * diffusion base). This is the one lane Workers AI can't serve: its
+ * LoRA fine-tuning only accepts text model_types (mistral/gemma/llama),
+ * so a coder's own trained checkpoint runs through fal.ai's private-
+ * model inference instead — pay-per-run, no idle GPU cost, matching the
+ * budget stance behind the rest of this stack.
+ *
+ * Raw HTTP, not an SDK: fal.ai has no first-party client bundled here
+ * and the request shape is stable and small enough not to warrant one.
+ * `weightsRef` is `render_model_versions.weights_ref` — the model or
+ * LoRA identifier the creator registered when they published the
+ * version — and is REQUIRED; there is no catalogue fallback for this
+ * provider the way `provider_model_id` alone is enough for the others.
+ */
+async function runFalCustom(
+  env: Env,
+  input: InferenceInput,
+): Promise<InferenceOutput> {
+  if (!env.FAL_KEY) {
+    throw new InferenceError("FAL_KEY is not configured", "provider_unconfigured");
+  }
+  if (!input.weightsRef) {
+    throw new InferenceError(
+      "fal_custom model version has no weights_ref",
+      "model_misconfigured",
+    );
+  }
+  let res: Response;
+  try {
+    res = await fetch(`https://fal.run/${input.providerModelId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${env.FAL_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: input.prompt,
+        loras: [{ path: input.weightsRef }],
+        seed: /^\d+$/.test(input.seed) ? parseInt(input.seed, 10) : undefined,
+        ...(input.params ?? {}),
+      }),
+    });
+  } catch (e) {
+    throw new InferenceError(
+      e instanceof Error ? e.message : "fal request failed",
+      "provider_error",
+    );
+  }
+  if (!res.ok) {
+    throw new InferenceError(`fal request failed: ${res.status}`, "provider_error");
+  }
+  const data = (await res.json()) as { images?: { url?: string }[] };
+  const imageUrl = data.images?.[0]?.url;
+  if (!imageUrl) {
+    throw new InferenceError("fal response had no image url", "provider_error");
+  }
+  let bytes: Uint8Array;
+  try {
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) throw new Error(`fetch image failed: ${imgRes.status}`);
+    bytes = new Uint8Array(await imgRes.arrayBuffer());
+  } catch (e) {
+    throw new InferenceError(
+      e instanceof Error ? e.message : "fal image fetch failed",
+      "provider_error",
+    );
+  }
+  const outputHash = await sha256Hex(bytes);
+  return {
+    outputKind: "image",
+    text: null,
+    bytes,
+    contentType: "image/png",
+    outputHash,
+  };
+}
+
 export async function runInference(
   env: Env,
   input: InferenceInput,
@@ -210,5 +294,6 @@ export async function runInference(
   if (isRenderMock(env)) return runMock(input);
   if (input.provider === "anthropic") return runAnthropic(env, input);
   if (input.provider === "workers_ai") return runWorkersAi(env, input);
+  if (input.provider === "fal_custom") return runFalCustom(env, input);
   throw new InferenceError(`unsupported provider: ${input.provider}`, "provider_unconfigured");
 }
