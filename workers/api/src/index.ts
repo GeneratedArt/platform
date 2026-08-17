@@ -67,6 +67,23 @@ import {
   uploadGalleryCoverHandler,
   projectGalleriesHandler,
 } from "./galleries/handlers";
+import {
+  tokenAccountHandler,
+  tokenLedgerHandler,
+  listPacksHandler,
+  confirmPurchaseHandler,
+} from "./tokens/handlers";
+import {
+  createModelHandler,
+  patchModelHandler,
+  listModelsHandler,
+  myModelsHandler,
+  getModelHandler,
+  publishVersionHandler,
+  renderHandler,
+  myJobsHandler,
+  getJobHandler,
+} from "./render/handlers";
 import { accessMiddleware } from "./middleware/access";
 import { logError } from "./lib/log";
 import { captureException } from "./lib/sentry";
@@ -198,6 +215,27 @@ v1.get("/og/projects/:id{[0-9]+}/data", projectOgDataHandler);
 v1.get("/feed", requireAuth, feedHandler);
 v1.get("/notifications", requireAuth, notificationsHandler);
 v1.post("/notifications/read", requireAuth, markNotificationsReadHandler);
+
+// Render-token service. Balances/ledger/purchases are all personal or
+// public catalogue reads — no admin surface needed yet. Route order
+// matters: the literal "mine" and "packs"/"purchase" segments must
+// precede the `:slug`/`:id` patterns below so Hono doesn't swallow them
+// as a slug/id (same reasoning as the galleries "cover" route above).
+v1.get("/tokens/account", requireAuth, tokenAccountHandler);
+v1.get("/tokens/ledger", requireAuth, tokenLedgerHandler);
+v1.get("/tokens/packs", listPacksHandler);
+v1.post("/tokens/purchase/confirm", requireAuth, confirmPurchaseHandler);
+
+v1.get("/models", listModelsHandler);
+v1.get("/models/mine", requireAuth, myModelsHandler);
+v1.post("/models", requireAuth, createModelHandler);
+v1.get("/models/:slug{[a-z0-9-]+}", getModelHandler);
+v1.patch("/models/:slug{[a-z0-9-]+}", requireAuth, patchModelHandler);
+v1.post("/models/:slug{[a-z0-9-]+}/versions", requireAuth, publishVersionHandler);
+v1.post("/models/:slug{[a-z0-9-]+}/render", requireAuth, renderHandler);
+
+v1.get("/jobs", requireAuth, myJobsHandler);
+v1.get("/jobs/:id{[0-9]+}", requireAuth, getJobHandler);
 
 // Admin-only observability surface. requireAuth runs first so
 // requireAdmin can read the session. _throw is a forced 500 used

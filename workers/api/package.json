@@ -29,6 +29,7 @@
     "migrate:prod": "wrangler d1 migrations apply DB --env production --remote"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "hono": "^4.12.16",
     "siwe": "^2.3.2",
     "viem": "^2.48.8"

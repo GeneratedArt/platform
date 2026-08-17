@@ -55,6 +55,17 @@ bucket_name = "generatedart-assets-dev"
 [images]
 binding = "IMAGES"
 
+# Render-token service: image-model provider (Task: render-token
+# service). Deliberately NOT bound here — Workers AI has no local
+# simulator, so wrangler dev would silently switch to remote mode and
+# require a CLOUDFLARE_API_TOKEN just to boot, breaking local dev for
+# everyone who hasn't set one up. The `workers_ai` provider path is
+# gated on `env.AI` being present (see src/ai/inference.ts) and returns
+# 503 provider_unconfigured when it's absent, same as every other
+# optional binding in this file. Set RENDER_MOCK=1 in .dev.vars to
+# exercise the render pipeline locally instead; the binding is real in
+# [env.production.ai] below.
+
 # ============================================================================
 # Production environment (api.generatedart.com)
 # ============================================================================
@@ -105,6 +116,9 @@ bucket_name = "generatedart-assets"
 [env.production.images]
 binding = "IMAGES"
 
+[env.production.ai]
+binding = "AI"
+
 # --- Async render + IPFS pin jobs — uncomment with Task #4 / Task #5 --------
 # [[env.production.queues.producers]]
 # binding    = "RENDER_QUEUE"
@@ -143,6 +157,18 @@ GITHUB_SITE_REPO     = "generatedart/generatedart"
 GA_CHAIN_ID          = "84532"
 GA_RPC_URL           = "https://sepolia.base.org"
 # GA_FACTORY_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+# --- Render-token service ----------------------------------------------
+# Address that receives ETH for token-pack purchases (reuses GA_CHAIN_ID
+# / GA_RPC_URL above — same chain the mint flow reads receipts from).
+# Non-secret — an on-chain address is public. Until set, POST
+# /v1/tokens/purchase/confirm returns 503 purchase_unconfigured.
+# ANTHROPIC_API_KEY is a secret, set via:
+#   wrangler secret put ANTHROPIC_API_KEY --env production
+# Until set, render jobs against an `anthropic`-provider model return
+# 503 provider_unconfigured. RENDER_MOCK must NEVER be set in
+# production (see src/ai/inference.ts).
+# TOKEN_TREASURY_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 # --- Task #20: Observability & error monitoring -----------------------------
 # All four are optional — when unset the relevant surface no-ops:

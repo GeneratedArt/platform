@@ -63,6 +63,39 @@ export interface Env {
   ADMIN_HANDLES?: string;         // csv allowlist for /v1/internal/*
   UPTIME_PUBLIC_BASE?: string;
   UPTIME_PROJECT_PROBE_URL?: string;
+  // --- Render-token service ---------------------------------------------
+  // Claude API key for the `anthropic` render-model provider (code
+  // generation). Set via `wrangler secret put ANTHROPIC_API_KEY
+  // --env production`. When unset, jobs against an `anthropic`-provider
+  // model fail with 503 `provider_unconfigured` — no silent fallback.
+  ANTHROPIC_API_KEY?: string;
+  // Cloudflare Workers AI binding. Powers the `workers_ai` render-model
+  // provider (image/texture generation). Hand-typed rather than pulled
+  // from @cloudflare/workers-types because the pinned SDK version
+  // predates the Ai binding type; the shape below is the subset this
+  // Worker actually calls.
+  AI?: {
+    run(model: string, input: Record<string, unknown>): Promise<unknown>;
+  };
+  // fal.ai API key for the `fal_custom` render-model provider —
+  // creator-trained custom art models (fine-tune / LoRA on a diffusion
+  // base) that Workers AI can't host, since its LoRA fine-tuning only
+  // covers text model_types. Set via `wrangler secret put FAL_KEY
+  // --env production`. Unset: jobs against a `fal_custom` model fail
+  // with 503 `provider_unconfigured`.
+  FAL_KEY?: string;
+  // Address that receives ETH for token-pack purchases. Non-secret (an
+  // on-chain address is public by nature) so it lives in [vars]. Until
+  // set, POST /v1/tokens/purchase/confirm returns 503
+  // `purchase_unconfigured`. Reuses GA_CHAIN_ID / GA_RPC_URL — the same
+  // chain the mint flow already reads receipts from.
+  TOKEN_TREASURY_ADDRESS?: string;
+  // OPT-IN ONLY, mirrors GITHUB_MOCK / PINNING_MOCK. When exactly "1",
+  // runInference() returns deterministic canned output with no network
+  // call — makes the render pipeline exercisable in `wrangler dev` and
+  // in scripts/smoke_api.mjs without an API key or Workers AI binding.
+  // Production must NEVER set RENDER_MOCK.
+  RENDER_MOCK?: string;
 }
 
 export interface ProjectMintState {

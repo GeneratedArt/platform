@@ -31,6 +31,8 @@ export { sanitizeRoute, minuteBucket } from ${JSON.stringify(join(srcDir, "lib",
 export { buildFtsQuery } from ${JSON.stringify(join(srcDir, "db", "search"))};
 export { parseAllowlist } from ${JSON.stringify(join(srcDir, "auth", "admin"))};
 export { parseFeedCursor, encodeFeedCursor } from ${JSON.stringify(join(srcDir, "db", "events"))};
+export { lifetimeDeltas } from ${JSON.stringify(join(srcDir, "db", "tokens"))};
+export { providerAllowedForKind, isTrainingMethod } from ${JSON.stringify(join(srcDir, "db", "render"))};
 `,
 );
 
@@ -253,4 +255,97 @@ test("feed cursor rejects malformed input rather than poisoning SQL", () => {
   for (const bad of ["garbage", "1:2:3", "", "-1:2", "1:-2", "a:b", "1"]) {
     assert.equal(m.parseFeedCursor(bad), null, `expected null for ${JSON.stringify(bad)}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Render-token ledger — lifetime counters.
+//
+// Regression this pins: a refund must NOT reduce lifetime_spent (a
+// refunded render would otherwise read as having spent a negative
+// amount), and only a genuine 'debit' should ever advance it.
+// ---------------------------------------------------------------------------
+test("lifetimeDeltas: purchase and grant both count as purchased", () => {
+  assert.deepEqual(m.lifetimeDeltas("purchase", 500), {
+    purchased: 500,
+    spent: 0,
+    earned: 0,
+  });
+  assert.deepEqual(m.lifetimeDeltas("grant", 200), {
+    purchased: 200,
+    spent: 0,
+    earned: 0,
+  });
+});
+
+test("lifetimeDeltas: debit counts as spent using the positive magnitude", () => {
+  assert.deepEqual(m.lifetimeDeltas("debit", -30), {
+    purchased: 0,
+    spent: 30,
+    earned: 0,
+  });
+});
+
+test("lifetimeDeltas: refund advances nothing — it is not a negative spend", () => {
+  assert.deepEqual(m.lifetimeDeltas("refund", 30), {
+    purchased: 0,
+    spent: 0,
+    earned: 0,
+  });
+});
+
+test("lifetimeDeltas: earn counts as earned only", () => {
+  assert.deepEqual(m.lifetimeDeltas("earn", 21), {
+    purchased: 0,
+    spent: 0,
+    earned: 21,
+  });
+});
+
+test("lifetimeDeltas: adjust never touches a lifetime counter", () => {
+  assert.deepEqual(m.lifetimeDeltas("adjust", 999), {
+    purchased: 0,
+    spent: 0,
+    earned: 0,
+  });
+  assert.deepEqual(m.lifetimeDeltas("adjust", -999), {
+    purchased: 0,
+    spent: 0,
+    earned: 0,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Render-model provider/kind gating.
+//
+// Regression this prevents: registering an image model against the
+// code-only `anthropic` provider (or vice versa) would only fail once
+// someone had already been charged for a job against it.
+// ---------------------------------------------------------------------------
+test("providerAllowedForKind: code models accept anthropic and mock only", () => {
+  assert.equal(m.providerAllowedForKind("code", "anthropic"), true);
+  assert.equal(m.providerAllowedForKind("code", "mock"), true);
+  assert.equal(m.providerAllowedForKind("code", "workers_ai"), false);
+});
+
+test("providerAllowedForKind: image models accept workers_ai, fal_custom, and mock", () => {
+  assert.equal(m.providerAllowedForKind("image", "workers_ai"), true);
+  assert.equal(m.providerAllowedForKind("image", "fal_custom"), true);
+  assert.equal(m.providerAllowedForKind("image", "mock"), true);
+  assert.equal(m.providerAllowedForKind("image", "anthropic"), false);
+});
+
+// fal_custom is the creator-trained-model lane (fine-tune/LoRA on a
+// diffusion base) — see migrations/0019_custom_model_provider.sql for
+// why it can't run through Workers AI.
+test("providerAllowedForKind: code models still reject fal_custom", () => {
+  assert.equal(m.providerAllowedForKind("code", "fal_custom"), false);
+});
+
+test("isTrainingMethod: accepts the four documented methods only", () => {
+  assert.equal(m.isTrainingMethod("lora"), true);
+  assert.equal(m.isTrainingMethod("dreambooth"), true);
+  assert.equal(m.isTrainingMethod("full_finetune"), true);
+  assert.equal(m.isTrainingMethod("prompt_recipe"), true);
+  assert.equal(m.isTrainingMethod("magic"), false);
+  assert.equal(m.isTrainingMethod(undefined), false);
 });
