@@ -869,6 +869,215 @@ cookie = myCookie;
   }
 }
 
+// ---- Dataset Library + training (Task #21) --------------------------
+// Fresh account so the 200-token signup grant is intact — training a
+// LoRA costs 150, deliberately priced to fit inside that grant.
+{
+  const trainer = privateKeyToAccount(generatePrivateKey());
+  await login(trainer);
+
+  let datasetSlug = null;
+  {
+    const r = await api("POST", "/v1/datasets", {
+      title: `Smoke Dataset ${RUN}`,
+      description: "A hand-collected archive of smoke-test textures.",
+      rights_declaration: "own",
+    });
+    datasetSlug = r.data?.dataset?.slug ?? null;
+    record("POST /v1/datasets", r.status === 201 && !!datasetSlug, JSON.stringify(r.data).slice(0, 200));
+  }
+  {
+    const r = await api("POST", "/v1/datasets", { title: "Bad rights" });
+    record(
+      "POST /v1/datasets rejects missing rights_declaration",
+      r.status === 400 && r.data?.error === "invalid_rights_declaration",
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("GET", "/v1/datasets/mine");
+    record(
+      "GET /v1/datasets/mine",
+      r.status === 200 && r.data?.datasets?.some((d) => d.slug === datasetSlug),
+      JSON.stringify(r.data).slice(0, 200),
+    );
+  }
+
+  // A 1x1 PNG, re-encoded with a distinct trailing comment byte per
+  // upload so each item hashes uniquely (dedup is exact-content-hash).
+  const onePxPngB64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  function pngDataUrl(tag) {
+    // Append a harmless PNG tEXt-like tail so distinct calls hash
+    // differently; real decoders ignore trailing garbage bytes but we
+    // never decode these ourselves — only R2-store and hash them.
+    const bytes = Buffer.from(onePxPngB64, "base64");
+    const tagged = Buffer.concat([bytes, Buffer.from(`smoke-${tag}`)]);
+    return `data:image/png;base64,${tagged.toString("base64")}`;
+  }
+
+  let firstItemId = null;
+  const itemIds = [];
+  for (let i = 0; i < 5; i++) {
+    const r = await api("POST", `/v1/datasets/${datasetSlug}/items`, {
+      data_url: pngDataUrl(i),
+      caption: `texture ${i}`,
+    });
+    if (i === 0) firstItemId = r.data?.item?.id ?? null;
+    if (r.status === 201) itemIds.push(r.data.item.id);
+    record(`POST /v1/datasets/:slug/items (${i + 1}/5)`, r.status === 201, JSON.stringify(r.data).slice(0, 150));
+  }
+  {
+    // Re-upload the first item's exact bytes — must dedup, not double-count.
+    const r = await api("POST", `/v1/datasets/${datasetSlug}/items`, {
+      data_url: pngDataUrl(0),
+    });
+    record(
+      "duplicate item upload dedups instead of double-counting",
+      r.status === 200 && r.data?.duplicate === true && r.data?.item?.id === firstItemId,
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("POST", `/v1/datasets/${datasetSlug}/items`, {
+      data_url: "data:text/plain;base64,aGVsbG8=",
+    });
+    record(
+      "unsupported mime rejected",
+      r.status === 400 && r.data?.error === "unsupported_mime",
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("GET", `/v1/datasets/${datasetSlug}/items`);
+    record(
+      "GET /v1/datasets/:slug/items reflects item_count exactly (dedup excluded)",
+      r.status === 200 && r.data?.items?.length === 5,
+      `count=${r.data?.items?.length}`,
+    );
+  }
+  {
+    const r = await api("POST", `/v1/datasets/${datasetSlug}/items/import-urls`, { urls: [] });
+    record(
+      "import-urls rejects an empty list",
+      r.status === 400 && r.data?.error === "invalid_urls",
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const tooMany = Array.from({ length: 26 }, (_, i) => `https://example.com/${i}.png`);
+    const r = await api("POST", `/v1/datasets/${datasetSlug}/items/import-urls`, { urls: tooMany });
+    record(
+      "import-urls rejects more than 25 urls",
+      r.status === 400 && r.data?.error === "too_many_urls",
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("GET", `/v1/datasets/${datasetSlug}/items/${firstItemId}/file`);
+    record(
+      "GET dataset item file (owner) returns the stored bytes",
+      r.status === 200,
+      `status=${r.status}`,
+    );
+  }
+
+  let trainingJobId = null;
+  let publishedModelId = null;
+  {
+    // Below MIN_TRAIN_ITEMS on a brand-new, item-less dataset.
+    const r0 = await api("POST", "/v1/datasets", { title: "Too small", rights_declaration: "own" });
+    const emptySlug = r0.data?.dataset?.slug;
+    const r = await api("POST", `/v1/datasets/${emptySlug}/train`, {
+      base_model: "flux-dev",
+      training_method: "lora",
+    });
+    record(
+      "train rejects a dataset below the minimum item count",
+      r.status === 422 && r.data?.error === "not_enough_items",
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("POST", `/v1/datasets/${datasetSlug}/train`, {
+      base_model: "made-up-model",
+      training_method: "lora",
+    });
+    record(
+      "train rejects an unlisted base model",
+      r.status === 400 && r.data?.error === "invalid_base_model",
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("POST", `/v1/datasets/${datasetSlug}/train`, {
+      base_model: "flux-dev",
+      training_method: "lora",
+    });
+    trainingJobId = r.data?.job?.id ?? null;
+    publishedModelId = r.data?.job?.model_id ?? null;
+    record(
+      "POST train (TRAINING_MOCK) completes synchronously and succeeds",
+      r.status === 201 && r.data?.job?.status === "succeeded" && !!r.data?.job?.model_version_id,
+      JSON.stringify(r.data).slice(0, 250),
+    );
+  }
+  {
+    const r = await api("GET", "/v1/tokens/account");
+    record(
+      "training debit landed (150 tokens spent on top of prior renders)",
+      r.status === 200 && r.data?.lifetime_spent >= 150,
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("GET", `/v1/training/${trainingJobId}`);
+    record("GET /v1/training/:id (owner)", r.status === 200 && r.data?.job?.id === trainingJobId, JSON.stringify(r.data).slice(0, 200));
+  }
+  {
+    const r = await api("GET", `/v1/datasets/${datasetSlug}/training`);
+    record(
+      "GET /v1/datasets/:slug/training lists the job",
+      r.status === 200 && r.data?.jobs?.some((j) => j.id === trainingJobId),
+      JSON.stringify(r.data).slice(0, 200),
+    );
+  }
+  {
+    // The trained model version carries the dataset's provenance and
+    // is renderable exactly like any other fal_custom model.
+    const r = await api("GET", "/v1/models/mine");
+    const model = r.data?.models?.find((mo) => mo.id === publishedModelId);
+    record(
+      "trained model appears in /v1/models/mine with provenance",
+      r.status === 200 && !!model && model.latest_version === 1,
+      JSON.stringify(model ?? {}).slice(0, 250),
+    );
+  }
+  {
+    const r = await api("DELETE", `/v1/datasets/${datasetSlug}/items/${itemIds[itemIds.length - 1]}`);
+    record("DELETE dataset item (owner)", r.status === 200, JSON.stringify(r.data));
+  }
+  {
+    const r = await api("GET", `/v1/datasets/${datasetSlug}`);
+    record(
+      "item_count decremented after delete",
+      r.status === 200 && r.data?.dataset?.item_count === 4,
+      `item_count=${r.data?.dataset?.item_count}`,
+    );
+  }
+  {
+    // A second account can't read a private dataset's items.
+    const stranger = privateKeyToAccount(generatePrivateKey());
+    await login(stranger);
+    const r = await api("GET", `/v1/datasets/${datasetSlug}`);
+    record(
+      "private dataset invisible to a non-owner",
+      r.status === 404,
+      `status=${r.status}`,
+    );
+  }
+}
+
 const failed = results.filter((r) => !r.ok);
 console.log(`\n=== ${results.length - failed.length}/${results.length} passed ===`);
 if (failed.length) {

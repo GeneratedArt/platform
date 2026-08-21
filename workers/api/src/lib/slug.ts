@@ -26,6 +26,26 @@ export async function uniqueProjectSlug(
 }
 
 /**
+ * Datasets' `slug` is UNIQUE per-owner, same shape as projects.
+ */
+export async function uniqueDatasetSlug(
+  db: D1Database,
+  ownerId: number,
+  base: string,
+): Promise<string> {
+  const baseSlug = slugify(base);
+  for (let i = 0; i < 50; i++) {
+    const candidate = i === 0 ? baseSlug : `${baseSlug}-${i + 1}`;
+    const taken = await db
+      .prepare("SELECT 1 FROM datasets WHERE owner_id = ? AND slug = ?")
+      .bind(ownerId, candidate)
+      .first();
+    if (!taken) return candidate;
+  }
+  return `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
+}
+
+/**
  * Galleries' `slug` is globally UNIQUE (not per-owner like projects).
  * Mirrors uniqueProjectSlug's collision-suffix loop with a random
  * tail as the bounded fallback.
