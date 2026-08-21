@@ -96,6 +96,14 @@ export interface Env {
   // in scripts/smoke_api.mjs without an API key or Workers AI binding.
   // Production must NEVER set RENDER_MOCK.
   RENDER_MOCK?: string;
+  // --- Dataset Library / training jobs ------------------------------------
+  // OPT-IN ONLY, same convention as RENDER_MOCK. When exactly "1", a
+  // training job (POST /v1/datasets/:slug/train) completes synchronously
+  // in-request with canned weights instead of submitting to fal.ai's
+  // queue API — see ai/training.ts for why this differs from the
+  // dispatch/poll cron path used in production. Production must NEVER
+  // set TRAINING_MOCK.
+  TRAINING_MOCK?: string;
 }
 
 export interface ProjectMintState {

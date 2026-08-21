@@ -95,6 +95,22 @@ import {
   throwHandler,
   clientErrorHandler,
 } from "./internal/stats";
+import {
+  createDatasetHandler,
+  myDatasetsHandler,
+  getDatasetHandler,
+  patchDatasetHandler,
+  uploadDatasetItemHandler,
+  importDatasetItemsHandler,
+  listDatasetItemsHandler,
+  deleteDatasetItemHandler,
+  getDatasetItemFileHandler,
+  trainHandler,
+  myTrainingJobsHandler,
+  datasetTrainingJobsHandler,
+  getTrainingJobHandler,
+} from "./datasets/handlers";
+import { dispatchQueuedTrainingJobs, pollTrainingJobs } from "./ai/training";
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -237,6 +253,41 @@ v1.post("/models/:slug{[a-z0-9-]+}/render", requireAuth, renderHandler);
 v1.get("/jobs", requireAuth, myJobsHandler);
 v1.get("/jobs/:id{[0-9]+}", requireAuth, getJobHandler);
 
+// Dataset Library. Everything here is owner-scoped for now (see
+// datasets/handlers.ts — datasets are private by default and there's
+// no cross-owner slug lookup yet). Literal segments ("mine") precede
+// the `:slug` pattern for the same Hono route-ordering reason as the
+// galleries/tokens routes above.
+v1.post("/datasets", requireAuth, createDatasetHandler);
+v1.get("/datasets/mine", requireAuth, myDatasetsHandler);
+v1.get("/datasets/:slug{[a-z0-9-]+}", requireAuth, getDatasetHandler);
+v1.patch("/datasets/:slug{[a-z0-9-]+}", requireAuth, patchDatasetHandler);
+v1.post("/datasets/:slug{[a-z0-9-]+}/items", requireAuth, uploadDatasetItemHandler);
+v1.post(
+  "/datasets/:slug{[a-z0-9-]+}/items/import-urls",
+  requireAuth,
+  importDatasetItemsHandler,
+);
+v1.get("/datasets/:slug{[a-z0-9-]+}/items", requireAuth, listDatasetItemsHandler);
+v1.delete(
+  "/datasets/:slug{[a-z0-9-]+}/items/:itemId{[0-9]+}",
+  requireAuth,
+  deleteDatasetItemHandler,
+);
+v1.get(
+  "/datasets/:slug{[a-z0-9-]+}/items/:itemId{[0-9]+}/file",
+  requireAuth,
+  getDatasetItemFileHandler,
+);
+v1.post("/datasets/:slug{[a-z0-9-]+}/train", requireAuth, trainHandler);
+v1.get(
+  "/datasets/:slug{[a-z0-9-]+}/training",
+  requireAuth,
+  datasetTrainingJobsHandler,
+);
+v1.get("/training", requireAuth, myTrainingJobsHandler);
+v1.get("/training/:id{[0-9]+}", requireAuth, getTrainingJobHandler);
+
 // Admin-only observability surface. requireAuth runs first so
 // requireAdmin can read the session. _throw is a forced 500 used
 // to verify the request_id round-trips end to end.
@@ -284,11 +335,25 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
-    // "* * * * *" → uptime probe;  "0 4 * * *" → daily audit + prune.
+    // "* * * * *" → uptime probe + training dispatch/poll;
+    // "0 4 * * *" → daily audit + prune.
     if (event.cron === "* * * * *") {
       ctx.waitUntil(
         runUptimeProbe(env).catch((e) =>
           console.error("uptime_probe_failed", (e as Error).message),
+        ),
+      );
+      // Training jobs are genuinely async at the provider (minutes to
+      // hours) — dispatch submits newly-queued jobs, poll checks
+      // in-flight ones for a result. See ai/training.ts.
+      ctx.waitUntil(
+        dispatchQueuedTrainingJobs(env).catch((e) =>
+          console.error("training_dispatch_failed", (e as Error).message),
+        ),
+      );
+      ctx.waitUntil(
+        pollTrainingJobs(env).catch((e) =>
+          console.error("training_poll_failed", (e as Error).message),
         ),
       );
       return;

@@ -83,6 +83,12 @@ FAL_KEY=""
 # fal.ai key. Production must NEVER set RENDER_MOCK.
 RENDER_MOCK="1"
 
+# --- Dataset Library / training jobs ---------------------------------------
+# OPT-IN ONLY, same convention as RENDER_MOCK. A training job completes
+# synchronously in-request with canned weights instead of submitting to
+# fal.ai's queue API. Production must NEVER set TRAINING_MOCK.
+TRAINING_MOCK="1"
+
 # --- Task #20: observability (all optional; unset = the surface no-ops) ----
 # ADMIN_HANDLES gates /v1/internal/*; empty means those routes 403 with
 # `admin_unconfigured`. Set it to your own handle to use /v1/internal/stats

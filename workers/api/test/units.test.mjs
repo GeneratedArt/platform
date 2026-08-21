@@ -33,6 +33,8 @@ export { parseAllowlist } from ${JSON.stringify(join(srcDir, "auth", "admin"))};
 export { parseFeedCursor, encodeFeedCursor } from ${JSON.stringify(join(srcDir, "db", "events"))};
 export { lifetimeDeltas } from ${JSON.stringify(join(srcDir, "db", "tokens"))};
 export { providerAllowedForKind, isTrainingMethod } from ${JSON.stringify(join(srcDir, "db", "render"))};
+export { isRightsDeclaration, isDatasetVisibility, isItemKind } from ${JSON.stringify(join(srcDir, "db", "datasets"))};
+export { trainingPriceTokens, isTrainableBaseModel } from ${JSON.stringify(join(srcDir, "ai", "training"))};
 `,
 );
 
@@ -339,6 +341,47 @@ test("providerAllowedForKind: image models accept workers_ai, fal_custom, and mo
 // why it can't run through Workers AI.
 test("providerAllowedForKind: code models still reject fal_custom", () => {
   assert.equal(m.providerAllowedForKind("code", "fal_custom"), false);
+});
+
+// ---------------------------------------------------------------------------
+// Dataset Library.
+// ---------------------------------------------------------------------------
+test("isRightsDeclaration: accepts the three documented values only", () => {
+  assert.equal(m.isRightsDeclaration("own"), true);
+  assert.equal(m.isRightsDeclaration("licensed"), true);
+  assert.equal(m.isRightsDeclaration("public_domain"), true);
+  assert.equal(m.isRightsDeclaration("stolen"), false);
+  assert.equal(m.isRightsDeclaration(undefined), false);
+});
+
+test("isDatasetVisibility: private and public only", () => {
+  assert.equal(m.isDatasetVisibility("private"), true);
+  assert.equal(m.isDatasetVisibility("public"), true);
+  assert.equal(m.isDatasetVisibility("unlisted"), false);
+});
+
+test("isItemKind: image and video only", () => {
+  assert.equal(m.isItemKind("image"), true);
+  assert.equal(m.isItemKind("video"), true);
+  assert.equal(m.isItemKind("audio"), false);
+});
+
+// Regression this prevents: a training request for an unlisted base
+// model silently hitting a guessed/unverified fal.ai endpoint slug
+// instead of a clean 400 — see ai/training.ts's TRAINABLE_BASE_MODELS
+// comment for why only one base is wired end-to-end today.
+test("isTrainableBaseModel: only the verified allowlist, not any string", () => {
+  assert.equal(m.isTrainableBaseModel("flux-dev"), true);
+  assert.equal(m.isTrainableBaseModel("flux-2-dev"), false);
+  assert.equal(m.isTrainableBaseModel("made-up-model"), false);
+});
+
+test("trainingPriceTokens: tiered by method, lora cheapest", () => {
+  const lora = m.trainingPriceTokens("lora");
+  const dreambooth = m.trainingPriceTokens("dreambooth");
+  const full = m.trainingPriceTokens("full_finetune");
+  assert.ok(lora < dreambooth);
+  assert.ok(dreambooth < full);
 });
 
 test("isTrainingMethod: accepts the four documented methods only", () => {
