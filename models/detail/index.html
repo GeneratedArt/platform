@@ -1,0 +1,123 @@
+---
+layout: default
+permalink: /models/detail/
+title: "AI Art Model — GeneratedArt"
+meta_title: "AI Art Model — GeneratedArt"
+meta_description: |
+  An AI art model on GeneratedArt — provenance, versions, and a live
+  render form.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% comment %}
+  Model detail is query-string routed (?slug=X), matching /p/?id=N and
+  /t/?p=N&id=T — Jekyll can't statically generate a page per D1 row.
+{% endcomment %}
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-12 py-md-14">
+   <div id="ga-model-detail-root">
+    <header class="mb-8 pb-4" style="border-bottom:1px solid var(--ga-rule);">
+      <p class="ga-model-meta" id="ga-model-meta">…</p>
+      <h1 class="h2 mb-2" id="ga-model-title">Loading…</h1>
+      <p class="text-muted mb-0" id="ga-model-desc"></p>
+    </header>
+
+    <div class="row gx-lg-8">
+      <div class="col-lg-7">
+        <h2 class="h5 mb-3">Versions &amp; provenance</h2>
+        <ul class="ga-model-version-list list-unstyled" id="ga-model-versions"></ul>
+
+        <div id="ga-publish-version-section" class="d-none mt-8 pt-6" style="border-top:1px solid var(--ga-rule);">
+          <h2 class="h5 mb-1">Publish a new version</h2>
+          <p class="small text-muted mb-3" id="ga-pv-provider-hint"></p>
+          <form id="ga-publish-version-form">
+            <div id="ga-pv-error" class="alert alert-danger d-none small" role="alert"></div>
+            <div class="mb-3">
+              <label for="ga-pv-provider-model-id" class="form-label small">Provider model id</label>
+              <input type="text" required maxlength="200" class="form-control rounded-0 font-monospace" id="ga-pv-provider-model-id" />
+            </div>
+            <div class="mb-3">
+              <label for="ga-pv-price" class="form-label small">Price (tokens per run)</label>
+              <input type="number" required min="0" step="1" class="form-control rounded-0" id="ga-pv-price" value="25" />
+            </div>
+
+            <div class="ga-code-only mb-3">
+              <label for="ga-pv-system-prompt" class="form-label small">System prompt (private — only you see this)</label>
+              <textarea class="form-control rounded-0" id="ga-pv-system-prompt" maxlength="8000" rows="3"></textarea>
+            </div>
+
+            <div class="ga-fal-only d-none">
+              <div class="row">
+                <div class="col-6 mb-3">
+                  <label for="ga-pv-training-method" class="form-label small">Training method</label>
+                  <select class="form-select rounded-0" id="ga-pv-training-method">
+                    <option value="lora" selected>LoRA</option>
+                    <option value="dreambooth">DreamBooth</option>
+                    <option value="full_finetune">Full fine-tune</option>
+                    <option value="prompt_recipe">Prompt recipe</option>
+                  </select>
+                </div>
+                <div class="col-6 mb-3">
+                  <label for="ga-pv-base-model" class="form-label small">Base model</label>
+                  <input type="text" maxlength="100" class="form-control rounded-0" id="ga-pv-base-model" placeholder="FLUX.1 [dev]" />
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="ga-pv-dataset-note" class="form-label small">Dataset note — what this was trained on</label>
+                <textarea class="form-control rounded-0" id="ga-pv-dataset-note" maxlength="2000" rows="3" placeholder="e.g. 1,840 hand-collected botanical scans, own photography"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="ga-pv-weights-ref" class="form-label small">Model / LoRA identifier at your provider (private — never shown to other viewers)</label>
+                <input type="text" maxlength="300" class="form-control rounded-0 font-monospace" id="ga-pv-weights-ref" />
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-accent rounded-0">Publish version</button>
+          </form>
+        </div>
+      </div>
+
+      <aside class="col-lg-5">
+        <div id="ga-render-section" class="d-none ga-render-panel">
+          <h2 class="h5 mb-1">Render</h2>
+          <p class="small text-muted mb-3">Cost: <span id="ga-render-price" class="font-monospace">…</span></p>
+          <textarea id="ga-render-prompt" class="form-control rounded-0 mb-3" rows="3" placeholder="Describe what you want…"></textarea>
+          <button type="button" id="ga-render-btn" class="btn btn-accent rounded-0 w-100 mb-4">Run</button>
+          <div id="ga-render-result"></div>
+        </div>
+      </aside>
+    </div>
+   </div>
+  </div>
+</section>
+
+<style>
+  .ga-model-meta { font-family: var(--ga-font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ga-mute); margin: 0 0 8px; }
+  .ga-model-version-list li.ga-model-version { padding: 16px 0; border-bottom: 1px dashed var(--ga-rule); }
+  .ga-version-num { font-family: var(--ga-font-mono); font-size: 14px; }
+  .ga-version-price { font-family: var(--ga-font-mono); font-size: 13px; color: var(--ga-mute); }
+  .ga-model-provenance { display: inline-block; font-family: var(--ga-font-mono); font-size: 11px; padding: 2px 8px; border: 1px solid var(--ga-rule); color: var(--ga-mute); margin-top: 4px; }
+  .ga-render-panel { padding: 24px; border: 1px solid var(--ga-rule); }
+  .ga-render-code { background: var(--ga-ink); color: var(--ga-paper); padding: 16px; font-size: 12px; overflow-x: auto; max-height: 400px; }
+  .ga-render-image { width: 100%; border: 1px solid var(--ga-rule); }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-models.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GAModels) { setTimeout(tryMount, 50); return; }
+    window.GAModels.mount({ apiBase: apiBase, rootEl: document.getElementById("ga-model-detail-root"), mode: "detail" });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

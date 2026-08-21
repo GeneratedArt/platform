@@ -1,0 +1,118 @@
+---
+layout: default
+permalink: /wallet/
+title: "Wallet — GeneratedArt"
+meta_title: "Wallet — GeneratedArt"
+meta_description: |
+  Your render-token balance, purchase history, and token packs on
+  GeneratedArt.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-12 py-md-14">
+    <div id="ga-wallet-root">
+      <header class="mb-8 pb-4" style="border-bottom:1px solid var(--ga-rule);">
+        <h1 class="h2 mb-1">Wallet</h1>
+        <p class="small text-muted mb-0">Prepaid render tokens — spend them running AI art models, earn them when others run yours.</p>
+      </header>
+
+      <div class="ga-wallet-hero mb-10">
+        <div>
+          <p class="ga-wallet-hero-label">Balance</p>
+          <p class="ga-wallet-balance" id="ga-wallet-balance">…</p>
+        </div>
+        <dl class="ga-wallet-stats">
+          <div><dt>Purchased</dt><dd id="ga-wallet-purchased">…</dd></div>
+          <div><dt>Spent</dt><dd id="ga-wallet-spent">…</dd></div>
+          <div><dt>Earned</dt><dd id="ga-wallet-earned">…</dd></div>
+        </dl>
+      </div>
+
+      <p id="ga-wallet-feedback" class="small text-muted mb-4"></p>
+
+      <h2 class="h4 mb-4">Buy tokens</h2>
+      <div id="ga-wallet-packs" class="ga-pack-grid mb-10">
+        <div class="text-center p-4 text-muted">Loading…</div>
+      </div>
+
+      <h2 class="h4 mb-4">Activity</h2>
+      <div class="table-responsive">
+        <table class="ga-ledger-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Kind</th>
+              <th>Memo</th>
+              <th class="text-end">Amount</th>
+              <th class="text-end">Balance</th>
+            </tr>
+          </thead>
+          <tbody id="ga-ledger-body">
+            <tr><td colspan="5" class="text-center text-muted py-4">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="text-center mt-4">
+        <button type="button" id="ga-ledger-more" class="btn btn-outline-dark rounded-0 d-none">Load more</button>
+      </div>
+    </div>
+
+    <div id="ga-wallet-signed-out" class="d-none text-center py-10">
+      <h2 class="h4 mb-3">You need to sign in first.</h2>
+      <p class="mb-4 text-muted">Connect your wallet to see your token balance.</p>
+      <a href="/connect/" class="btn btn-accent rounded-0">Connect wallet</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-wallet-hero { display: flex; flex-wrap: wrap; gap: 32px; align-items: baseline; padding: 24px; border: 1px solid var(--ga-rule); }
+  .ga-wallet-hero-label { font-family: var(--ga-font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ga-mute); margin: 0 0 4px; }
+  .ga-wallet-balance { font-family: var(--ga-font-mono); font-size: 40px; font-variant-numeric: tabular-nums; margin: 0; }
+  .ga-wallet-stats { display: flex; gap: 24px; margin: 0; }
+  .ga-wallet-stats dt { font-family: var(--ga-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ga-mute); margin: 0; }
+  .ga-wallet-stats dd { font-family: var(--ga-font-mono); font-size: 20px; font-variant-numeric: tabular-nums; margin: 0; }
+
+  .ga-pack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .ga-pack-card { padding: 24px; border: 1px solid var(--ga-rule); text-align: center; }
+  .ga-pack-tokens { font-family: var(--ga-font-mono); font-variant-numeric: tabular-nums; font-size: 20px; margin: 0 0 4px; }
+  .ga-pack-price { color: var(--ga-mute); font-size: 14px; margin: 0 0 16px; }
+
+  .ga-ledger-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .ga-ledger-table th { text-align: left; font-family: var(--ga-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ga-mute); padding: 8px 12px; border-bottom: 1px solid var(--ga-rule); }
+  .ga-ledger-table td { padding: 10px 12px; border-bottom: 1px solid var(--ga-rule); font-variant-numeric: tabular-nums; }
+  .ga-ledger-when { font-family: var(--ga-font-mono); font-size: 12px; color: var(--ga-mute); white-space: nowrap; }
+  .ga-ledger-credit { color: #1a7f37; }
+  .ga-ledger-debit { color: var(--ga-ink); }
+  .ga-ledger-balance { font-family: var(--ga-font-mono); }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-wallet.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  var root = document.getElementById("ga-wallet-root");
+  var signedOut = document.getElementById("ga-wallet-signed-out");
+
+  function tryMount() {
+    if (!window.GAWallet) { setTimeout(tryMount, 50); return; }
+    window.GAWallet.mount({
+      apiBase: apiBase,
+      rootEl: root,
+      onUnauthenticated: function () {
+        root.classList.add("d-none");
+        signedOut.classList.remove("d-none");
+      },
+    });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}
