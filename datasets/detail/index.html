@@ -1,0 +1,118 @@
+---
+layout: default
+permalink: /datasets/detail/
+title: "Dataset — GeneratedArt"
+meta_title: "Dataset — GeneratedArt"
+meta_description: |
+  A dataset on GeneratedArt — curated images and video, and the AI art
+  models trained from it.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% comment %}
+  Query-string routed (?slug=X), matching /models/detail/?slug=X — Jekyll
+  can't statically generate a page per D1 row.
+{% endcomment %}
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-12 py-md-14">
+   <div id="ga-dataset-detail-root">
+    <header class="mb-8 pb-4" style="border-bottom:1px solid var(--ga-rule);">
+      <p class="ga-dataset-meta" id="ga-dataset-meta">…</p>
+      <h1 class="h2 mb-2" id="ga-dataset-title">Loading…</h1>
+      <p class="text-muted mb-0" id="ga-dataset-desc"></p>
+    </header>
+
+    <div class="row gx-lg-8">
+      <div class="col-lg-7">
+        <h2 class="h5 mb-3">Items</h2>
+        <div
+          id="ga-dataset-dropzone"
+          class="ga-dataset-dropzone mb-3"
+          role="button"
+          tabindex="0"
+        >
+          <p class="mb-0">Drag images or video here, or click to choose files.</p>
+          <input type="file" id="ga-dataset-file-input" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple hidden />
+        </div>
+        <p id="ga-upload-feedback" class="small text-muted mb-4"></p>
+
+        <div id="ga-dataset-items" class="ga-dataset-item-grid mb-8"></div>
+
+        <h2 class="h5 mb-1">Train a model</h2>
+        <p id="ga-train-min-hint" class="small text-muted mb-3">Needs at least 5 items to train.</p>
+        <form id="ga-train-form" class="mb-8">
+          <div id="ga-train-error" class="alert alert-danger d-none small" role="alert"></div>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label for="ga-train-base-model" class="form-label small">Base model</label>
+              <select class="form-select rounded-0" id="ga-train-base-model"></select>
+            </div>
+            <div class="col-6 mb-3">
+              <label for="ga-train-method" class="form-label small">Method</label>
+              <select class="form-select rounded-0" id="ga-train-method">
+                <option value="lora" selected>LoRA (fast, recommended)</option>
+                <option value="dreambooth">DreamBooth</option>
+                <option value="full_finetune">Full fine-tune</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="ga-train-render-price" class="form-label small">Price the resulting model charges per render (tokens)</label>
+            <input type="number" min="0" step="1" value="25" class="form-control rounded-0" id="ga-train-render-price" style="max-width: 160px;" />
+          </div>
+          <button type="submit" id="ga-train-submit" class="btn btn-accent rounded-0" disabled>Train</button>
+        </form>
+      </div>
+
+      <aside class="col-lg-5">
+        <h2 class="h5 mb-3">Training runs</h2>
+        <ul id="ga-training-jobs" class="ga-training-job-list list-unstyled"></ul>
+      </aside>
+    </div>
+   </div>
+  </div>
+</section>
+
+<style>
+  .ga-dataset-meta { font-family: var(--ga-font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ga-mute); margin: 0 0 8px; }
+  .ga-dataset-dropzone { border: 1px dashed var(--ga-rule); padding: 32px; text-align: center; cursor: pointer; color: var(--ga-mute); }
+  .ga-dataset-dropzone.ga-dragover { border-color: var(--ga-accent); color: var(--ga-ink); }
+  .ga-dataset-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .ga-dataset-item { position: relative; aspect-ratio: 1 / 1; border: 1px solid var(--ga-rule); overflow: hidden; background: #EEE; }
+  .ga-dataset-item img, .ga-dataset-item video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ga-dataset-item-flagged { border-color: var(--ga-accent); }
+  .ga-item-flag { position: absolute; bottom: 0; left: 0; right: 0; margin: 0; font-size: 10px; background: rgba(230,57,70,0.85); color: #fff; padding: 2px 4px; }
+  .ga-item-delete { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border: 0; background: rgba(10,10,10,0.6); color: #fff; line-height: 1; cursor: pointer; }
+  .ga-training-job-list li.ga-training-job { padding: 12px 0; border-bottom: 1px dashed var(--ga-rule); font-size: 13px; }
+  .ga-job-status { font-family: var(--ga-font-mono); font-size: 11px; text-transform: uppercase; color: var(--ga-mute); }
+  .ga-job-status-succeeded { color: #1a7f37; }
+  .ga-job-status-failed { color: var(--ga-accent); }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-datasets.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  function tryMount() {
+    if (!window.GADatasets) { setTimeout(tryMount, 50); return; }
+    window.GADatasets.mount({
+      apiBase: apiBase,
+      rootEl: document.getElementById("ga-dataset-detail-root"),
+      mode: "detail",
+      onUnauthenticated: function () {
+        document.getElementById("ga-dataset-detail-root").innerHTML =
+          '<p class="text-muted">Dataset not found, or you are not signed in as its owner.</p>';
+      },
+    });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

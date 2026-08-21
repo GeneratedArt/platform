@@ -263,8 +263,46 @@ const GADashboard = {
     if (modalRoot && !modalRoot.innerHTML.trim()) modalRoot.innerHTML = renderModal();
     attachEvents(cfg);
     await loadProjects(cfg);
+    await loadWorkspaceTiles(cfg);
   },
 };
+
+/**
+ * Workspace tie-together (design brief Step 9, simplified): quiet stat
+ * tiles linking to Datasets/Models/Wallet from the project dashboard.
+ * Each is best-effort — a failed fetch leaves that tile's "…" rather
+ * than blocking the rest of the dashboard.
+ */
+async function loadWorkspaceTiles(cfg: DashboardConfig): Promise<void> {
+  const datasetsEl = cfg.rootEl.querySelector<HTMLElement>("#ga-tile-datasets");
+  const modelsEl = cfg.rootEl.querySelector<HTMLElement>("#ga-tile-models");
+  const walletEl = cfg.rootEl.querySelector<HTMLElement>("#ga-tile-wallet");
+
+  if (datasetsEl) {
+    try {
+      const data = await fetchJson<{ datasets: unknown[] }>(`${cfg.apiBase}/v1/datasets/mine`);
+      datasetsEl.textContent = String(data.datasets.length);
+    } catch {
+      datasetsEl.textContent = "—";
+    }
+  }
+  if (modelsEl) {
+    try {
+      const data = await fetchJson<{ models: unknown[] }>(`${cfg.apiBase}/v1/models/mine`);
+      modelsEl.textContent = String(data.models.length);
+    } catch {
+      modelsEl.textContent = "—";
+    }
+  }
+  if (walletEl) {
+    try {
+      const data = await fetchJson<{ balance: number }>(`${cfg.apiBase}/v1/tokens/account`);
+      walletEl.textContent = `${data.balance.toLocaleString()} tokens`;
+    } catch {
+      walletEl.textContent = "—";
+    }
+  }
+}
 
 window.GADashboard = GADashboard;
 export default GADashboard;
