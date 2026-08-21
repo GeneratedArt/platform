@@ -153,6 +153,18 @@ function clearLocal(projectId: number) {
   } catch {}
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case '"': return "&quot;";
+      default: return "&#39;";
+    }
+  });
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { credentials: "include", ...init });
   if (!res.ok) {
@@ -209,6 +221,11 @@ class StudioController {
   private autosaveTimer: ReturnType<typeof setInterval> | null = null;
   private exportRequests = new Map<string, (data: string | Error) => void>();
   private project: ProjectMeta | null = null;
+  private copilotMode: "generate" | "edit" | "explain" | "params" = "generate";
+  // Holds a generate/edit suggestion until the artist explicitly
+  // accepts it — see ai/copilot.ts for why this is accept-the-whole-
+  // suggestion rather than per-hunk diffing in v1.
+  private pendingSuggestion: string | null = null;
 
   constructor(cfg: StudioConfig) {
     this.cfg = cfg;
@@ -269,6 +286,7 @@ class StudioController {
     this.mountEditor(initialContent);
     this.mountPreviewBridge();
     this.bindToolbar();
+    this.bindCopilot();
     this.startAutosave();
     this.startWindowGuards();
 
@@ -411,6 +429,173 @@ class StudioController {
     document.getElementById("ga-studio-export")?.addEventListener("click", () => {
       void this.exportPng();
     });
+  }
+
+  private readonly COPILOT_PRICES: Record<typeof this.copilotMode, number> = {
+    generate: 20,
+    edit: 15,
+    explain: 5,
+    params: 5,
+  };
+  private readonly COPILOT_PLACEHOLDERS: Record<typeof this.copilotMode, string> = {
+    generate: "Describe the sketch you want…",
+    edit: "Describe the change — e.g. \"make the background black\"…",
+    explain: "(uses your current code — no input needed)",
+    params: "(uses your current code — no input needed)",
+  };
+
+  private async refreshCopilotBalance(): Promise<void> {
+    const el = document.getElementById("ga-copilot-balance");
+    if (!el) return;
+    try {
+      const acct = await fetchJson<{ balance: number }>(`${this.cfg.apiBase}/v1/tokens/account`);
+      el.textContent = `${acct.balance.toLocaleString()} tokens`;
+    } catch {
+      el.textContent = "—";
+    }
+  }
+
+  private bindCopilot() {
+    const toggle = document.getElementById("ga-studio-copilot-toggle");
+    const grid = document.getElementById("ga-studio-grid");
+    toggle?.addEventListener("click", () => {
+      const opening = !grid?.classList.contains("ga-copilot-open");
+      grid?.classList.toggle("ga-copilot-open");
+      document.getElementById("ga-studio-copilot")?.classList.toggle("d-none", !opening);
+      if (opening) void this.refreshCopilotBalance();
+    });
+
+    const priceEl = document.getElementById("ga-copilot-price");
+    const inputEl = document.getElementById("ga-copilot-input") as HTMLTextAreaElement | null;
+    const updateModeUi = () => {
+      if (priceEl) priceEl.textContent = `${this.COPILOT_PRICES[this.copilotMode]} tokens`;
+      if (inputEl) {
+        inputEl.placeholder = this.COPILOT_PLACEHOLDERS[this.copilotMode];
+        const needsInput = this.copilotMode === "generate" || this.copilotMode === "edit";
+        inputEl.classList.toggle("d-none", !needsInput);
+      }
+    };
+    updateModeUi();
+
+    document.querySelectorAll<HTMLButtonElement>(".ga-copilot-mode").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".ga-copilot-mode").forEach((b) => b.classList.toggle("active", b === btn));
+        this.copilotMode = (btn.dataset.gaMode as typeof this.copilotMode) || "generate";
+        updateModeUi();
+      });
+    });
+
+    document.getElementById("ga-copilot-run")?.addEventListener("click", () => {
+      void this.runCopilot();
+    });
+  }
+
+  private copilotFeedback(msg: string): void {
+    const el = document.getElementById("ga-copilot-feedback");
+    if (el) el.textContent = msg;
+  }
+
+  private async runCopilot(): Promise<void> {
+    const runBtn = document.getElementById("ga-copilot-run") as HTMLButtonElement | null;
+    const resultEl = document.getElementById("ga-copilot-result");
+    const inputEl = document.getElementById("ga-copilot-input") as HTMLTextAreaElement | null;
+    if (!resultEl || !this.view) return;
+    const mode = this.copilotMode;
+    const currentCode = this.view.state.doc.toString();
+    const prompt = inputEl?.value.trim() || "";
+    if ((mode === "generate" || mode === "edit") && !prompt) {
+      this.copilotFeedback("Describe what you want first.");
+      return;
+    }
+
+    if (runBtn) runBtn.disabled = true;
+    this.copilotFeedback("Thinking…");
+    resultEl.innerHTML = "";
+    try {
+      let path: string;
+      let body: Record<string, unknown>;
+      if (mode === "generate") {
+        path = "generate";
+        body = { prompt };
+      } else if (mode === "edit") {
+        path = "edit";
+        body = { current_code: currentCode, instruction: prompt };
+      } else if (mode === "explain") {
+        path = "explain";
+        body = { code: currentCode };
+      } else {
+        path = "params";
+        body = { code: currentCode };
+      }
+
+      const res = await fetch(`${this.cfg.apiBase}/v1/projects/${this.cfg.projectId}/ai/${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 402) {
+        const err = (await res.json().catch(() => ({}))) as { balance?: number; shortfall?: number };
+        this.copilotFeedback(
+          `Not enough tokens — need ${err.shortfall ?? "more"} more. `,
+        );
+        resultEl.innerHTML = `<a href="/wallet/" class="btn btn-outline-dark rounded-0 btn-sm">Buy tokens</a>`;
+        return;
+      }
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        this.copilotFeedback(`Failed: ${err.error ?? res.statusText}`);
+        return;
+      }
+      const data = (await res.json()) as { result: unknown; price_tokens: number };
+      this.copilotFeedback(`Spent ${data.price_tokens} tokens.`);
+      void this.refreshCopilotBalance();
+
+      if (mode === "generate" || mode === "edit") {
+        this.pendingSuggestion = data.result as string;
+        resultEl.innerHTML = `
+          <div class="ga-copilot-suggestion">${escapeHtml(this.pendingSuggestion)}</div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-accent rounded-0 btn-sm" id="ga-copilot-accept">Accept</button>
+            <button type="button" class="btn btn-outline-dark rounded-0 btn-sm" id="ga-copilot-reject">Reject</button>
+          </div>`;
+        resultEl.querySelector("#ga-copilot-accept")?.addEventListener("click", () => this.acceptSuggestion());
+        resultEl.querySelector("#ga-copilot-reject")?.addEventListener("click", () => {
+          this.pendingSuggestion = null;
+          resultEl.innerHTML = "";
+        });
+      } else if (mode === "explain") {
+        resultEl.innerHTML = `<p class="small">${escapeHtml(String(data.result))}</p>`;
+      } else {
+        const params = data.result as Array<{ name: string; kind: string; default: unknown; line_hint: string }>;
+        resultEl.innerHTML = params.length
+          ? `<ul class="ga-copilot-params-list">${params
+              .map((p) => `<li>${escapeHtml(p.name)} <span class="text-muted">(${escapeHtml(p.kind)}, default ${escapeHtml(String(p.default))})</span></li>`)
+              .join("")}</ul>`
+          : `<p class="small text-muted">Nothing tunable found.</p>`;
+      }
+    } catch (e) {
+      this.copilotFeedback(`Failed: ${(e as Error).message}`);
+    } finally {
+      if (runBtn) runBtn.disabled = false;
+    }
+  }
+
+  /**
+   * Replaces the whole editor buffer with the pending suggestion —
+   * the accept-the-whole-suggestion simplification documented in
+   * ai/copilot.ts, not per-hunk application. Marks the buffer dirty so
+   * the existing Save flow (and its Cmd/Ctrl+S binding) picks it up
+   * exactly like a manual edit.
+   */
+  private acceptSuggestion(): void {
+    if (!this.view || this.pendingSuggestion === null) return;
+    this.view.dispatch({
+      changes: { from: 0, to: this.view.state.doc.length, insert: this.pendingSuggestion },
+    });
+    this.pendingSuggestion = null;
+    document.getElementById("ga-copilot-result")!.innerHTML = "";
+    this.copilotFeedback("Applied to the editor — remember to Save.");
   }
 
   private scheduleReload(forcedCode?: string) {

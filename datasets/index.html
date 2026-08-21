@@ -1,0 +1,110 @@
+---
+layout: default
+permalink: /datasets/
+title: "Dataset Library — GeneratedArt"
+meta_title: "Dataset Library — GeneratedArt"
+meta_description: |
+  Your curated images and video, private by default — the source
+  material for training custom AI art models on GeneratedArt.
+header_image: "/assets/images/art/bg31.webp"
+---
+
+{% include layouts/nav/nav-10.html default_logo="black" drop_search=true %}
+
+<section class="wrapper" style="border-top: 1px solid var(--ga-rule);">
+  <div class="container py-12 py-md-14">
+   <div id="ga-datasets-root">
+    <header class="d-flex flex-wrap justify-content-between align-items-end mb-8 pb-4" style="border-bottom:1px solid var(--ga-rule);">
+      <div>
+        <h1 class="h2 mb-1">Dataset Library</h1>
+        <p class="small text-muted mb-0">Your own images and video, private by default. Only the models you publish are public.</p>
+      </div>
+      <button type="button" class="btn btn-accent rounded-0" data-bs-toggle="modal" data-bs-target="#ga-new-dataset-modal">
+        + New dataset
+      </button>
+    </header>
+
+    <div id="ga-datasets-list" class="ga-dataset-grid">
+      <div class="text-center p-4 text-muted">Loading…</div>
+    </div>
+
+    <div class="modal fade" id="ga-new-dataset-modal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-0">
+          <div class="modal-header">
+            <h5 class="modal-title">New dataset</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="ga-new-dataset-form">
+            <div class="modal-body">
+              <div id="ga-new-dataset-error" class="alert alert-danger d-none small" role="alert"></div>
+              <div class="mb-3">
+                <label for="ga-nd-title" class="form-label small">Name</label>
+                <input type="text" required maxlength="120" class="form-control rounded-0" id="ga-nd-title" />
+              </div>
+              <div class="mb-3">
+                <label for="ga-nd-description" class="form-label small">Curatorial statement — what is this visual world, and why did you collect it?</label>
+                <textarea class="form-control rounded-0" id="ga-nd-description" maxlength="4000" rows="3"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="ga-nd-rights" class="form-label small">Rights</label>
+                <select class="form-select rounded-0" id="ga-nd-rights">
+                  <option value="own" selected>My own work</option>
+                  <option value="licensed">Licensed to me</option>
+                  <option value="public_domain">Public domain or CC0</option>
+                </select>
+                <p class="small text-muted mt-1 mb-0">A model trained on this dataset carries this declaration publicly — the platform's trust model depends on it.</p>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-accent rounded-0">Create</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+   </div>
+
+    <div id="ga-datasets-signed-out" class="d-none text-center py-10">
+      <h2 class="h4 mb-3">You need to sign in first.</h2>
+      <p class="mb-4 text-muted">Connect your wallet to see your datasets.</p>
+      <a href="/connect/" class="btn btn-accent rounded-0">Connect wallet</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ga-dataset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .ga-dataset-card { display: block; padding: 0; border: 1px solid var(--ga-rule); color: inherit; text-decoration: none; }
+  .ga-dataset-card:hover { border-color: var(--ga-ink); }
+  .ga-dataset-card-body { padding: 20px; }
+  .ga-dataset-meta { font-family: var(--ga-font-mono); font-size: 12px; color: var(--ga-mute); margin: 0; }
+  .ga-empty { border: 1px dashed var(--ga-rule); }
+</style>
+
+<script type="module" src="{{ '/assets/js/ga-datasets.js' | relative_url }}"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiBase = params.get("api") || (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://" + location.hostname + ":8787"
+    : "https://api.generatedart.com");
+  var root = document.getElementById("ga-datasets-root");
+  var signedOut = document.getElementById("ga-datasets-signed-out");
+  function tryMount() {
+    if (!window.GADatasets) { setTimeout(tryMount, 50); return; }
+    window.GADatasets.mount({
+      apiBase: apiBase,
+      rootEl: root,
+      mode: "library",
+      onUnauthenticated: function () {
+        root.classList.add("d-none");
+        signedOut.classList.remove("d-none");
+      },
+    });
+  }
+  tryMount();
+})();
+</script>
+
+{% include layouts/footer/footer-1.html %}

@@ -1,12 +1,12 @@
 ---
 layout: default
-title: GeneratedArt — code-based generative art, on-chain on Base
-meta_title: GeneratedArt — community-run generative art platform & NFT marketplace
+title: GeneratedArt — AI Art Creative Coding, owned by the people who train it
+meta_title: GeneratedArt — AI Art Creative Coding platform & NFT marketplace
 meta_description: >-
-  GeneratedArt is a community-run platform and NFT marketplace for code-based
-  generative art — hand-written p5.js, three.js, WebGL and GLSL. A spiritual
-  successor to fxhash and Art Blocks, with a physical-digital bridge through
-  the Geneva gallery.
+  GeneratedArt is where AI Creative Coders build the models that make the
+  art — train a custom AI model on your own dataset, or hand-code a p5.js /
+  three.js sketch. Every model and every sketch ships with full on-chain
+  provenance and a physical-digital bridge through the Geneva gallery.
 custom_color: red
 ---
 {% include layouts/nav/nav-1.html drop_search=false %}
@@ -14,21 +14,24 @@ custom_color: red
 <section class="ga-hero">
   <div class="container text-center">
     <p class="ga-eyebrow">v0.1.0 · hackathon · base sepolia</p>
-    <h1>Code-based generative art, owned by the people who write it.</h1>
+    <h1>GeneratedArt is where AI Creative Coders build the models that make the art.</h1>
     <p class="ga-sub">
-      Sketch in the browser. Commit to a real GitHub repo. Mint editions on Base.
-      Hand-written p5.js, three.js, WebGL and GLSL — no closed plugins, no ML
-      reproductions, no hidden middlemen.
+      Curate a dataset. Train a custom AI art model. Or hand-code a p5.js,
+      three.js, WebGL, or GLSL sketch. Either way the artifact is code with
+      disclosed provenance — pinned to IPFS, minted on Base, never a rented
+      aesthetic from a closed prompt box.
     </p>
     <div class="ga-cta-row">
-      <a href="/studio/" class="btn btn-accent">Start a sketch</a>
-      <a href="/@ga-smoke/" class="btn ga-cta-quiet">Browse artists</a>
+      <a href="/models/" class="btn btn-accent">Train a model</a>
+      <a href="/studio/" class="btn ga-cta-quiet">Code a sketch</a>
     </div>
   </div>
 </section>
 
 <section class="wrapper white-wrapper">
   <div class="container inner">
+    <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: var(--ga-1);">The Code Sketch path</p>
+    <p style="max-width: 56ch; margin-bottom: var(--ga-4);">Hand-writing p5.js, three.js, or GLSL is still a fully respected craft here — the three steps below are how it works. Training a custom AI art model instead? <a href="/models/">See the Model path →</a></p>
     <div class="row gutter-60">
       <div class="col-md-4">
         <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">01 — Repo as project</p>
@@ -55,14 +58,14 @@ custom_color: red
       <div class="col-lg-7">
         <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">Manifesto · short version</p>
         <h2 style="font-size: clamp(28px, 4vw, var(--ga-type-2xl)); line-height: 1.15; max-width: 22ch;">
-          Code is the artifact. The browser is the gallery. The chain is the ledger. The community is the curator.
+          Code is the artifact — a sketch, or the model that made it. The chain is the ledger. The community is the curator.
         </h2>
       </div>
       <div class="col-lg-5">
         <ul class="list-unstyled" style="font-size: var(--ga-type-md);">
           <li style="border-top: var(--ga-border); padding: var(--ga-2) 0;">No closed plugins. Hand-written p5.js, three.js, WebGL, GLSL — readable in the repo.</li>
           <li style="border-top: var(--ga-border); padding: var(--ga-2) 0;">No hidden middlemen. Stewards rotate; treasury splits are on-chain.</li>
-          <li style="border-top: var(--ga-border); padding: var(--ga-2) 0;">No ML-generated images. Tools that pattern-match human work are not welcome here.</li>
+          <li style="border-top: var(--ga-border); padding: var(--ga-2) 0;">No undisclosed models. Every AI art model publishes its base model, training method, and dataset note.</li>
           <li style="border-top: var(--ga-border); border-bottom: var(--ga-border); padding: var(--ga-2) 0;">Physical-digital bridge. Token holders can claim a print at the Geneva gallery.</li>
         </ul>
       </div>
@@ -75,12 +78,33 @@ custom_color: red
     <div class="row">
       <div class="col-md-7 mx-auto text-center">
         <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em; text-transform: uppercase;">What's live · v0.1.0-hackathon</p>
-        <h2 style="font-size: var(--ga-type-2xl);">Six surfaces, all shipped.</h2>
+        <h2 style="font-size: var(--ga-type-2xl);">Nine surfaces, all shipped.</h2>
         <p style="color: var(--ga-mute);">Every link below is a real, live surface backed by the Worker, D1, and Base Sepolia.</p>
       </div>
     </div>
     <div class="space30"></div>
     <div class="row gutter-60">
+      <div class="col-md-6 col-lg-4">
+        <div style="border: var(--ga-border); padding: var(--ga-3);">
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
+          <h4>AI art models</h4>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Publish a code-writing or custom-trained model with disclosed provenance; earn tokens when others render it. <a href="/models/">Browse models →</a></p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div style="border: var(--ga-border); padding: var(--ga-3);">
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
+          <h4>Token wallet</h4>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Prepaid render tokens, bought on-chain — no payment processor, no subscription. <a href="/wallet/">Open wallet →</a></p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div style="border: var(--ga-border); padding: var(--ga-3);">
+          <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>
+          <h4>Studio Copilot</h4>
+          <p style="color: var(--ga-mute); font-size: var(--ga-type-sm);">Generate, edit, and explain sketch code from the editor — the code stays what's frozen and minted. <a href="/studio/">Open studio →</a></p>
+        </div>
+      </div>
       <div class="col-md-6 col-lg-4">
         <div style="border: var(--ga-border); padding: var(--ga-3);">
           <p class="ga-mono" style="color: var(--ga-mute); font-size: var(--ga-type-xs); letter-spacing: 0.12em;">LIVE</p>

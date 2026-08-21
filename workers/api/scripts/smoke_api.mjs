@@ -1078,6 +1078,80 @@ cookie = myCookie;
   }
 }
 
+// ---- Studio Copilot (Task #22) ---------------------------------------
+// Fresh account so its 200-token signup grant covers all four actions
+// (20 + 15 + 5 + 5 = 45 tokens) with room to spare.
+{
+  const coder = privateKeyToAccount(generatePrivateKey());
+  await login(coder);
+
+  const proj = await api("POST", "/v1/projects", { title: "Copilot Smoke", engine: "p5" });
+  const projId = proj.data?.project?.id ?? proj.data?.id;
+
+  {
+    const r = await api("POST", `/v1/projects/${projId}/ai/generate`, { prompt: "a field of drifting particles" });
+    record(
+      "POST ai/generate (AI_MOCK)",
+      r.status === 200 && typeof r.data?.result === "string" && r.data.result.length > 0,
+      JSON.stringify(r.data).slice(0, 150),
+    );
+  }
+  {
+    const r = await api("POST", `/v1/projects/${projId}/ai/edit`, {
+      current_code: "function setup() { createCanvas(400,400); }",
+      instruction: "make the background black",
+    });
+    record(
+      "POST ai/edit (AI_MOCK)",
+      r.status === 200 && typeof r.data?.result === "string",
+      JSON.stringify(r.data).slice(0, 150),
+    );
+  }
+  {
+    const r = await api("POST", `/v1/projects/${projId}/ai/explain`, { code: "function draw(){background(0);}" });
+    record(
+      "POST ai/explain (AI_MOCK)",
+      r.status === 200 && typeof r.data?.result === "string",
+      JSON.stringify(r.data).slice(0, 150),
+    );
+  }
+  {
+    const r = await api("POST", `/v1/projects/${projId}/ai/params`, { code: "let particleCount = 200;" });
+    record(
+      "POST ai/params (AI_MOCK) returns an array",
+      r.status === 200 && Array.isArray(r.data?.result),
+      JSON.stringify(r.data).slice(0, 150),
+    );
+  }
+  {
+    const r = await api("POST", `/v1/projects/${projId}/ai/edit`, { current_code: "x", instruction: "" });
+    record(
+      "ai/edit rejects empty instruction",
+      r.status === 400 && r.data?.error === "invalid_instruction",
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    const r = await api("GET", "/v1/tokens/account");
+    record(
+      "copilot debits landed (45 tokens across 4 actions)",
+      r.status === 200 && r.data?.lifetime_spent === 45,
+      JSON.stringify(r.data),
+    );
+  }
+  {
+    // A stranger can't run the copilot against someone else's project.
+    const stranger = privateKeyToAccount(generatePrivateKey());
+    await login(stranger);
+    const r = await api("POST", `/v1/projects/${projId}/ai/generate`, { prompt: "hi" });
+    record(
+      "ai/generate on a non-owned project → 403",
+      r.status === 403,
+      `status=${r.status}`,
+    );
+  }
+}
+
 const failed = results.filter((r) => !r.ok);
 console.log(`\n=== ${results.length - failed.length}/${results.length} passed ===`);
 if (failed.length) {

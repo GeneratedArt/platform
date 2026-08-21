@@ -24,7 +24,10 @@
     "build:feed": "esbuild client/feed.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-feed.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
     "build:token-detail": "esbuild client/token-detail.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-token-detail.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
     "build:galleries": "esbuild client/galleries.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-galleries.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
-    "build:all": "npm run build:client && npm run build:dashboard && npm run build:studio && npm run build:profile && npm run build:project-detail && npm run build:profile-editor && npm run build:mint && npm run build:briefs && npm run build:explore && npm run build:search && npm run build:feed && npm run build:token-detail && npm run build:galleries",
+    "build:wallet": "esbuild client/wallet.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-wallet.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
+    "build:models": "esbuild client/models.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-models.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
+    "build:datasets": "esbuild client/datasets.ts --bundle --format=esm --target=es2020 --minify --sourcemap=linked --outfile=../../assets/js/ga-datasets.js --define:process.env.NODE_ENV=\\\"production\\\" --tree-shaking=true",
+    "build:all": "npm run build:client && npm run build:dashboard && npm run build:studio && npm run build:profile && npm run build:project-detail && npm run build:profile-editor && npm run build:mint && npm run build:briefs && npm run build:explore && npm run build:search && npm run build:feed && npm run build:token-detail && npm run build:galleries && npm run build:wallet && npm run build:models && npm run build:datasets",
     "migrate:local": "wrangler d1 migrations apply DB --local",
     "migrate:prod": "wrangler d1 migrations apply DB --env production --remote"
   },

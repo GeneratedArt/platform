@@ -20,6 +20,7 @@ overflow: true
     </div>
     <div class="ga-studio-bar-right">
       <span id="ga-studio-status" class="ga-studio-status" data-state="idle">Idle</span>
+      <button type="button" id="ga-studio-copilot-toggle" class="btn btn-outline-dark rounded-0 btn-sm" title="Toggle Copilot">Copilot</button>
       <button type="button" id="ga-studio-save" class="btn btn-accent rounded-0 btn-sm" title="Commit (Cmd/Ctrl+S)">Save</button>
       <button type="button" id="ga-studio-export" class="btn btn-outline-dark rounded-0 btn-sm" title="Export PNG (Cmd/Ctrl+E)">Export</button>
       <a id="ga-studio-repo" class="btn btn-link btn-sm text-muted" target="_blank" rel="noopener" hidden>Repo →</a>
@@ -32,7 +33,7 @@ overflow: true
     <button type="button" id="ga-studio-restore-no" class="btn btn-sm btn-link">Discard</button>
   </div>
 
-  <div class="ga-studio-grid">
+  <div id="ga-studio-grid" class="ga-studio-grid">
     <div id="ga-studio-editor" class="ga-studio-editor"></div>
     <div class="ga-studio-preview-wrap">
       <iframe
@@ -44,6 +45,27 @@ overflow: true
         loading="eager"
       ></iframe>
     </div>
+    <aside id="ga-studio-copilot" class="ga-studio-copilot d-none">
+      <div class="ga-copilot-head">
+        <span>Copilot</span>
+        <span id="ga-copilot-balance" class="text-muted">…</span>
+      </div>
+      <div class="ga-copilot-body">
+        <div class="btn-group btn-group-sm w-100 mb-3" role="group">
+          <button type="button" class="btn btn-outline-dark rounded-0 ga-copilot-mode active" data-ga-mode="generate">Generate</button>
+          <button type="button" class="btn btn-outline-dark rounded-0 ga-copilot-mode" data-ga-mode="edit">Edit</button>
+          <button type="button" class="btn btn-outline-dark rounded-0 ga-copilot-mode" data-ga-mode="explain">Explain</button>
+          <button type="button" class="btn btn-outline-dark rounded-0 ga-copilot-mode" data-ga-mode="params">Params</button>
+        </div>
+        <textarea id="ga-copilot-input" class="form-control rounded-0 mb-2" rows="3" placeholder="Describe what you want…"></textarea>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span id="ga-copilot-price" class="small text-muted font-monospace"></span>
+          <button type="button" id="ga-copilot-run" class="btn btn-accent rounded-0 btn-sm">Run</button>
+        </div>
+        <div id="ga-copilot-feedback" class="small text-muted mb-2"></div>
+        <div id="ga-copilot-result"></div>
+      </div>
+    </aside>
   </div>
 
   <div id="ga-studio-toast" class="ga-studio-toast" role="status" aria-live="polite"></div>
@@ -70,6 +92,14 @@ overflow: true
   .ga-studio-status[data-state="error"] { color: var(--ga-accent); border-color: var(--ga-accent); background: rgba(230, 57, 70, 0.08); }
   .ga-studio-restore { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: rgba(230, 57, 70, 0.06); color: var(--ga-ink); border-bottom: 1px solid var(--ga-accent); }
   .ga-studio-grid { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
+  .ga-studio-grid.ga-copilot-open { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 320px; }
+  .ga-studio-copilot { border-left: 1px solid var(--ga-rule); background: var(--ga-paper); display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+  .ga-copilot-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--ga-rule); font-family: var(--ga-font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .ga-copilot-body { padding: 14px; }
+  .ga-copilot-mode.active { background: var(--ga-ink); color: var(--ga-paper); border-color: var(--ga-ink); }
+  .ga-copilot-suggestion { background: var(--ga-ink); color: var(--ga-paper); padding: 12px; font-size: 11px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 8px; }
+  .ga-copilot-params-list { list-style: none; padding: 0; margin: 0 0 8px; font-family: var(--ga-font-mono); font-size: 12px; }
+  .ga-copilot-params-list li { padding: 4px 0; border-bottom: 1px dashed var(--ga-rule); }
   .ga-studio-editor { min-height: 0; height: 100%; overflow: hidden; background: var(--ga-paper); }
   .ga-studio-editor .cm-editor { height: 100%; font-size: 0.92rem; }
   .ga-studio-preview-wrap { background: var(--ga-paper); border-left: 1px solid var(--ga-rule); display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 0; }

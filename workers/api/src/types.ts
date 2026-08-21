@@ -104,6 +104,14 @@ export interface Env {
   // dispatch/poll cron path used in production. Production must NEVER
   // set TRAINING_MOCK.
   TRAINING_MOCK?: string;
+  // --- Studio Copilot ------------------------------------------------------
+  // OPT-IN ONLY, same convention as RENDER_MOCK/TRAINING_MOCK. When
+  // exactly "1", the four /v1/projects/:id/ai/* routes (ai/copilot.ts)
+  // return deterministic canned output with no network call. Separate
+  // from RENDER_MOCK because the copilot is a distinct surface from the
+  // render-model marketplace, even though both call Claude. Production
+  // must NEVER set AI_MOCK.
+  AI_MOCK?: string;
 }
 
 export interface ProjectMintState {
