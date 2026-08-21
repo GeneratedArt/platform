@@ -1,12 +1,14 @@
 ---
 layout: default
 title: "About GeneratedArt"
-sub_title: "An open marketplace for code-based generative art, owned by the people who make it."
+sub_title: "Where AI Creative Coders build the models that make the art — owned by the people who train them."
 header_image: "/assets/images/art/bg1.webp"
 description: >-
-  GeneratedArt is a community-run platform for code-based generative art
-  (p5.js, three.js, WebGL, GLSL). The repo is the artwork. The artist is the
-  owner. The platform is shared infrastructure.
+  GeneratedArt is a community-run platform for AI Art Creative Coding —
+  training custom AI art models, and hand-coded p5.js, three.js, WebGL, and
+  GLSL sketches. The code is the artwork, whether it's a sketch or the
+  model that produced it. The artist is the owner. The platform is shared
+  infrastructure.
 ---
 {% include layouts/nav/nav-2.html default_logo="black" drop_search=true %}
 {% include layouts/header/page-title9.html %}
@@ -17,18 +19,23 @@ description: >-
       <div class="col-lg-8 mx-auto">
         <h2 class="display-2 mb-30">A platform we'd want to publish on ourselves.</h2>
         <p class="lead larger mb-30">
-          GeneratedArt is a marketplace and home for <strong>code-based generative art</strong>.
-          Everything that ships here is a sketch — a JavaScript or shader program that
-          renders a unique output for every collector who mints it. The repo is the
-          artwork. The artist owns the contract. The platform is shared
-          infrastructure, not a landlord.
+          GeneratedArt is a marketplace and home for <strong>AI Art Creative Coding</strong> —
+          the modern practice where an artist's creative act is training the model
+          that makes the art, in the same lineage as dataset-trained generative
+          systems like Refik Anadol's work, without claiming any affiliation. Hand-coded
+          p5.js, three.js, WebGL, and GLSL sketches remain a fully respected second
+          path. Either way, code is the medium: a model's architecture, training
+          config, and inference pipeline are code, exactly as a sketch is. The artist
+          owns the contract. The platform is shared infrastructure, not a landlord.
         </p>
         <p>
           We started this because the existing options each gave up something we
           weren't willing to give up. Centralised marketplaces hold the keys, dictate
-          royalties, and de-platform without warning. Pure on-chain venues are
-          beautiful but inaccessible to most artists. The middle ground — open,
-          curatable, transparent, with a real physical-world endpoint — was empty.
+          royalties, and de-platform without warning. Prompt-only AI art tools rent
+          you an aesthetic with no reproducibility and no way to say what a model was
+          actually trained on. Pure on-chain venues are beautiful but inaccessible to
+          most artists. The middle ground — open, curatable, transparent, provenance
+          disclosed by construction, with a real physical-world endpoint — was empty.
         </p>
       </div>
     </div>
@@ -42,11 +49,12 @@ description: >-
         <h3 class="text-uppercase letter-spacing-1 mb-40">What we believe</h3>
         <div class="row gy-5">
           <div class="col-md-6">
-            <h5 class="mb-15">The repo is the artwork.</h5>
+            <h5 class="mb-15">The code is the artwork.</h5>
             <p>
-              A sketch is its source. Mints reference an immutable commit, not a
-              JPEG. If the platform disappears, the work still runs — pull the repo,
-              open the file, render in any browser.
+              A sketch is its source; a trained model is its base model, training
+              method, and dataset. Mints reference an immutable commit or a locked
+              CID, not a JPEG. If the platform disappears, the work still runs —
+              pull the repo or the weights, render in any browser.
             </p>
           </div>
           <div class="col-md-6">
@@ -56,6 +64,15 @@ description: >-
               custody keys, never take a cut at the contract level, never pause
               transfers. The platform is a discovery and curation surface, not a
               gatekeeper.
+            </p>
+          </div>
+          <div class="col-md-6">
+            <h5 class="mb-15">Provenance is disclosed, not claimed.</h5>
+            <p>
+              Every AI art model publishes its base model, training method, and a
+              dataset note in the creator's own words — publicly, alongside the
+              model — the same trust mechanic frozen-CID provenance already gives
+              a code sketch.
             </p>
           </div>
           <div class="col-md-6">
@@ -87,7 +104,8 @@ description: >-
         <h3 class="text-uppercase letter-spacing-1 mb-30">Where it runs</h3>
         <p class="lead">
           Static front-end on GitHub Pages. Hono on Cloudflare Workers for the
-          API. D1 + KV + R2 + Queues at the edge. ERC-721 contracts on Base.
+          API. D1 + KV + R2 + Queues at the edge. Claude for code generation,
+          fal.ai for custom-trained models. ERC-721 contracts on Base.
           Wallets via WalletConnect. Pinning via IPFS. No central database, no
           auth provider, no platform that can pull the rug.
         </p>

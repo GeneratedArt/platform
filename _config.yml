@@ -1,9 +1,9 @@
 title: "GeneratedArt"
 description: >-
-  Community-run generative art platform and NFT marketplace for code-based
-  generative art (p5.js, three.js, WebGL, GLSL). A spiritual successor to
-  fxhash and Art Blocks, with a physical-digital bridge through the Geneva
-  gallery.
+  Community-run platform for AI Art Creative Coding and NFT marketplace —
+  train custom AI art models with disclosed provenance, or hand-code p5.js,
+  three.js, WebGL, and GLSL sketches. A spiritual successor to fxhash and
+  Art Blocks, with a physical-digital bridge through the Geneva gallery.
 url: "https://generatedart.com"
 baseurl: ""
 permalink: "/:title"
