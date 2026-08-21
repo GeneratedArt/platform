@@ -33,6 +33,12 @@ import {
   getCaptureHandler,
 } from "./projects/studio";
 import {
+  aiGenerateHandler,
+  aiEditHandler,
+  aiExplainHandler,
+  aiParamsHandler,
+} from "./projects/ai";
+import {
   getUserByHandleHandler,
   followHandler,
   unfollowHandler,
@@ -148,6 +154,14 @@ v1.get("/projects/:id{[0-9]+}/file", requireAuth, getProjectFileHandler);
 v1.post("/projects/:id{[0-9]+}/commit", requireAuth, commitProjectFileHandler);
 v1.post("/projects/:id{[0-9]+}/captures", requireAuth, uploadCaptureHandler);
 v1.get("/captures/:rest{.+}", getCaptureHandler);
+
+// Studio Copilot (owner-only — distinct from the render-model
+// marketplace's public /v1/models/:slug/render). Each debits the
+// render-token ledger; see projects/ai.ts.
+v1.post("/projects/:id{[0-9]+}/ai/generate", requireAuth, aiGenerateHandler);
+v1.post("/projects/:id{[0-9]+}/ai/edit", requireAuth, aiEditHandler);
+v1.post("/projects/:id{[0-9]+}/ai/explain", requireAuth, aiExplainHandler);
+v1.post("/projects/:id{[0-9]+}/ai/params", requireAuth, aiParamsHandler);
 
 // Mint flow (Task #6). `prepare` is public for the `mint` phase
 // (collectors don't need a SIWE session) and gates owner-only phases

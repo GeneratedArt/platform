@@ -89,6 +89,12 @@ RENDER_MOCK="1"
 # fal.ai's queue API. Production must NEVER set TRAINING_MOCK.
 TRAINING_MOCK="1"
 
+# --- Studio Copilot ----------------------------------------------------
+# OPT-IN ONLY, same convention as RENDER_MOCK/TRAINING_MOCK. The four
+# /v1/projects/:id/ai/* routes return canned output with no network
+# call. Production must NEVER set AI_MOCK.
+AI_MOCK="1"
+
 # --- Task #20: observability (all optional; unset = the surface no-ops) ----
 # ADMIN_HANDLES gates /v1/internal/*; empty means those routes 403 with
 # `admin_unconfigured`. Set it to your own handle to use /v1/internal/stats
