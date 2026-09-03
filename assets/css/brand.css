@@ -13,6 +13,18 @@
   --ga-rule:   rgba(10, 10, 10, 0.12);
   --ga-mute:   rgba(10, 10, 10, 0.55);
 
+  /* RGB triplets of the above, for one-off translucent washes (status
+     backgrounds, overlays) that need an opacity brand.css doesn't already
+     name — kept traceable to the same ink/accent rather than inventing a
+     new literal per page. */
+  --ga-ink-rgb:    10, 10, 10;
+  --ga-accent-rgb: 230, 57, 70;
+
+  /* Semantic status color, separate from the one accent — used for
+     positive/credit states (wallet ledger, training-job success) so the
+     accent stays reserved for CTAs and active nav. */
+  --ga-status-positive: #1a7f37;
+
   /* Spacing — 8pt grid */
   --ga-1: 8px;  --ga-2: 16px; --ga-3: 24px; --ga-4: 32px;
   --ga-6: 48px; --ga-8: 64px; --ga-12: 96px;
