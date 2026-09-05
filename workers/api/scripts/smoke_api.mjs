@@ -316,6 +316,47 @@ let modelSlug = null;
     JSON.stringify(r.data).slice(0, 200),
   );
 }
+// Workers AI model ids are an allowlist, not free text. Before the
+// catalogue existed any string was forwarded to env.AI.run(), so a typo
+// published fine and failed only after the renderer had been debited.
+let waModelSlug = null;
+{
+  const r = await api("POST", "/v1/models", {
+    title: `Smoke WA Model ${RUN}`,
+    kind: "image",
+    provider: "workers_ai",
+    visibility: "private",
+  });
+  waModelSlug = r.data?.model?.slug ?? null;
+  record(
+    "POST /v1/models (workers_ai image)",
+    r.status === 201 && !!waModelSlug,
+    JSON.stringify(r.data).slice(0, 160),
+  );
+}
+{
+  const r = await api("POST", `/v1/models/${waModelSlug}/versions`, {
+    // One character short of the real id.
+    provider_model_id: "@cf/black-forest-labs/flux-1-schnel",
+    price_tokens: 10,
+  });
+  record(
+    "workers_ai version rejects an unlisted model id",
+    r.status === 400 && r.data?.error === "model_not_in_catalogue",
+    JSON.stringify(r.data).slice(0, 160),
+  );
+}
+{
+  const r = await api("POST", `/v1/models/${waModelSlug}/versions`, {
+    provider_model_id: "@cf/black-forest-labs/flux-1-schnell",
+    price_tokens: 10,
+  });
+  record(
+    "workers_ai version accepts a catalogued model id",
+    r.status === 201 && r.data?.version?.version === 1,
+    JSON.stringify(r.data).slice(0, 160),
+  );
+}
 {
   const r = await api("GET", `/v1/models/${modelSlug}`);
   record(

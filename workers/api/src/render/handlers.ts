@@ -7,6 +7,7 @@ import { checkRateLimit } from "../lib/rateLimit";
 import { getProjectById } from "../db/projects";
 import { applyLedgerEntry } from "../db/tokens";
 import { runInference, InferenceError } from "../ai/inference";
+import { isCatalogueModel, publishableModelIds } from "../ai/workersAiCatalogue";
 import {
   isModelKind,
   isModelProvider,
@@ -350,6 +351,14 @@ export async function publishVersionHandler(
   if (model.provider === "fal_custom" && !weightsRef) {
     return badRequest(c, "weights_ref_required_for_fal_custom");
   }
+  // Workers AI ids were previously forwarded to env.AI.run() unchecked, so
+  // a typo or an unpriced model published fine and only failed once a
+  // renderer had been debited. The catalogue is the allowlist.
+  if (model.provider === "workers_ai" && !isCatalogueModel(providerModelId)) {
+    return badRequest(c, "model_not_in_catalogue", {
+      allowed: publishableModelIds(),
+    });
+  }
 
   const version = await insertModelVersion(c.env.DB, {
     modelId: model.id,
@@ -528,7 +537,8 @@ export async function renderHandler(
       if (!c.env.CAPTURES) {
         throw new InferenceError("R2 CAPTURES bucket is not bound", "storage_unconfigured");
       }
-      outputKey = `renders/${session.uid}/${job.id}-${seed}.png`;
+      const ext = result.contentType === "image/jpeg" ? "jpg" : "png";
+      outputKey = `renders/${session.uid}/${job.id}-${seed}.${ext}`;
       await c.env.CAPTURES.put(outputKey, result.bytes, {
         httpMetadata: { contentType: result.contentType ?? "image/png" },
         customMetadata: {
